@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+:root {
+  --canvas: #080c16;
+  --surface: #111828;
+  --raised: #18213a;
+  --overlay: #1e2947;
+  --ink: #e9eefb;
+  --ink-secondary: #9aabcc;
+  --ink-muted: #6d7c9c;
+  --brand: #818cf8;
+  --brand-strong: #6366f1;
+  --brand-soft: #a78bfa;
+  --accent-cyan: #22d3ee;
+  --accent-teal: #2dd4bf;
+  --accent-rose: #fb7185;
+  --accent-amber: #fbbf24;
+  --line-subtle: rgba(148, 175, 235, 0.12);
+  --line-default: rgba(148, 175, 235, 0.18);
+  --line-strong: rgba(148, 175, 235, 0.32);
+}
+
+body {
+  background-color: var(--canvas);
+  color: var(--ink);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Tabular figures for all financial, countdown, and metric values */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #080c16;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e2947;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #818cf8;
+}
+
+/* Prefers reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
