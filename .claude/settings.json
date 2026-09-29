@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "defaultMode": "default",
+    "allow": [
+      "Bash(bun run lint)",
+      "Bash(bun run typecheck)",
+      "Bash(bun run test *)",
+      "Bash(bun run build)",
+      "Bash(supabase test db)",
+      "Bash(git status)",
+      "Bash(git diff *)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(bun add *)",
+      "Bash(supabase db push *)",
+      "Bash(supabase functions deploy *)",
+      "Bash(supabase secrets *)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./supabase/.env)",
+      "Read(./supabase/.env.*)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)",
+      "Read(./real-data/**)",
+      "Bash(git push * main)",
+      "Bash(git push --force *)",
+      "Bash(supabase db reset --linked *)"
+    ]
+  }
+}
