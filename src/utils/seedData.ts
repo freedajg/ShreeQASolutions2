@@ -250,7 +250,8 @@ export function getInitialLeads(): Lead[] {
       owner: 'Pramila',
       lastContactDate: daysOffset(-11), // 11 days quiet!
       nextFollowUpDate: daysOffset(-4), // overdue follow up
-      meetingContext: 'Pramila walked Ananya through the ISO 27001:2022 roadmap and sent the scope covering their Mumbai and Pune sites. Client was concerned about timeline for SOC2 dual audit.',
+      meetingContext:
+        'Pramila walked Ananya through the ISO 27001:2022 roadmap and sent the scope covering their Mumbai and Pune sites. Client was concerned about timeline for SOC2 dual audit.',
       serviceInterest: 'ISO',
       activity: [
         {
@@ -277,7 +278,8 @@ export function getInitialLeads(): Lead[] {
       owner: 'Ramesh',
       lastContactDate: daysOffset(-8), // 8 days quiet!
       nextFollowUpDate: daysOffset(-1),
-      meetingContext: 'Ramesh presented the CMMI ML3 DEV appraisal roadmap and formal commercial proposal of ₹12 Lakhs to Vikram and their VP Engineering. They promised internal review by Friday.',
+      meetingContext:
+        'Ramesh presented the CMMI ML3 DEV appraisal roadmap and formal commercial proposal of ₹12 Lakhs to Vikram and their VP Engineering. They promised internal review by Friday.',
       serviceInterest: 'CMMI',
       activity: [
         {
@@ -304,7 +306,8 @@ export function getInitialLeads(): Lead[] {
       owner: 'Mahesh',
       lastContactDate: daysOffset(-4),
       nextFollowUpDate: daysOffset(2),
-      meetingContext: 'Mahesh scheduled pre-assessment tool walkthrough for ISO 9001 and AS9100 quality guidelines. Raghavan confirmed 4 QA leads will attend.',
+      meetingContext:
+        'Mahesh scheduled pre-assessment tool walkthrough for ISO 9001 and AS9100 quality guidelines. Raghavan confirmed 4 QA leads will attend.',
       serviceInterest: 'ISO',
       activity: [
         {
@@ -326,7 +329,8 @@ export function getInitialLeads(): Lead[] {
       owner: 'Sunita',
       lastContactDate: daysOffset(-9), // 9 days quiet
       nextFollowUpDate: daysOffset(-2),
-      meetingContext: 'Sunita finalized ISO 27001 and ISO 27701 dual certification proposal. Harish requested sample gap analysis template before signing.',
+      meetingContext:
+        'Sunita finalized ISO 27001 and ISO 27701 dual certification proposal. Harish requested sample gap analysis template before signing.',
       serviceInterest: 'ISO',
       activity: [
         {
@@ -348,7 +352,8 @@ export function getInitialLeads(): Lead[] {
       owner: 'Ramesh',
       lastContactDate: daysOffset(-14), // 14 days quiet!
       nextFollowUpDate: daysOffset(-6),
-      meetingContext: 'Ramesh had preliminary conversation regarding CMMI ML5 high-maturity appraisal for their defense simulation software group in Delhi.',
+      meetingContext:
+        'Ramesh had preliminary conversation regarding CMMI ML5 high-maturity appraisal for their defense simulation software group in Delhi.',
       serviceInterest: 'CMMI',
       activity: [
         {
@@ -370,7 +375,8 @@ export function getInitialLeads(): Lead[] {
       owner: 'Mahesh',
       lastContactDate: daysOffset(-2),
       nextFollowUpDate: daysOffset(1),
-      meetingContext: 'Mahesh verified lead contact details. Tanvi inquired about ISO 13485 software validation timeline for genomic testing pipeline.',
+      meetingContext:
+        'Mahesh verified lead contact details. Tanvi inquired about ISO 13485 software validation timeline for genomic testing pipeline.',
       serviceInterest: 'ISO',
       activity: [
         {
@@ -392,7 +398,8 @@ export function getInitialLeads(): Lead[] {
       owner: 'Pramila',
       lastContactDate: daysOffset(-5),
       nextFollowUpDate: daysOffset(2),
-      meetingContext: 'Pramila walked Kunal through ISO 27001 artifact repository structure and internal audit readiness checklist. Next step is drafting the formal scope.',
+      meetingContext:
+        'Pramila walked Kunal through ISO 27001 artifact repository structure and internal audit readiness checklist. Next step is drafting the formal scope.',
       serviceInterest: 'ISO',
       activity: [
         {
@@ -414,7 +421,8 @@ export function getInitialLeads(): Lead[] {
       owner: 'Sunita',
       lastContactDate: daysOffset(-3),
       nextFollowUpDate: daysOffset(3),
-      meetingContext: 'Sunita showcased Automotive SPICE and CMMI process mapping to Bhaskar and their software architect in Chennai.',
+      meetingContext:
+        'Sunita showcased Automotive SPICE and CMMI process mapping to Bhaskar and their software architect in Chennai.',
       serviceInterest: 'CMMI',
       activity: [
         {
@@ -436,7 +444,8 @@ export function getInitialLeads(): Lead[] {
       owner: 'Pramila',
       lastContactDate: daysOffset(-1),
       nextFollowUpDate: daysOffset(2),
-      meetingContext: 'Pallavi requested guidance on ISO 42001 (Artificial Intelligence Management System) and ISO 27001 scope.',
+      meetingContext:
+        'Pallavi requested guidance on ISO 42001 (Artificial Intelligence Management System) and ISO 27001 scope.',
       serviceInterest: 'ISO',
       activity: [
         {
@@ -458,7 +467,8 @@ export function getInitialLeads(): Lead[] {
       owner: 'Mahesh',
       lastContactDate: daysOffset(-6),
       nextFollowUpDate: daysOffset(1),
-      meetingContext: 'Mahesh spoke with Eswar on firmware security testing standards and baseline ISO 27001 gap audit requirement.',
+      meetingContext:
+        'Mahesh spoke with Eswar on firmware security testing standards and baseline ISO 27001 gap audit requirement.',
       serviceInterest: 'ISO',
       activity: [
         {
@@ -480,7 +490,8 @@ export function getInitialLeads(): Lead[] {
       owner: 'Sunita',
       lastContactDate: daysOffset(-12),
       nextFollowUpDate: daysOffset(30),
-      meetingContext: 'Sunita successfully closed the ISO 13485 and ISO 27001 advisory contract. Kickoff meeting held.',
+      meetingContext:
+        'Sunita successfully closed the ISO 13485 and ISO 27001 advisory contract. Kickoff meeting held.',
       serviceInterest: 'ISO',
       activity: [
         {
@@ -502,7 +513,8 @@ export function getInitialLeads(): Lead[] {
       owner: 'Ramesh',
       lastContactDate: daysOffset(-20),
       nextFollowUpDate: daysOffset(45),
-      meetingContext: 'Ramesh finalized CMMI ML3 DEV appraisal engagement. ATM team training scheduled.',
+      meetingContext:
+        'Ramesh finalized CMMI ML3 DEV appraisal engagement. ATM team training scheduled.',
       serviceInterest: 'CMMI',
       activity: [
         {
@@ -525,7 +537,8 @@ export function getInitialLeads(): Lead[] {
       lastContactDate: daysOffset(-25),
       nextFollowUpDate: '',
       lostReason: 'Chose cut-price independent auditor with no formal appraisal guarantee.',
-      meetingContext: 'Mahesh followed up after proposal. Client preferred a lower quotation from a single freelance practitioner.',
+      meetingContext:
+        'Mahesh followed up after proposal. Client preferred a lower quotation from a single freelance practitioner.',
       serviceInterest: 'ISO',
       activity: [
         {
@@ -547,8 +560,10 @@ export function getInitialLeads(): Lead[] {
       owner: 'Pramila',
       lastContactDate: daysOffset(-30),
       nextFollowUpDate: '',
-      lostReason: 'Postponed certification budget to next financial year due to internal restructuring.',
-      meetingContext: 'Pramila held demo with engineering director. Startup decided to freeze process audit budgets until series A.',
+      lostReason:
+        'Postponed certification budget to next financial year due to internal restructuring.',
+      meetingContext:
+        'Pramila held demo with engineering director. Startup decided to freeze process audit budgets until series A.',
       serviceInterest: 'CMMI',
       activity: [
         {
@@ -570,7 +585,8 @@ export function getInitialLeads(): Lead[] {
       owner: 'Mahesh',
       lastContactDate: daysOffset(-2),
       nextFollowUpDate: daysOffset(3),
-      meetingContext: 'Mahesh confirmed demo of process documentation portal with Bhavna and quality team.',
+      meetingContext:
+        'Mahesh confirmed demo of process documentation portal with Bhavna and quality team.',
       serviceInterest: 'IPA',
       activity: [
         {

@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-import {
-  ShieldAlert,
-  Clock,
-  Calendar,
-  CheckCircle,
-  Mail,
-  Search,
-  ArrowRight,
-} from 'lucide-react';
+import { ShieldAlert, Clock, Calendar, CheckCircle, Mail, Search, ArrowRight } from 'lucide-react';
 import { useCrm } from '../context/CrmContext';
 import {
   getDaysUntilRenewal,
@@ -39,7 +31,8 @@ export function RenewalRadarView() {
       client.contactName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (client.level || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesService = serviceFilter === 'ALL' || client.service === serviceFilter;
-    const matchesOwner = ownerFilter === 'ALL' || client.owner.toLowerCase() === ownerFilter.toLowerCase();
+    const matchesOwner =
+      ownerFilter === 'ALL' || client.owner.toLowerCase() === ownerFilter.toLowerCase();
 
     if (!matchesSearch || !matchesService || !matchesOwner) return;
 
@@ -131,7 +124,8 @@ export function RenewalRadarView() {
             </span>
           </div>
           <p className="text-xs sm:text-sm text-[#9aabcc] mt-0.5">
-            Deterministic calendar arithmetic (CMMI = 3 years, ISO/IPA = 1 year). Zero model dependency.
+            Deterministic calendar arithmetic (CMMI = 3 years, ISO/IPA = 1 year). Zero model
+            dependency.
           </p>
         </div>
       </div>
@@ -193,7 +187,9 @@ export function RenewalRadarView() {
                   <div>
                     <div className="flex items-center gap-2">
                       <h2 className="text-base font-bold text-[#e9eefb]">{band.title}</h2>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${band.badgeClass}`}>
+                      <span
+                        className={`text-xs font-bold px-2 py-0.5 rounded-full border ${band.badgeClass}`}
+                      >
                         {band.count} {band.count === 1 ? 'client' : 'clients'}
                       </span>
                     </div>
@@ -241,7 +237,9 @@ export function RenewalRadarView() {
                           {/* Contact Info */}
                           <div className="text-xs text-[#9aabcc]">
                             <div>{client.contactName}</div>
-                            <div className="text-[11px] text-[#6d7c9c] truncate">{client.email}</div>
+                            <div className="text-[11px] text-[#6d7c9c] truncate">
+                              {client.email}
+                            </div>
                           </div>
 
                           {/* Renewal Date & Countdown pill */}
@@ -265,12 +263,16 @@ export function RenewalRadarView() {
                               {days < 0 ? (
                                 <div className="px-2.5 py-1 rounded-lg bg-[#fb7185]/15 border border-[#fb7185]/30 text-[#fb7185] font-bold text-xs flex items-center justify-between">
                                   <span>Lapsed / Overdue</span>
-                                  <span className="font-mono tabular-nums">{Math.abs(days)} days ago</span>
+                                  <span className="font-mono tabular-nums">
+                                    {Math.abs(days)} days ago
+                                  </span>
                                 </div>
                               ) : days <= 90 ? (
                                 <div className="px-2.5 py-1 rounded-lg bg-[#fbbf24]/15 border border-[#fbbf24]/30 text-[#fbbf24] font-bold text-xs flex items-center justify-between">
                                   <span>Due Soon</span>
-                                  <span className="font-mono tabular-nums">{days} days remaining</span>
+                                  <span className="font-mono tabular-nums">
+                                    {days} days remaining
+                                  </span>
                                 </div>
                               ) : days <= 180 ? (
                                 <div className="px-2.5 py-1 rounded-lg bg-[#22d3ee]/10 border border-[#22d3ee]/20 text-[#22d3ee] font-medium text-xs flex items-center justify-between">
@@ -290,7 +292,9 @@ export function RenewalRadarView() {
                         {/* Card Bottom: Owner, Value, Action */}
                         <div className="pt-2.5 border-t border-[rgba(148,175,235,0.1)] flex items-center justify-between gap-2 text-xs">
                           <div>
-                            <span className="text-[10px] text-[#6d7c9c] block">Owner: {client.owner}</span>
+                            <span className="text-[10px] text-[#6d7c9c] block">
+                              Owner: {client.owner}
+                            </span>
                             <span className="font-bold font-mono text-[#e9eefb]">
                               {formatINR(client.contractValue)}
                             </span>

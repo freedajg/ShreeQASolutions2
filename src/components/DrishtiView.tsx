@@ -120,19 +120,19 @@ export function DrishtiView() {
                 card.tagColor === 'rose'
                   ? 'border-[#fb7185]/40 hover:border-[#fb7185] bg-[#fb7185]/5'
                   : card.tagColor === 'amber'
-                  ? 'border-[#fbbf24]/40 hover:border-[#fbbf24] bg-[#fbbf24]/5'
-                  : card.tagColor === 'cyan'
-                  ? 'border-[#22d3ee]/40 hover:border-[#22d3ee] bg-[#22d3ee]/5'
-                  : 'border-[#818cf8]/40 hover:border-[#818cf8] bg-[#818cf8]/5';
+                    ? 'border-[#fbbf24]/40 hover:border-[#fbbf24] bg-[#fbbf24]/5'
+                    : card.tagColor === 'cyan'
+                      ? 'border-[#22d3ee]/40 hover:border-[#22d3ee] bg-[#22d3ee]/5'
+                      : 'border-[#818cf8]/40 hover:border-[#818cf8] bg-[#818cf8]/5';
 
               const badgeTheme =
                 card.tagColor === 'rose'
                   ? 'text-[#fb7185] bg-[#fb7185]/15'
                   : card.tagColor === 'amber'
-                  ? 'text-[#fbbf24] bg-[#fbbf24]/15'
-                  : card.tagColor === 'cyan'
-                  ? 'text-[#22d3ee] bg-[#22d3ee]/15'
-                  : 'text-[#818cf8] bg-[#818cf8]/15';
+                    ? 'text-[#fbbf24] bg-[#fbbf24]/15'
+                    : card.tagColor === 'cyan'
+                      ? 'text-[#22d3ee] bg-[#22d3ee]/15'
+                      : 'text-[#818cf8] bg-[#818cf8]/15';
 
               return (
                 <button
@@ -142,13 +142,21 @@ export function DrishtiView() {
                 >
                   <div className="space-y-1.5 w-full min-w-0">
                     <div className="flex items-center justify-between gap-1.5">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeTheme}`}>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeTheme}`}
+                      >
                         {card.tag}
                       </span>
-                      {card.type === 'lapsed' && <ShieldAlert size={14} className="text-[#fb7185]" />}
+                      {card.type === 'lapsed' && (
+                        <ShieldAlert size={14} className="text-[#fb7185]" />
+                      )}
                       {card.type === 'due_soon' && <Clock size={14} className="text-[#fbbf24]" />}
-                      {card.type === 'quiet_leads' && <UserX size={14} className="text-[#22d3ee]" />}
-                      {card.type === 'proposals_out' && <FileCheck size={14} className="text-[#818cf8]" />}
+                      {card.type === 'quiet_leads' && (
+                        <UserX size={14} className="text-[#22d3ee]" />
+                      )}
+                      {card.type === 'proposals_out' && (
+                        <FileCheck size={14} className="text-[#818cf8]" />
+                      )}
                     </div>
 
                     <h4 className="text-xs font-semibold text-[#e9eefb] group-hover:text-white line-clamp-1">
@@ -161,7 +169,9 @@ export function DrishtiView() {
                   </div>
 
                   <div className="mt-3 pt-2 border-t border-[rgba(148,175,235,0.1)] flex items-center justify-between text-[11px] text-[#6d7c9c] group-hover:text-[#818cf8]">
-                    <span className="font-semibold">{formatINR(card.valueAtStake, true)} at stake</span>
+                    <span className="font-semibold">
+                      {formatINR(card.valueAtStake, true)} at stake
+                    </span>
                     <span>Ask Drishti &rarr;</span>
                   </div>
                 </button>
@@ -211,9 +221,7 @@ export function DrishtiView() {
               return (
                 <div
                   key={msg.id}
-                  className={`flex items-start gap-3 ${
-                    isUser ? 'flex-row-reverse' : 'flex-row'
-                  }`}
+                  className={`flex items-start gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
                 >
                   {/* Avatar */}
                   {isUser ? (
@@ -234,8 +242,8 @@ export function DrishtiView() {
                       isUser
                         ? 'bg-[#18213a] border border-[rgba(148,175,235,0.25)] text-[#e9eefb]'
                         : msg.isOffline
-                        ? 'bg-[#111828] border-2 border-dashed border-[rgba(148,175,235,0.2)] text-[#e9eefb]'
-                        : 'bg-[#111828] border border-[rgba(148,175,235,0.18)] text-[#e9eefb]'
+                          ? 'bg-[#111828] border-2 border-dashed border-[rgba(148,175,235,0.2)] text-[#e9eefb]'
+                          : 'bg-[#111828] border border-[rgba(148,175,235,0.18)] text-[#e9eefb]'
                     }`}
                   >
                     {/* Header Stamp */}
@@ -250,17 +258,13 @@ export function DrishtiView() {
                             : 'bg-indigo-500/15 text-[#a78bfa] border border-indigo-500/20'
                         }`}
                       >
-                        {msg.isOffline
-                          ? 'Answered offline, without a model'
-                          : msg.providerStamped}
+                        {msg.isOffline ? 'Answered offline, without a model' : msg.providerStamped}
                       </span>
                     </div>
 
                     {/* Content Markdown */}
                     <div className="prose prose-invert prose-sm max-w-none text-[#e9eefb] [&_p]:my-2 [&_ul]:my-2 [&_li]:my-0.5 [&_h3]:text-sm [&_h3]:font-bold [&_h3]:text-[#818cf8] [&_strong]:text-[#22d3ee]">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {msg.text}
-                      </ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
                     </div>
 
                     {/* Tool Proposal Diff */}

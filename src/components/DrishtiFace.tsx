@@ -8,11 +8,7 @@ interface DrishtiFaceProps {
   className?: string;
 }
 
-export function DrishtiFace({
-  state = 'idle',
-  size = 'md',
-  className = '',
-}: DrishtiFaceProps) {
+export function DrishtiFace({ state = 'idle', size = 'md', className = '' }: DrishtiFaceProps) {
   const [isBlinking, setIsBlinking] = useState(false);
 
   // Eye blinking cycle for idle state (blinks twice every ~5s)
@@ -63,8 +59,8 @@ export function DrishtiFace({
         isOffline
           ? 'Drishti (Offline Rule Engine)'
           : isThinking
-          ? 'Drishti is synthesizing records...'
-          : 'Drishti AI Partner'
+            ? 'Drishti is synthesizing records...'
+            : 'Drishti AI Partner'
       }
     >
       {/* Soft Ambient Halo */}
@@ -73,8 +69,8 @@ export function DrishtiFace({
           isOffline
             ? 'opacity-0'
             : isThinking
-            ? 'bg-gradient-to-tr from-indigo-500/40 via-violet-500/40 to-cyan-400/40 blur-md scale-110 animate-pulse'
-            : 'bg-gradient-to-tr from-indigo-500/25 via-violet-500/20 to-cyan-400/20 blur-sm scale-105'
+              ? 'bg-gradient-to-tr from-indigo-500/40 via-violet-500/40 to-cyan-400/40 blur-md scale-110 animate-pulse'
+              : 'bg-gradient-to-tr from-indigo-500/25 via-violet-500/20 to-cyan-400/20 blur-sm scale-105'
         }`}
       />
 
@@ -84,15 +80,22 @@ export function DrishtiFace({
           isOffline
             ? ''
             : isThinking
-            ? 'animate-[bounce_1.2s_infinite_cubic-bezier(.16,1,.3,1)]'
-            : 'animate-[bounce_4.5s_infinite_ease-in-out]'
+              ? 'animate-[bounce_1.2s_infinite_cubic-bezier(.16,1,.3,1)]'
+              : 'animate-[bounce_4.5s_infinite_ease-in-out]'
         }`}
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
           {/* Main Gradient */}
-          <linearGradient id="faceGrad" x1="10" y1="10" x2="90" y2="90" gradientUnits="userSpaceOnUse">
+          <linearGradient
+            id="faceGrad"
+            x1="10"
+            y1="10"
+            x2="90"
+            y2="90"
+            gradientUnits="userSpaceOnUse"
+          >
             <stop offset="0%" stopColor="#6366f1" />
             <stop offset="50%" stopColor="#8b5cf6" />
             <stop offset="100%" stopColor="#06b6d4" />
@@ -127,12 +130,7 @@ export function DrishtiFace({
           fill={isOffline ? '#94a3b8' : 'url(#antennaBulb)'}
           className={!isOffline ? (isThinking ? 'animate-ping' : 'animate-pulse') : ''}
         />
-        <circle
-          cx="50"
-          cy="11"
-          r="4.5"
-          fill={isOffline ? '#cbd5e1' : '#e0f2fe'}
-        />
+        <circle cx="50" cy="11" r="4.5" fill={isOffline ? '#cbd5e1' : '#e0f2fe'} />
 
         {/* Rounded Head */}
         <rect
@@ -147,14 +145,7 @@ export function DrishtiFace({
         />
 
         {/* Inner Glass Highlight / Visor */}
-        <rect
-          x="20"
-          y="27"
-          width="60"
-          height="32"
-          rx="14"
-          fill="rgba(255, 255, 255, 0.08)"
-        />
+        <rect x="20" y="27" width="60" height="32" rx="14" fill="rgba(255, 255, 255, 0.08)" />
 
         {/* Cheeks */}
         {!isOffline && (
@@ -166,12 +157,7 @@ export function DrishtiFace({
 
         {/* Left Eye */}
         {isBlinking ? (
-          <path
-            d="M31 49Q38 52 45 49"
-            stroke="#0f172a"
-            strokeWidth="3.5"
-            strokeLinecap="round"
-          />
+          <path d="M31 49Q38 52 45 49" stroke="#0f172a" strokeWidth="3.5" strokeLinecap="round" />
         ) : (
           <g>
             <circle cx="38" cy="48" r="7.5" fill="#0f172a" />
@@ -182,12 +168,7 @@ export function DrishtiFace({
 
         {/* Right Eye */}
         {isBlinking ? (
-          <path
-            d="M55 49Q62 52 69 49"
-            stroke="#0f172a"
-            strokeWidth="3.5"
-            strokeLinecap="round"
-          />
+          <path d="M55 49Q62 52 69 49" stroke="#0f172a" strokeWidth="3.5" strokeLinecap="round" />
         ) : (
           <g>
             <circle cx="62" cy="48" r="7.5" fill="#0f172a" />
@@ -199,30 +180,13 @@ export function DrishtiFace({
         {/* Mouth */}
         {isOffline ? (
           /* Offline: Flat line */
-          <path
-            d="M44 68H56"
-            stroke="#1e293b"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
+          <path d="M44 68H56" stroke="#1e293b" strokeWidth="3" strokeLinecap="round" />
         ) : isThinking ? (
           /* Thinking: Animated speaking mouth */
-          <ellipse
-            cx="50"
-            cy="68"
-            rx="5"
-            ry="4"
-            fill="#0f172a"
-            className="animate-pulse"
-          />
+          <ellipse cx="50" cy="68" rx="5" ry="4" fill="#0f172a" className="animate-pulse" />
         ) : (
           /* Idle: Warm gentle smile */
-          <path
-            d="M42 66Q50 74 58 66"
-            stroke="#0f172a"
-            strokeWidth="3.2"
-            strokeLinecap="round"
-          />
+          <path d="M42 66Q50 74 58 66" stroke="#0f172a" strokeWidth="3.2" strokeLinecap="round" />
         )}
       </svg>
     </div>

@@ -11,11 +11,7 @@ import {
   DragStartEvent,
   DragEndEvent,
 } from '@dnd-kit/core';
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
   Plus,
@@ -54,14 +50,10 @@ interface SortableLeadCardProps {
 }
 
 function LeadCardItem({ lead, onOpenDetails }: SortableLeadCardProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: lead.id, data: { lead } });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: lead.id,
+    data: { lead },
+  });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -155,7 +147,7 @@ export function PipelineView() {
     (l) =>
       l.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
       l.contactName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      l.owner.toLowerCase().includes(searchTerm.toLowerCase())
+      l.owner.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   // Needs-attention leads: quiet leads (>7 days)
@@ -441,8 +433,8 @@ export function PipelineView() {
                             lead.stage === 'Won'
                               ? 'bg-[#2dd4bf]/15 text-[#2dd4bf]'
                               : lead.stage === 'Lost'
-                              ? 'bg-[#fb7185]/15 text-[#fb7185]'
-                              : 'bg-[#18213a] text-[#9aabcc]'
+                                ? 'bg-[#fb7185]/15 text-[#fb7185]'
+                                : 'bg-[#18213a] text-[#9aabcc]'
                           }`}
                         >
                           {lead.stage}
@@ -504,9 +496,7 @@ export function PipelineView() {
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() =>
-                    openDraftModal({ type: 'lead', entity: currentSelectedLead })
-                  }
+                  onClick={() => openDraftModal({ type: 'lead', entity: currentSelectedLead })}
                   className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#818cf8] to-[#2dd4bf] text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-sm"
                 >
                   <Mail size={13} />
@@ -583,7 +573,8 @@ export function PipelineView() {
                   "{currentSelectedLead.meetingContext}"
                 </p>
                 <p className="text-[10px] text-[#6d7c9c] pt-1">
-                  *When generating emails, Drishti automatically converts this internal note into a courteous first-person message for {currentSelectedLead.owner}.
+                  *When generating emails, Drishti automatically converts this internal note into a
+                  courteous first-person message for {currentSelectedLead.owner}.
                 </p>
               </div>
 
@@ -620,7 +611,9 @@ export function PipelineView() {
                         className="p-2.5 rounded-lg bg-[#080c16] border border-[rgba(148,175,235,0.08)] space-y-1"
                       >
                         <div className="flex items-center justify-between text-[10px] text-[#6d7c9c]">
-                          <span className="font-semibold text-[#818cf8]">{act.author || 'System'}</span>
+                          <span className="font-semibold text-[#818cf8]">
+                            {act.author || 'System'}
+                          </span>
                           <span>{formatStandardDate(act.at)}</span>
                         </div>
                         <p className="text-xs text-[#9aabcc]">{act.note}</p>
@@ -647,7 +640,8 @@ export function PipelineView() {
               <span>Mark Deal as Lost</span>
             </div>
             <p className="text-xs text-[#9aabcc]">
-              Please record why this prospect did not convert so the firm can analyze objections and pricing friction.
+              Please record why this prospect did not convert so the firm can analyze objections and
+              pricing friction.
             </p>
             <textarea
               rows={3}

@@ -90,7 +90,7 @@ export function ImportView() {
             (h) =>
               h.toLowerCase().replace(/[^a-z0-9]/g, '') ===
                 field.key.toLowerCase().replace(/[^a-z0-9]/g, '') ||
-              h.toLowerCase().includes(field.label.toLowerCase().slice(0, 4))
+              h.toLowerCase().includes(field.label.toLowerCase().slice(0, 4)),
           );
           if (match) {
             initialMapping[field.key] = match;
@@ -115,9 +115,11 @@ export function ImportView() {
         if (!company) return;
 
         const contactName = String(row[columnMapping.contactName] || 'Lead Auditor').trim();
-        const email = String(row[columnMapping.email] || `contact@${company.toLowerCase().replace(/\s+/g, '')}.in`).trim();
+        const email = String(
+          row[columnMapping.email] || `contact@${company.toLowerCase().replace(/\s+/g, '')}.in`,
+        ).trim();
         const phone = String(row[columnMapping.phone] || '+91 98000 00000').trim();
-        
+
         let service: ServiceKind = 'ISO';
         const rawService = String(row[columnMapping.service] || '').toUpperCase();
         if (rawService.includes('CMMI')) service = 'CMMI';
@@ -166,10 +168,12 @@ export function ImportView() {
         if (!company) return;
 
         const contactName = String(row[columnMapping.contactName] || 'Contact').trim();
-        const email = String(row[columnMapping.email] || `contact@${company.toLowerCase().replace(/\s+/g, '')}.in`).trim();
+        const email = String(
+          row[columnMapping.email] || `contact@${company.toLowerCase().replace(/\s+/g, '')}.in`,
+        ).trim();
         const phone = String(row[columnMapping.phone] || '+91 98000 00000').trim();
         const source = String(row[columnMapping.source] || 'Excel Import').trim();
-        
+
         let serviceInterest: ServiceKind = 'ISO';
         const rawService = String(row[columnMapping.serviceInterest] || '').toUpperCase();
         if (rawService.includes('CMMI')) serviceInterest = 'CMMI';
@@ -177,14 +181,26 @@ export function ImportView() {
 
         let stage: Stage = 'New';
         const rawStage = String(row[columnMapping.stage] || '').trim();
-        if (['New', 'Contacted', 'Demo scheduled', 'Demo done', 'Proposal sent', 'Won', 'Lost'].includes(rawStage)) {
+        if (
+          [
+            'New',
+            'Contacted',
+            'Demo scheduled',
+            'Demo done',
+            'Proposal sent',
+            'Won',
+            'Lost',
+          ].includes(rawStage)
+        ) {
           stage = rawStage as Stage;
         }
 
         const valRaw = String(row[columnMapping.value] || '').replace(/[^0-9.]/g, '');
         const value = Number(valRaw) || 600000;
         const owner = String(row[columnMapping.owner] || 'Pramila').trim();
-        const meetingContext = String(row[columnMapping.meetingContext] || 'Imported lead from spreadsheet').trim();
+        const meetingContext = String(
+          row[columnMapping.meetingContext] || 'Imported lead from spreadsheet',
+        ).trim();
 
         addLead({
           company,
@@ -226,12 +242,12 @@ export function ImportView() {
             'Contact Person': 'Rajesh Sharma',
             'Email Address': 'rajesh@acme.in',
             'Phone Number': '+91 98234 56789',
-            'Standard': 'CMMI',
-            'Level': 'DEV ML3',
+            Standard: 'CMMI',
+            Level: 'DEV ML3',
             'Contract Value': 1400000,
             'Last Appraisal Date': '2023-04-15',
-            'Owner': 'Ramesh',
-            'Notes': 'Scope includes Bangalore and Hyderabad units.',
+            Owner: 'Ramesh',
+            Notes: 'Scope includes Bangalore and Hyderabad units.',
           },
         ]
       : [
@@ -241,9 +257,9 @@ export function ImportView() {
             'Email Address': 'ananya@technext.in',
             'Phone Number': '+91 98450 11223',
             'Standard Interest': 'ISO',
-            'Stage': 'Contacted',
+            Stage: 'Contacted',
             'Deal Value': 650000,
-            'Owner': 'Pramila',
+            Owner: 'Pramila',
             'Meeting Context': 'Discussed ISO 27001 ISMS scope for cloud infrastructure.',
           },
         ];
@@ -263,7 +279,8 @@ export function ImportView() {
             Import Excel & CSV
           </h1>
           <p className="text-xs sm:text-sm text-[#9aabcc] mt-0.5">
-            Migrate from your existing consulting Excel workbook directly into browser local storage.
+            Migrate from your existing consulting Excel workbook directly into browser local
+            storage.
           </p>
         </div>
 
@@ -337,7 +354,8 @@ export function ImportView() {
               {fileName ? fileName : 'Click to select or drop an Excel (.xlsx) / CSV file'}
             </span>
             <span className="text-xs text-[#6d7c9c] mt-1">
-              Supports multi-sheet workbooks, standard ISO/CMMI date strings, and Indian Rupee values.
+              Supports multi-sheet workbooks, standard ISO/CMMI date strings, and Indian Rupee
+              values.
             </span>
           </label>
         </div>
@@ -373,7 +391,10 @@ export function ImportView() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
             {targetFields.map((field) => (
-              <div key={field.key} className="p-3 rounded-xl bg-[#080c16] border border-[rgba(148,175,235,0.12)] space-y-1.5">
+              <div
+                key={field.key}
+                className="p-3 rounded-xl bg-[#080c16] border border-[rgba(148,175,235,0.12)] space-y-1.5"
+              >
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-[#e9eefb]">
                     {field.label} {field.required && <strong className="text-[#fb7185]">*</strong>}

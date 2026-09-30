@@ -5,7 +5,7 @@ import { formatINR } from './currency';
 export function computeBriefing(
   clients: Client[],
   leads: Lead[],
-  userName: string = 'Pramila'
+  userName: string = 'Pramila',
 ): BriefingData {
   const now = new Date();
   const hour = now.getHours();
@@ -36,7 +36,9 @@ export function computeBriefing(
 
   // 3. Quiet leads: open leads (not Won/Lost) where lastContactDate is >= 7 days ago
   const quietLeads = leads
-    .filter((l) => l.stage !== 'Won' && l.stage !== 'Lost' && getDaysAgo(l.lastContactDate, now) >= 7)
+    .filter(
+      (l) => l.stage !== 'Won' && l.stage !== 'Lost' && getDaysAgo(l.lastContactDate, now) >= 7,
+    )
     .sort((a, b) => getDaysAgo(b.lastContactDate, now) - getDaysAgo(a.lastContactDate, now)); // most quiet first
   const totalQuietValue = quietLeads.reduce((sum, l) => sum + l.value, 0);
 
