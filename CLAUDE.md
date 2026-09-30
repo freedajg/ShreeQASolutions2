@@ -16,17 +16,19 @@ We are turning an existing MVP (React + localStorage) into a real app on Supabas
 
 ## Commands
 
-- Dev server: `bun run dev`
+- Dev server: `bun run dev` (http://localhost:3000, localhost only) · Preview a build: `bun run preview`
 - Build: `bun run build`
 - Type-check: `bun run typecheck`
-- Lint: `bun run lint`
-- Unit tests: `bun run test`
-- Browser tests: `bun run test:e2e`
-- Local Supabase: `supabase start` / `supabase stop`
-- Database tests (RLS): `supabase test db`
-- Regenerate DB types: `supabase gen types typescript --local > src/types/database.ts`
-
-(Fill in or correct these in Phase 0 once the scripts exist.)
+- Lint: `bun run lint` (ESLint; errors fail, warnings don't)
+- Format: `bun run format` · Check only: `bun run format:check`
+- Unit tests: `bun run test` (Vitest, `src/**/*.test.ts(x)`) · Watch: `bun run test:watch`
+- Browser tests: `bun run test:e2e` (Playwright, `tests/`; starts the dev server itself)
+- Hardcoded hex colour check: `bun run check:colors` (not enforced in CI until Phase 0 part 2)
+- Remove build output and reports: `bun run clean`
+- Re-enable the Gitleaks pre-commit hook: `bun run hooks:install` (runs automatically on `bun install`)
+- Local Supabase (Phase 1): `supabase start` / `supabase stop`
+- Database tests (RLS, Phase 1): `supabase test db`
+- Regenerate DB types (Phase 1): `supabase gen types typescript --local > src/types/database.ts`
 
 ## Folder map
 
@@ -63,3 +65,8 @@ We are turning an existing MVP (React + localStorage) into a real app on Supabas
 <!-- Add a line each time Claude Code gets something wrong, e.g.:
 - Don't put won (In Progress) engagements on the Pipeline board.
 -->
+
+- On Windows, `bunx` isn't on PATH; use `bun x <tool>`.
+- Shell commands (and commit messages) that mention `.env` or `real-data` are denied on purpose. Don't try to get around it; ask the user to run the command with `!`.
+- Don't run `eslint --fix` or `prettier --write` over MVP code without asking; show the change first.
+- Existing lint warnings in the legacy files listed in `eslint.config.js` are expected. When a phase rewrites one of those files, fix its warnings and remove it from the list.
