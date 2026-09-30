@@ -108,7 +108,7 @@ export function runLocalRuleEngine(
 
   // 2. PROPOSAL / STAGE UPDATE INTENT (e.g. "move Kavach to Demo done" or "change stage of Pratham to Won")
   if (q.includes('move') || q.includes('change') || q.includes('update') || q.includes('set stage')) {
-    let targetLead = matchedLeads[0];
+    let targetLead: Lead | undefined = matchedLeads[0];
     if (!targetLead) {
       // Check partial matches
       targetLead = leads.find((l) =>
