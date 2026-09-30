@@ -1,0 +1,7 @@
+# Gitleaks config for Drishti. Used by the pre-commit hook and CI.
+# Starts from Gitleaks' built-in rules. Add an allowlist here only for a
+# confirmed false positive, with a comment explaining why.
+title = "Drishti gitleaks config"
+
+[extend]
+useDefault = true
