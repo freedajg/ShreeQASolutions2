@@ -1,8 +1,31 @@
+# Dependencies and build output
 node_modules/
 build/
 dist/
 coverage/
-.DS_Store
-*.log
+
+# Test reports (Playwright)
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Secrets: only the example file is committed
 .env*
 !.env.example
+
+# Supabase CLI temp files
+supabase/.temp/
+
+# Real client data never enters the repo
+real-data/
+
+# Personal Claude Code overrides
+.claude/settings.local.json
+
+# Other tools' local folders
+.kilo/
+
+# OS and logs
+.DS_Store
+*.log
