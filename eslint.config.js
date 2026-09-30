@@ -1,0 +1,88 @@
+import js from '@eslint/js';
+import prettier from 'eslint-config-prettier';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
+import { defineConfig, globalIgnores } from 'eslint/config';
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
+
+export default defineConfig([
+  globalIgnores([
+    'dist',
+    'coverage',
+    'playwright-report',
+    'test-results',
+    'blob-report',
+    '.kilo',
+    'test-data',
+    'real-data',
+  ]),
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    extends: [
+      js.configs.recommended,
+      tseslint.configs.recommended,
+      reactHooks.configs.flat.recommended,
+      reactRefresh.configs.vite,
+    ],
+    languageOptions: {
+      globals: globals.browser,
+    },
+  },
+  {
+    files: ['*.config.{js,ts}', 'scripts/**/*.ts', 'tests/**/*.ts'],
+    extends: [js.configs.recommended, tseslint.configs.recommended],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
+  // Legacy MVP files: existing violations are warnings, not errors, so CI can pass
+  // without changing MVP code in Phase 0. Each file lists only the rules it fails.
+  // Remove a file from this list when its phase rewrites it; everything else,
+  // including all new code, keeps these rules as errors.
+  {
+    files: [
+      'src/components/ClientsView.tsx',
+      'src/components/PipelineView.tsx',
+      'src/components/SettingsView.tsx',
+      'src/components/DrishtiView.tsx',
+      'src/components/Navbar.tsx',
+      'src/components/RenewalRadarView.tsx',
+    ],
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'warn',
+    },
+  },
+  {
+    files: [
+      'src/components/ImportView.tsx',
+      'src/services/aiService.ts',
+      'src/utils/localAiEngine.ts',
+    ],
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'warn',
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
+  },
+  {
+    files: ['src/types.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
+  },
+  {
+    files: ['src/components/DrishtiFace.tsx', 'src/components/EmailDraftModal.tsx'],
+    rules: {
+      'react-hooks/set-state-in-effect': 'warn',
+    },
+  },
+  {
+    files: ['src/context/CrmContext.tsx'],
+    rules: {
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-refresh/only-export-components': 'warn',
+    },
+  },
+  // Must stay last: turns off rules that conflict with Prettier.
+  prettier,
+]);
