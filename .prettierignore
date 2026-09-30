@@ -1,0 +1,17 @@
+# Build output and dependencies
+dist
+coverage
+node_modules
+bun.lock
+
+# Test reports
+playwright-report
+test-results
+blob-report
+
+# Not ours to format
+.kilo
+.claude
+docs
+test-data
+real-data
