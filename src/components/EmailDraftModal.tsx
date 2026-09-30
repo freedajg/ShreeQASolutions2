@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { X, Copy, Check, Sparkles, RefreshCw, Send, Mail, CheckCircle2, AlertCircle } from 'lucide-react';
+import {
+  X,
+  Copy,
+  Check,
+  Sparkles,
+  RefreshCw,
+  Send,
+  Mail,
+  CheckCircle2,
+  AlertCircle,
+} from 'lucide-react';
 import { Client, Lead } from '../types';
 import { useCrm } from '../context/CrmContext';
 import { generateDraftEmailOffline } from '../utils/localAiEngine';
@@ -31,7 +41,8 @@ export function EmailDraftModal({ target, onClose }: EmailDraftModalProps) {
   // Generate initial draft using the strict first-person formula
   useEffect(() => {
     setRecipientEmail(entity.email || '');
-    const standard = leadEntity?.serviceInterest || clientEntity?.service || 'Process Certification';
+    const standard =
+      leadEntity?.serviceInterest || clientEntity?.service || 'Process Certification';
     const subj = isLead
       ? `Following up on our ${standard} assessment discussion - ${entity.company}`
       : `Upcoming ${standard} renewal schedule - ${entity.company}`;
@@ -73,7 +84,7 @@ export function EmailDraftModal({ target, onClose }: EmailDraftModalProps) {
 
     // Build the mailto link with encoded recipient, subject, and body
     const mailtoUrl = `mailto:${encodeURIComponent(cleanEmail)}?subject=${encodeURIComponent(
-      subject
+      subject,
     )}&body=${encodeURIComponent(body)}`;
 
     // Dispatch via temporary link to trigger the user's default email client
@@ -124,9 +135,7 @@ export function EmailDraftModal({ target, onClose }: EmailDraftModalProps) {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-[#e9eefb]">
-                  Follow-Up: {entity.company}
-                </h3>
+                <h3 className="font-bold text-base text-[#e9eefb]">Follow-Up: {entity.company}</h3>
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#18213a] text-[#2dd4bf] border border-[#2dd4bf]/20 flex items-center gap-1">
                   <Mail size={11} />
                   Ready to Send
@@ -153,7 +162,9 @@ export function EmailDraftModal({ target, onClose }: EmailDraftModalProps) {
           <AlertCircle size={15} className="text-[#818cf8] shrink-0 mt-0.5" />
           <div className="leading-relaxed">
             <span>
-              Clicking <strong className="text-[#2dd4bf]">Send Email</strong> opens your default email client with recipient and draft pre-filled, advances the last contact date to today, and logs an activity record in your CRM.
+              Clicking <strong className="text-[#2dd4bf]">Send Email</strong> opens your default
+              email client with recipient and draft pre-filled, advances the last contact date to
+              today, and logs an activity record in your CRM.
             </span>
           </div>
         </div>
@@ -164,7 +175,8 @@ export function EmailDraftModal({ target, onClose }: EmailDraftModalProps) {
             <div className="flex items-center gap-2">
               <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
               <span>
-                <strong>Mail dispatched!</strong> Activity note logged and contact date updated for {entity.company}.
+                <strong>Mail dispatched!</strong> Activity note logged and contact date updated for{' '}
+                {entity.company}.
               </span>
             </div>
             <button

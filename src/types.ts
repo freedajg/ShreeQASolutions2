@@ -1,13 +1,7 @@
 export type ServiceKind = 'CMMI' | 'ISO' | 'IPA' | 'Other';
 
 export type Stage =
-  | 'New'
-  | 'Contacted'
-  | 'Demo scheduled'
-  | 'Demo done'
-  | 'Proposal sent'
-  | 'Won'
-  | 'Lost';
+  'New' | 'Contacted' | 'Demo scheduled' | 'Demo done' | 'Proposal sent' | 'Won' | 'Lost';
 
 export interface ActivityNote {
   at: string; // ISO string
@@ -112,10 +106,4 @@ export interface BriefingData {
 }
 
 export type TabKey =
-  | 'drishti'
-  | 'dashboard'
-  | 'radar'
-  | 'pipeline'
-  | 'clients'
-  | 'import'
-  | 'settings';
+  'drishti' | 'dashboard' | 'radar' | 'pipeline' | 'clients' | 'import' | 'settings';

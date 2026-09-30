@@ -15,13 +15,7 @@ import { useCrm } from '../context/CrmContext';
 import { testProviderApiKey, fetchFreeOpenRouterModels } from '../services/aiService';
 
 export function SettingsView() {
-  const {
-    settings,
-    updateSettings,
-    resetToSampleData,
-    clients,
-    leads,
-  } = useCrm();
+  const { settings, updateSettings, resetToSampleData, clients, leads } = useCrm();
 
   const [openRouterKeyInput, setOpenRouterKeyInput] = useState(settings.openRouterApiKey || '');
   const [groqKeyInput, setGroqKeyInput] = useState(settings.groqApiKey || '');
@@ -114,7 +108,8 @@ export function SettingsView() {
                 AI Model Waterfall & API Keys
               </h2>
               <p className="text-xs text-[#9aabcc]">
-                Drishti queries providers in waterfall order. If a provider fails or is unconfigured, it seamlessly falls back to the deterministic local rule engine.
+                Drishti queries providers in waterfall order. If a provider fails or is
+                unconfigured, it seamlessly falls back to the deterministic local rule engine.
               </p>
             </div>
           </div>
@@ -169,7 +164,10 @@ export function SettingsView() {
                 onChange={(e) => {
                   const val = e.target.value;
                   updateSettings({
-                    openRouterModels: [val, ...(settings.openRouterModels || []).filter((m) => m !== val)].slice(0, 3),
+                    openRouterModels: [
+                      val,
+                      ...(settings.openRouterModels || []).filter((m) => m !== val),
+                    ].slice(0, 3),
                   });
                 }}
                 className="px-2.5 py-1 rounded-lg bg-[#18213a] text-xs text-[#e9eefb] border border-[rgba(148,175,235,0.16)]"
@@ -301,7 +299,9 @@ export function SettingsView() {
             <span className="text-[11px] text-emerald-400 font-semibold">Always Active & Free</span>
           </div>
           <p className="text-xs text-[#9aabcc] leading-relaxed">
-            Built-in deterministic logic specifically calibrated for Indian CMMI and ISO renewal timelines, pipeline summaries, and first-person follow-up email drafting. Works completely offline without any API keys or network connection.
+            Built-in deterministic logic specifically calibrated for Indian CMMI and ISO renewal
+            timelines, pipeline summaries, and first-person follow-up email drafting. Works
+            completely offline without any API keys or network connection.
           </p>
         </div>
       </div>
@@ -328,7 +328,8 @@ export function SettingsView() {
           <div className="p-4 rounded-xl bg-[#080c16] border border-[rgba(148,175,235,0.1)] space-y-2">
             <span className="text-xs font-bold text-[#e9eefb] block">Export Backup JSON</span>
             <p className="text-[#9aabcc]">
-              Save a local snapshot containing all {clients.length} certified clients and {leads.length} pipeline deals.
+              Save a local snapshot containing all {clients.length} certified clients and{' '}
+              {leads.length} pipeline deals.
             </p>
             <button
               onClick={handleExportBackup}
@@ -344,11 +345,16 @@ export function SettingsView() {
               Reset to Sample Consulting Firm Data
             </span>
             <p className="text-[#9aabcc]">
-              Restore the pristine demo dataset featuring Ramesh, Pramila, Mahesh, and Sunita’s CMMI & ISO roster.
+              Restore the pristine demo dataset featuring Ramesh, Pramila, Mahesh, and Sunita’s CMMI
+              & ISO roster.
             </p>
             <button
               onClick={() => {
-                if (window.confirm('Reset all clients and leads back to the sample consulting dataset?')) {
+                if (
+                  window.confirm(
+                    'Reset all clients and leads back to the sample consulting dataset?',
+                  )
+                ) {
                   resetToSampleData();
                 }
               }}

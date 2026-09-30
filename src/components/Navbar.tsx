@@ -44,7 +44,12 @@ export function Navbar() {
     { key: 'drishti', label: 'Drishti', icon: Sparkles },
     { key: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { key: 'radar', label: 'Renewal Radar', icon: Radar, badge: radarAlertCount },
-    { key: 'pipeline', label: 'Pipeline', icon: Kanban, badge: leads.filter((l) => l.stage !== 'Won' && l.stage !== 'Lost').length },
+    {
+      key: 'pipeline',
+      label: 'Pipeline',
+      icon: Kanban,
+      badge: leads.filter((l) => l.stage !== 'Won' && l.stage !== 'Lost').length,
+    },
     { key: 'clients', label: 'Clients', icon: Building2, badge: clients.length },
     { key: 'import', label: 'Import', icon: FileSpreadsheet },
     { key: 'settings', label: 'Settings', icon: SettingsIcon },

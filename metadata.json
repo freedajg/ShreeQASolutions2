@@ -1,6 +1,0 @@
-{
-  "name": "Drishti - Consulting CRM",
-  "description": "Client, renewal radar, and pipeline manager with AI partner Drishti for CMMI and ISO process certification consulting.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

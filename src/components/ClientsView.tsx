@@ -217,7 +217,9 @@ export function ClientsView() {
                   >
                     <td className="px-4 py-3">
                       <div className="font-semibold text-sm text-[#e9eefb]">{client.company}</div>
-                      <div className="text-[11px] text-[#6d7c9c] truncate max-w-xs">{client.notes}</div>
+                      <div className="text-[11px] text-[#6d7c9c] truncate max-w-xs">
+                        {client.notes}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <span className="px-2 py-0.5 rounded text-[11px] font-bold font-mono bg-[#18213a] text-[#818cf8] border border-[#818cf8]/20">
@@ -292,7 +294,8 @@ export function ClientsView() {
                   </span>
                 </div>
                 <p className="text-xs text-[#9aabcc] mt-0.5">
-                  Owner: {currentSelectedClient.owner} · Contact: {currentSelectedClient.contactName}
+                  Owner: {currentSelectedClient.owner} · Contact:{' '}
+                  {currentSelectedClient.contactName}
                 </p>
               </div>
 
@@ -305,9 +308,7 @@ export function ClientsView() {
                   <span>{isEditing ? 'Cancel Edit' : 'Edit'}</span>
                 </button>
                 <button
-                  onClick={() =>
-                    openDraftModal({ type: 'client', entity: currentSelectedClient })
-                  }
+                  onClick={() => openDraftModal({ type: 'client', entity: currentSelectedClient })}
                   className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#818cf8] to-[#2dd4bf] text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-sm"
                 >
                   <Mail size={13} />
@@ -532,7 +533,9 @@ export function ClientsView() {
                         className="p-2.5 rounded-lg bg-[#080c16] border border-[rgba(148,175,235,0.08)] space-y-1"
                       >
                         <div className="flex items-center justify-between text-[10px] text-[#6d7c9c]">
-                          <span className="font-semibold text-[#818cf8]">{act.author || 'Auditor'}</span>
+                          <span className="font-semibold text-[#818cf8]">
+                            {act.author || 'Auditor'}
+                          </span>
                           <span>{formatStandardDate(act.at)}</span>
                         </div>
                         <p className="text-xs text-[#9aabcc]">{act.note}</p>
@@ -554,7 +557,11 @@ export function ClientsView() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (window.confirm(`Are you sure you want to delete ${currentSelectedClient.company}?`)) {
+                    if (
+                      window.confirm(
+                        `Are you sure you want to delete ${currentSelectedClient.company}?`,
+                      )
+                    ) {
                       deleteClient(currentSelectedClient.id);
                       setSelectedClient(null);
                     }
@@ -600,7 +607,7 @@ function AddClientModal({
   const [level, setLevel] = useState('DEV ML3');
   const [contractValue, setContractValue] = useState(1200000);
   const [lastAppraisalDate, setLastAppraisalDate] = useState(
-    new Date().toISOString().split('T')[0]
+    new Date().toISOString().split('T')[0],
   );
   const [owner, setOwner] = useState(activeUser.name);
   const [notes, setNotes] = useState('');

@@ -138,11 +138,19 @@ Critical Instructions:
 `;
 }
 
-function extractToolProposal(rawText: string, clients: Client[], leads: Lead[]): { cleanText: string; proposal?: ToolProposal } {
+function extractToolProposal(
+  rawText: string,
+  clients: Client[],
+  leads: Lead[],
+): { cleanText: string; proposal?: ToolProposal } {
   let cleanText = rawText;
   let proposal: ToolProposal | undefined;
 
-  const jsonMatch = rawText.match(/```json\s*(\{[\s\S]*?\})\s*```/i) || rawText.match(/(\{[\s\S]*?"action"\s*:\s*"(?:update_lead|update_client|create_lead|create_client)"[\s\S]*?\})/i);
+  const jsonMatch =
+    rawText.match(/```json\s*(\{[\s\S]*?\})\s*```/i) ||
+    rawText.match(
+      /(\{[\s\S]*?"action"\s*:\s*"(?:update_lead|update_client|create_lead|create_client)"[\s\S]*?\})/i,
+    );
 
   if (jsonMatch) {
     try {
@@ -150,8 +158,12 @@ function extractToolProposal(rawText: string, clients: Client[], leads: Lead[]):
       if (parsed.action && parsed.targetName) {
         // Resolve ID if missing
         if (!parsed.id) {
-          const lead = leads.find((l) => l.company.toLowerCase() === parsed.targetName.toLowerCase());
-          const client = clients.find((c) => c.company.toLowerCase() === parsed.targetName.toLowerCase());
+          const lead = leads.find(
+            (l) => l.company.toLowerCase() === parsed.targetName.toLowerCase(),
+          );
+          const client = clients.find(
+            (c) => c.company.toLowerCase() === parsed.targetName.toLowerCase(),
+          );
           parsed.id = lead?.id || client?.id || '';
         }
         proposal = {
@@ -175,13 +187,28 @@ function extractToolProposal(rawText: string, clients: Client[], leads: Lead[]):
 function extractCompanyDraftButtons(
   text: string,
   clients: Client[],
-  leads: Lead[]
-): Array<{ id: string; company: string; contactName: string; type: 'lead' | 'client'; email: string }> {
-  const results: Array<{ id: string; company: string; contactName: string; type: 'lead' | 'client'; email: string }> = [];
+  leads: Lead[],
+): Array<{
+  id: string;
+  company: string;
+  contactName: string;
+  type: 'lead' | 'client';
+  email: string;
+}> {
+  const results: Array<{
+    id: string;
+    company: string;
+    contactName: string;
+    type: 'lead' | 'client';
+    email: string;
+  }> = [];
   const lower = text.toLowerCase();
 
   for (const lead of leads) {
-    if (lower.includes(lead.company.toLowerCase()) || lower.includes(lead.contactName.toLowerCase())) {
+    if (
+      lower.includes(lead.company.toLowerCase()) ||
+      lower.includes(lead.contactName.toLowerCase())
+    ) {
       if (!results.some((r) => r.id === lead.id)) {
         results.push({
           id: lead.id,
@@ -195,7 +222,10 @@ function extractCompanyDraftButtons(
   }
 
   for (const client of clients) {
-    if (lower.includes(client.company.toLowerCase()) || lower.includes(client.contactName.toLowerCase())) {
+    if (
+      lower.includes(client.company.toLowerCase()) ||
+      lower.includes(client.contactName.toLowerCase())
+    ) {
       if (!results.some((r) => r.id === client.id)) {
         results.push({
           id: client.id,
@@ -216,7 +246,7 @@ export async function askDrishti(
   clients: Client[],
   leads: Lead[],
   settings: AppSettings,
-  activeUserName: string
+  activeUserName: string,
 ): Promise<ChatMessage> {
   currentInFlightPrompt = prompt;
 
@@ -335,7 +365,9 @@ export async function askDrishti(
 
     // 3. FALLBACK TO LOCAL OFFLINE RULE ENGINE
     const localResult = runLocalRuleEngine(prompt, clients, leads, activeUserName);
-    const suggestedDrafts = localResult.suggestedDrafts || extractCompanyDraftButtons(localResult.replyText, clients, leads);
+    const suggestedDrafts =
+      localResult.suggestedDrafts ||
+      extractCompanyDraftButtons(localResult.replyText, clients, leads);
 
     return {
       id,
@@ -367,7 +399,7 @@ export async function askDrishti(
 export async function testProviderApiKey(
   provider: 'openrouter' | 'groq',
   apiKey: string,
-  model?: string
+  model?: string,
 ): Promise<{ ok: boolean; status: number; message: string }> {
   if (!apiKey || !apiKey.trim()) {
     return { ok: false, status: 0, message: 'Please enter an API key first' };

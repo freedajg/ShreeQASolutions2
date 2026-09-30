@@ -1,0 +1,11 @@
+#!/bin/sh
+# Blocks any commit whose staged changes contain a secret.
+# Enabled by `bun install` (the "prepare" script sets core.hooksPath to .githooks).
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: gitleaks is not on PATH, so the commit was blocked." >&2
+  echo "Install it with: winget install --id Gitleaks.Gitleaks -e  (then open a new terminal)" >&2
+  exit 1
+fi
+
+exec gitleaks git --pre-commit --staged --redact --verbose --no-banner

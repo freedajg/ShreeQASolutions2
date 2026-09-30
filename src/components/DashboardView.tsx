@@ -19,17 +19,14 @@ export function DashboardView() {
   const riskClients = clients.filter((c) => getDaysUntilRenewal(c, now) <= 90);
   const totalRiskValue = riskClients.reduce((acc, c) => acc + c.contractValue, 0);
   const riskPercent =
-    totalCertifiedValue > 0
-      ? Math.round((totalRiskValue / totalCertifiedValue) * 100)
-      : 0;
+    totalCertifiedValue > 0 ? Math.round((totalRiskValue / totalCertifiedValue) * 100) : 0;
 
   // 4. Money won
   const wonLeads = leads.filter((l) => l.stage === 'Won');
   const lostLeads = leads.filter((l) => l.stage === 'Lost');
   const totalWonValue = wonLeads.reduce((acc, l) => acc + l.value, 0);
   const closedCount = wonLeads.length + lostLeads.length;
-  const winRate =
-    closedCount > 0 ? Math.round((wonLeads.length / closedCount) * 100) : 0;
+  const winRate = closedCount > 0 ? Math.round((wonLeads.length / closedCount) * 100) : 0;
 
   // Chart 1: Renewals in next 12 months (month by month)
   const monthsList: Array<{
@@ -73,13 +70,7 @@ export function DashboardView() {
   const maxMonthVal = Math.max(...monthsList.map((m) => m.totalValue), 1000000);
 
   // Chart 2: Pipeline by stage
-  const stages = [
-    'New',
-    'Contacted',
-    'Demo scheduled',
-    'Demo done',
-    'Proposal sent',
-  ] as const;
+  const stages = ['New', 'Contacted', 'Demo scheduled', 'Demo done', 'Proposal sent'] as const;
 
   const stageData = stages.map((stage) => {
     const stageLeads = leads.filter((l) => l.stage === stage);
@@ -91,9 +82,7 @@ export function DashboardView() {
   // Chart 3: Client ownership breakdown
   const owners = ['Ramesh', 'Pramila', 'Mahesh', 'Sunita'];
   const ownerData = owners.map((owner) => {
-    const ownerClients = clients.filter(
-      (c) => c.owner.toLowerCase() === owner.toLowerCase()
-    );
+    const ownerClients = clients.filter((c) => c.owner.toLowerCase() === owner.toLowerCase());
     const totalVal = ownerClients.reduce((s, c) => s + c.contractValue, 0);
     return { owner, count: ownerClients.length, value: totalVal };
   });
@@ -139,10 +128,7 @@ export function DashboardView() {
       standard: std,
       count: stdClients.length,
       value: val,
-      percent:
-        totalCertifiedValue > 0
-          ? Math.round((val / totalCertifiedValue) * 100)
-          : 0,
+      percent: totalCertifiedValue > 0 ? Math.round((val / totalCertifiedValue) * 100) : 0,
     };
   });
 
@@ -154,7 +140,8 @@ export function DashboardView() {
           Executive Dashboard
         </h1>
         <p className="text-xs sm:text-sm text-[#9aabcc]">
-          High-level view of active contracts, renewal risks, pipeline bottlenecks, and team portfolios.
+          High-level view of active contracts, renewal risks, pipeline bottlenecks, and team
+          portfolios.
         </p>
       </div>
 
@@ -177,9 +164,7 @@ export function DashboardView() {
             <span className="text-2xl sm:text-3xl font-bold text-[#e9eefb] font-mono tabular-nums tracking-tight">
               {formatINR(totalCertifiedValue)}
             </span>
-            <p className="mt-1 text-xs text-[#6d7c9c]">
-              {clients.length} active certified clients
-            </p>
+            <p className="mt-1 text-xs text-[#6d7c9c]">{clients.length} active certified clients</p>
           </div>
         </div>
 
@@ -200,9 +185,7 @@ export function DashboardView() {
             <span className="text-2xl sm:text-3xl font-bold text-[#22d3ee] font-mono tabular-nums tracking-tight">
               {formatINR(totalOpenPipelineValue)}
             </span>
-            <p className="mt-1 text-xs text-[#6d7c9c]">
-              {openLeads.length} open deals in pipeline
-            </p>
+            <p className="mt-1 text-xs text-[#6d7c9c]">{openLeads.length} open deals in pipeline</p>
           </div>
         </div>
 
@@ -352,7 +335,10 @@ export function DashboardView() {
                 const isImmediate = idx < 3; // within 90 days
 
                 return (
-                  <div key={m.key} className="flex flex-col items-center justify-end h-56 group relative">
+                  <div
+                    key={m.key}
+                    className="flex flex-col items-center justify-end h-56 group relative"
+                  >
                     {/* Tooltip on hover */}
                     {hasClients && (
                       <div className="absolute bottom-full mb-2 hidden group-hover:block z-30 p-2.5 bg-[#18213a] border border-[rgba(148,175,235,0.25)] rounded-xl shadow-2xl text-left w-48 text-xs pointer-events-none">
@@ -380,8 +366,8 @@ export function DashboardView() {
                           !hasClients
                             ? 'bg-[#18213a]'
                             : isImmediate
-                            ? 'bg-gradient-to-t from-[#fb7185] to-[#fbbf24]'
-                            : 'bg-gradient-to-t from-[#6366f1] to-[#22d3ee]'
+                              ? 'bg-gradient-to-t from-[#fb7185] to-[#fbbf24]'
+                              : 'bg-gradient-to-t from-[#6366f1] to-[#22d3ee]'
                         }`}
                       />
                     </div>
@@ -411,9 +397,7 @@ export function DashboardView() {
         <div className="bg-[#111828] border border-[rgba(148,175,235,0.16)] rounded-2xl p-5 shadow-lg space-y-4">
           <div className="flex items-center justify-between pb-2 border-b border-[rgba(148,175,235,0.1)]">
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm text-[#e9eefb]">
-                Where your open deals are stuck
-              </h3>
+              <h3 className="font-bold text-sm text-[#e9eefb]">Where your open deals are stuck</h3>
               <MetricInfo
                 title="Deals Stuck by Stage"
                 explanation="Total potential pipeline value waiting at each qualification stage before closing."
@@ -426,8 +410,7 @@ export function DashboardView() {
 
           <div className="space-y-3 pt-2">
             {stageData.map((item) => {
-              const widthPct =
-                maxStageVal > 0 ? Math.round((item.value / maxStageVal) * 100) : 0;
+              const widthPct = maxStageVal > 0 ? Math.round((item.value / maxStageVal) * 100) : 0;
               return (
                 <div key={item.stage} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
@@ -436,9 +419,7 @@ export function DashboardView() {
                       <span className="text-[#6d7c9c] text-[11px]">
                         ({item.count} {item.count === 1 ? 'deal' : 'deals'})
                       </span>
-                      <span className="text-[#22d3ee] font-semibold">
-                        {formatINR(item.value)}
-                      </span>
+                      <span className="text-[#22d3ee] font-semibold">{formatINR(item.value)}</span>
                     </div>
                   </div>
                   <div className="w-full bg-[#18213a] rounded-full h-2.5 overflow-hidden">
@@ -457,23 +438,18 @@ export function DashboardView() {
         <div className="bg-[#111828] border border-[rgba(148,175,235,0.16)] rounded-2xl p-5 shadow-lg space-y-4">
           <div className="flex items-center justify-between pb-2 border-b border-[rgba(148,175,235,0.1)]">
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm text-[#e9eefb]">
-                Who owns which clients
-              </h3>
+              <h3 className="font-bold text-sm text-[#e9eefb]">Who owns which clients</h3>
               <MetricInfo
                 title="Client Ownership Distribution"
                 explanation="Breakdown of existing certified client book value and count across the 4 team members."
               />
             </div>
-            <span className="text-xs font-mono text-[#818cf8]">
-              4 Team Members
-            </span>
+            <span className="text-xs font-mono text-[#818cf8]">4 Team Members</span>
           </div>
 
           <div className="space-y-3 pt-2">
             {ownerData.map((item) => {
-              const widthPct =
-                maxOwnerVal > 0 ? Math.round((item.value / maxOwnerVal) * 100) : 0;
+              const widthPct = maxOwnerVal > 0 ? Math.round((item.value / maxOwnerVal) * 100) : 0;
               return (
                 <div key={item.owner} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
@@ -482,9 +458,7 @@ export function DashboardView() {
                       <span className="text-[#6d7c9c] text-[11px]">
                         ({item.count} {item.count === 1 ? 'client' : 'clients'})
                       </span>
-                      <span className="text-[#a78bfa] font-semibold">
-                        {formatINR(item.value)}
-                      </span>
+                      <span className="text-[#a78bfa] font-semibold">{formatINR(item.value)}</span>
                     </div>
                   </div>
                   <div className="w-full bg-[#18213a] rounded-full h-2.5 overflow-hidden">
@@ -503,9 +477,7 @@ export function DashboardView() {
         <div className="bg-[#111828] border border-[rgba(148,175,235,0.16)] rounded-2xl p-5 shadow-lg space-y-4">
           <div className="flex items-center justify-between pb-2 border-b border-[rgba(148,175,235,0.1)]">
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm text-[#e9eefb]">
-                Work you delivered, by quarter
-              </h3>
+              <h3 className="font-bold text-sm text-[#e9eefb]">Work you delivered, by quarter</h3>
               <MetricInfo
                 title="Historical Appraisal Delivery"
                 explanation="Value of process certifications completed across the last 8 quarters, calculated directly from client last appraisal dates."
@@ -521,7 +493,10 @@ export function DashboardView() {
                   ? Math.max(15, Math.round((q.value / maxQuarterVal) * 100))
                   : 4;
               return (
-                <div key={q.label} className="flex flex-col items-center justify-end h-36 group relative">
+                <div
+                  key={q.label}
+                  className="flex flex-col items-center justify-end h-36 group relative"
+                >
                   {/* Tooltip */}
                   {q.count > 0 && (
                     <div className="absolute bottom-full mb-1 hidden group-hover:block z-30 p-2 bg-[#18213a] border border-[rgba(148,175,235,0.2)] rounded-lg text-xs w-28 text-left pointer-events-none">

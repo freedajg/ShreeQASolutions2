@@ -14,17 +14,15 @@ export interface LocalEngineResult {
   }>;
 }
 
-export function generateDraftEmailOffline(
-  entity: {
-    company: string;
-    contactName: string;
-    owner: string;
-    meetingContext?: string;
-    notes?: string;
-    service?: string;
-    serviceInterest?: string;
-  }
-): string {
+export function generateDraftEmailOffline(entity: {
+  company: string;
+  contactName: string;
+  owner: string;
+  meetingContext?: string;
+  notes?: string;
+  service?: string;
+  serviceInterest?: string;
+}): string {
   const firstName = entity.contactName.split(' ')[0] || entity.contactName;
   const standard = entity.service || entity.serviceInterest || 'process certification';
   const owner = entity.owner || 'Pramila';
@@ -33,7 +31,10 @@ export function generateDraftEmailOffline(
   if (entity.meetingContext) {
     let ctx = entity.meetingContext;
     // Transform 3rd person to 1st person
-    ctx = ctx.replace(/^(?:Pramila|Ramesh|Mahesh|Sunita)\s+(?:walked|presented|spoke with|discussed|took|finalized|had|held)\s+[^.]+?(?:through|on|regarding|with)\s+/i, 'When we spoke, I took you through ');
+    ctx = ctx.replace(
+      /^(?:Pramila|Ramesh|Mahesh|Sunita)\s+(?:walked|presented|spoke with|discussed|took|finalized|had|held)\s+[^.]+?(?:through|on|regarding|with)\s+/i,
+      'When we spoke, I took you through ',
+    );
     ctx = ctx.replace(/\b(?:Pramila|Ramesh|Mahesh|Sunita)\b/g, 'I');
     ctx = ctx.replace(/\bhis\b|\bher\b/g, 'my');
     ctx = ctx.replace(/\bhe\b|\bshe\b/g, 'I');
@@ -64,21 +65,27 @@ export function runLocalRuleEngine(
   prompt: string,
   clients: Client[],
   leads: Lead[],
-  activeUserName: string = 'Pramila'
+  activeUserName: string = 'Pramila',
 ): LocalEngineResult {
   const q = prompt.toLowerCase().trim();
   const now = new Date();
 
   // Find mentioned companies
   const matchedLeads = leads.filter(
-    (l) => q.includes(l.company.toLowerCase()) || q.includes(l.contactName.toLowerCase())
+    (l) => q.includes(l.company.toLowerCase()) || q.includes(l.contactName.toLowerCase()),
   );
   const matchedClients = clients.filter(
-    (c) => q.includes(c.company.toLowerCase()) || q.includes(c.contactName.toLowerCase())
+    (c) => q.includes(c.company.toLowerCase()) || q.includes(c.contactName.toLowerCase()),
   );
 
   // 1. DRAFT REQUEST
-  if (q.includes('draft') || q.includes('email') || q.includes('write to') || q.includes('follow-up for') || q.includes('follow up for')) {
+  if (
+    q.includes('draft') ||
+    q.includes('email') ||
+    q.includes('write to') ||
+    q.includes('follow-up for') ||
+    q.includes('follow up for')
+  ) {
     let target = matchedLeads[0] || matchedClients[0];
     if (!target && leads.length > 0) {
       // Pick worst quiet lead
@@ -107,13 +114,16 @@ export function runLocalRuleEngine(
   }
 
   // 2. PROPOSAL / STAGE UPDATE INTENT (e.g. "move Kavach to Demo done" or "change stage of Pratham to Won")
-  if (q.includes('move') || q.includes('change') || q.includes('update') || q.includes('set stage')) {
-    let targetLead = matchedLeads[0];
+  if (
+    q.includes('move') ||
+    q.includes('change') ||
+    q.includes('update') ||
+    q.includes('set stage')
+  ) {
+    let targetLead: Lead | undefined = matchedLeads[0];
     if (!targetLead) {
       // Check partial matches
-      targetLead = leads.find((l) =>
-        q.includes(l.company.split(' ')[0].toLowerCase())
-      );
+      targetLead = leads.find((l) => q.includes(l.company.split(' ')[0].toLowerCase()));
     }
 
     if (targetLead) {
@@ -143,7 +153,13 @@ export function runLocalRuleEngine(
   }
 
   // 3. OVERDUE & RENEWALS
-  if (q.includes('overdue') || q.includes('lapsed') || q.includes('renewal') || q.includes('radar') || q.includes('90 days')) {
+  if (
+    q.includes('overdue') ||
+    q.includes('lapsed') ||
+    q.includes('renewal') ||
+    q.includes('radar') ||
+    q.includes('90 days')
+  ) {
     const overdue = clients.filter((c) => getDaysUntilRenewal(c, now) < 0);
     const due90 = clients.filter((c) => {
       const d = getDaysUntilRenewal(c, now);
@@ -191,9 +207,17 @@ export function runLocalRuleEngine(
   }
 
   // 4. QUIET LEADS & BOTTLENECKS
-  if (q.includes('quiet') || q.includes('stuck') || q.includes('bottleneck') || q.includes('pipeline') || q.includes('attention')) {
+  if (
+    q.includes('quiet') ||
+    q.includes('stuck') ||
+    q.includes('bottleneck') ||
+    q.includes('pipeline') ||
+    q.includes('attention')
+  ) {
     const quiet = leads
-      .filter((l) => l.stage !== 'Won' && l.stage !== 'Lost' && getDaysAgo(l.lastContactDate, now) >= 7)
+      .filter(
+        (l) => l.stage !== 'Won' && l.stage !== 'Lost' && getDaysAgo(l.lastContactDate, now) >= 7,
+      )
       .sort((a, b) => getDaysAgo(b.lastContactDate, now) - getDaysAgo(a.lastContactDate, now));
 
     let reply = `### Pipeline Attention & Quiet Leads\n\n`;
@@ -222,7 +246,16 @@ export function runLocalRuleEngine(
   }
 
   // 5. OWNER / TEAM BREAKDOWN
-  if (q.includes('owner') || q.includes('who') || q.includes('team') || q.includes('revenue at risk') || q.includes('ramesh') || q.includes('pramila') || q.includes('mahesh') || q.includes('sunita')) {
+  if (
+    q.includes('owner') ||
+    q.includes('who') ||
+    q.includes('team') ||
+    q.includes('revenue at risk') ||
+    q.includes('ramesh') ||
+    q.includes('pramila') ||
+    q.includes('mahesh') ||
+    q.includes('sunita')
+  ) {
     const owners = ['Ramesh', 'Pramila', 'Mahesh', 'Sunita'];
     let reply = `### Owner Breakdown & Risk Distribution\n\n`;
 

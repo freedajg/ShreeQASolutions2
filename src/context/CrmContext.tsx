@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from 'react';
 import {
   Client,
   Lead,
@@ -51,7 +58,7 @@ interface CrmContextType {
   logEmailSent: (
     target: { type: 'lead' | 'client'; id: string },
     subject: string,
-    recipientEmail: string
+    recipientEmail: string,
   ) => void;
   // Chat & AI
   sendUserMessage: (text: string) => Promise<void>;
@@ -61,11 +68,7 @@ interface CrmContextType {
   // Settings
   updateSettings: (newSettings: Partial<AppSettings>) => void;
   resetToSampleData: () => void;
-  importRecords: (
-    newClients: Client[],
-    newLeads: Lead[],
-    mode: 'merge' | 'replace'
-  ) => void;
+  importRecords: (newClients: Client[], newLeads: Lead[], mode: 'merge' | 'replace') => void;
 }
 
 const defaultSettings: AppSettings = {
@@ -201,7 +204,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
       };
       setClients((prev) => [newClient, ...prev]);
     },
-    [activeUser.name]
+    [activeUser.name],
   );
 
   const updateClient = useCallback(
@@ -214,10 +217,14 @@ export function CrmProvider({ children }: { children: ReactNode }) {
           // Auto-log key changes: appraisal date, contract value, owner, standard, level
           const autoLogs: string[] = [];
           if (updates.lastAppraisalDate && updates.lastAppraisalDate !== c.lastAppraisalDate) {
-            autoLogs.push(`Appraisal date updated from ${c.lastAppraisalDate} to ${updates.lastAppraisalDate}`);
+            autoLogs.push(
+              `Appraisal date updated from ${c.lastAppraisalDate} to ${updates.lastAppraisalDate}`,
+            );
           }
           if (updates.contractValue && updates.contractValue !== c.contractValue) {
-            autoLogs.push(`Contract value changed from ₹${c.contractValue.toLocaleString('en-IN')} to ₹${updates.contractValue.toLocaleString('en-IN')}`);
+            autoLogs.push(
+              `Contract value changed from ₹${c.contractValue.toLocaleString('en-IN')} to ₹${updates.contractValue.toLocaleString('en-IN')}`,
+            );
           }
           if (updates.owner && updates.owner !== c.owner) {
             autoLogs.push(`Account owner reassigned from ${c.owner} to ${updates.owner}`);
@@ -250,10 +257,10 @@ export function CrmProvider({ children }: { children: ReactNode }) {
             ...updates,
             activity: activityNotes,
           };
-        })
+        }),
       );
     },
-    [activeUser.name]
+    [activeUser.name],
   );
 
   const deleteClient = useCallback((id: string) => {
@@ -276,7 +283,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
       };
       setLeads((prev) => [newLead, ...prev]);
     },
-    [activeUser.name]
+    [activeUser.name],
   );
 
   const updateLead = useCallback(
@@ -307,17 +314,17 @@ export function CrmProvider({ children }: { children: ReactNode }) {
             ...updates,
             activity: activityNotes,
           };
-        })
+        }),
       );
     },
-    [activeUser.name]
+    [activeUser.name],
   );
 
   const setLeadStage = useCallback(
     (id: string, stage: Stage, reason?: string) => {
       updateLead(id, { stage, lostReason: reason });
     },
-    [updateLead]
+    [updateLead],
   );
 
   const deleteLead = useCallback((id: string) => {
@@ -341,10 +348,10 @@ export function CrmProvider({ children }: { children: ReactNode }) {
               },
             ],
           };
-        })
+        }),
       );
     },
-    [activeUser.name]
+    [activeUser.name],
   );
 
   const addLeadActivityNote = useCallback(
@@ -364,10 +371,10 @@ export function CrmProvider({ children }: { children: ReactNode }) {
               },
             ],
           };
-        })
+        }),
       );
     },
-    [activeUser.name]
+    [activeUser.name],
   );
 
   const logEmailSent = useCallback(
@@ -391,7 +398,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
                 },
               ],
             };
-          })
+          }),
         );
       } else {
         setClients((prev) =>
@@ -409,11 +416,11 @@ export function CrmProvider({ children }: { children: ReactNode }) {
                 },
               ],
             };
-          })
+          }),
         );
       }
     },
-    [activeUser.name]
+    [activeUser.name],
   );
 
   // Chat & AI interactions
@@ -439,7 +446,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
         setIsAiLoading(false);
       }
     },
-    [clients, leads, settings, activeUser.name]
+    [clients, leads, settings, activeUser.name],
   );
 
   const clearChat = useCallback(() => {
@@ -450,24 +457,26 @@ export function CrmProvider({ children }: { children: ReactNode }) {
     (messageId: string, proposal: ToolProposal) => {
       if (proposal.action === 'update_lead') {
         const lead = leads.find(
-          (l) => l.id === proposal.id || l.company.toLowerCase() === proposal.targetName.toLowerCase()
+          (l) =>
+            l.id === proposal.id || l.company.toLowerCase() === proposal.targetName.toLowerCase(),
         );
         if (lead) {
           updateLead(
             lead.id,
             proposal.changes,
-            `Applied AI proposal from Drishti: ${proposal.reason}`
+            `Applied AI proposal from Drishti: ${proposal.reason}`,
           );
         }
       } else if (proposal.action === 'update_client') {
         const client = clients.find(
-          (c) => c.id === proposal.id || c.company.toLowerCase() === proposal.targetName.toLowerCase()
+          (c) =>
+            c.id === proposal.id || c.company.toLowerCase() === proposal.targetName.toLowerCase(),
         );
         if (client) {
           updateClient(
             client.id,
             proposal.changes,
-            `Applied AI proposal from Drishti: ${proposal.reason}`
+            `Applied AI proposal from Drishti: ${proposal.reason}`,
           );
         }
       }
@@ -486,10 +495,10 @@ export function CrmProvider({ children }: { children: ReactNode }) {
             };
           }
           return msg;
-        })
+        }),
       );
     },
-    [leads, clients, updateLead, updateClient]
+    [leads, clients, updateLead, updateClient],
   );
 
   const discardProposal = useCallback((messageId: string) => {
@@ -506,7 +515,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
           };
         }
         return msg;
-      })
+      }),
     );
   }, []);
 
@@ -536,7 +545,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    []
+    [],
   );
 
   return (
