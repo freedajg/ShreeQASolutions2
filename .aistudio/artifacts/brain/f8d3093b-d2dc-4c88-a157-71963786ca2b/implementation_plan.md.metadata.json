@@ -1,6 +1,0 @@
-{
-  "summary":  "Implementation plan to replace the single 'Copy Draft' button with a primary 'Send Email' button that launches the user's default email client with pre-filled recipient, subject, and body, automatically logs an activity note and updates the last contact date in the CRM, while keeping 'Copy Draft' as a secondary button.",
-  "updatedAt":  "2026-09-28T07:27:55.495796226Z",
-  "requestFeedback":  true,
-  "userFacing":  true
-}
