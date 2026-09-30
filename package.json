@@ -15,6 +15,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "clean": "bun scripts/clean.ts",
+    "check:colors": "bun scripts/check-hex-colors.ts",
     "prepare": "git config core.hooksPath .githooks",
     "hooks:install": "git config core.hooksPath .githooks"
   },
