@@ -13,6 +13,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "clean": "bun scripts/clean.ts",
     "prepare": "git config core.hooksPath .githooks",
     "hooks:install": "git config core.hooksPath .githooks"
@@ -32,6 +33,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.63.0",
     "@types/node": "^22.14.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
