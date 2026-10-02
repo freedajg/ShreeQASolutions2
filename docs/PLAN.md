@@ -113,14 +113,15 @@ A phase is **done only when every "Done when" item passes and the Security gate 
 - Keep **Vite 6** (what the MVP uses; don't upgrade to 8 mid-build) and record it in `DECISIONS.md`.
 
 **Done when**
-- [ ] `bun run build`, lint and tests pass locally and in CI
-- [ ] The app runs and **dark mode looks exactly as before** (compare screenshots of every screen)
-- [ ] No hardcoded hex colour classes remain in `src/` (a grep check in CI)
-- [ ] The toggle switches Light ↔ Dark instantly; System follows the device; reloading keeps the choice with no white flash
-- [ ] Every screen is readable in light mode (text, badges, charts, focus rings)
+- [x] `bun run build`, lint and tests pass locally and in CI
+- [x] The app runs and **dark mode looks exactly as before** (compare screenshots of every screen)
+- [x] No hardcoded hex colour classes remain in `src/` (a grep check in CI)
+- [x] The toggle switches Light ↔ Dark instantly; System follows the device; reloading keeps the choice with no white flash
+- [x] Every screen is readable in light mode (text, badges, charts, focus rings)
 - [ ] Claude Code cannot read `.env` (try it: it should be refused)
 - [ ] A commit containing a fake key is blocked by Gitleaks
 - [ ] Pushing straight to `main` is blocked
+  - Not possible on the GitHub Free plan; open question for the client (paid plan).
 - [ ] Memory Palace `recall` returns the first memory
 
 ---

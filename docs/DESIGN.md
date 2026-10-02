@@ -83,7 +83,7 @@ Rules:
 
 ## 2a. Light and dark themes
 
-Users choose **Light**, **Dark** or **System** (follows the device setting). **Default: System.**
+Users choose **Light**, **Dark** or **System** (follows the device setting). **Default: Dark for now; it switches to System after the client approves the light theme** (see `DECISIONS.md`, 02-Oct-2026).
 
 **Where the switch lives:** a sun/moon icon in the top bar (one click toggles Light ↔ Dark), and a three-way choice (Light / Dark / System) in the user menu → Preferences.
 

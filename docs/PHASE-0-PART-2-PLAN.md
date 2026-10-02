@@ -38,24 +38,24 @@ After A2/A3, the baselines are updated once in step 13 and are strict again from
 
 Each step is one small commit. Before each commit: `bun run typecheck`, `bun run lint`, `bun run test` and the screenshot test pass. Commit subjects never include client names.
 
-| # | Commit | Done when |
-|---|---|---|
-| 1 | **test:** screenshot test + dark-mode baseline images | Passes twice in a row on unchanged code |
-| 2 | **style:** colour tokens in `src/index.css` (`@theme`, dark values only), including the scrollbar colours; no component changes | Screenshots identical; `bun run build` passes |
-| 3 | **style:** convert `App.tsx` + `Navbar.tsx` (59 hex classes) | `check:colors` shows 0 for these files; screenshots identical |
-| 4 | **style:** convert `DashboardView.tsx` + `MetricInfoModal.tsx` (96) | Same |
-| 5 | **style:** convert `RenewalRadarView.tsx` (69) | Same |
-| 6 | **style:** convert `PipelineView.tsx` (148) | Same |
-| 7 | **style:** convert `ClientsView.tsx` (148) | Same |
-| 8 | **style:** convert `DrishtiView.tsx` (73) + `DrishtiFace.tsx` (23 plain strings) | Same; no plain-string hex left in `src/` |
-| 9 | **style:** convert `EmailDraftModal.tsx` + `ProposalDiffModal.tsx` (79) | Same |
-| 10 | **style:** convert `ImportView.tsx` + `SettingsView.tsx` (104) | Same; **`check:colors` passes for the whole app** |
-| 11 | **ci:** turn on the `colors` job (delete `if: false`); extend `check-hex-colors.ts` to also catch standard Tailwind colour classes | Passes locally; green in CI after a push (Freeda approves the push) |
-| 12 | **feat:** light-theme values (`[data-theme="light"]`), the `data-theme` switch, and the no-white-flash script in `index.html`. **Before starting:** check `docs/SECURITY.md` for a planned Content Security Policy and tell Freeda how the inline no-flash script fits it | Dark screenshots identical; forcing light shows the light theme |
-| 13 | **feat:** theme toggle: sun/moon in the top bar; Light / Dark / System in the user switcher dropdown and phone menu; **default Dark**; saved in the browser | Toggle switches instantly; a first visit opens in Dark; choosing System follows the Windows setting; reload keeps the choice with no flash (each a Playwright test); only A2/A3 differ in dark screenshots |
-| 14 | **fix:** light-mode review: contrast check (DESIGN.md §9 item 2), light screenshots of every screen shared with Freeda, fixes; then light baselines committed | Freeda approves the light screenshots; contrast meets WCAG AA |
-| 15 | **chore:** check-only Prettier pre-commit hook | A badly formatted staged file blocks the commit |
-| 16 | **docs:** DECISIONS.md lines (token mapping, extra tokens, screenshot approach, accepted changes, default theme Dark until the client approves light); tick PLAN.md Phase 0 boxes | Docs match what was built |
+| # | Commit | Done when | Done |
+|---|---|---|---|
+| 1 | **test:** screenshot test + dark-mode baseline images | Passes twice in a row on unchanged code | ✓ `0ea6d89` |
+| 2 | **style:** colour tokens in `src/index.css` (`@theme`, dark values only), including the scrollbar colours; no component changes | Screenshots identical; `bun run build` passes | ✓ `92b0b5d` |
+| 3 | **style:** convert `App.tsx` + `Navbar.tsx` (59 hex classes) | `check:colors` shows 0 for these files; screenshots identical | ✓ `2bfe944` |
+| 4 | **style:** convert `DashboardView.tsx` + `MetricInfoModal.tsx` (96) | Same | ✓ `53d415f` |
+| 5 | **style:** convert `RenewalRadarView.tsx` (69) | Same | ✓ `bf47152` |
+| 6 | **style:** convert `PipelineView.tsx` (148) | Same | ✓ `5cf0e5d` |
+| 7 | **style:** convert `ClientsView.tsx` (148) | Same | ✓ `4d013a2` |
+| 8 | **style:** convert `DrishtiView.tsx` (73) + `DrishtiFace.tsx` (23 plain strings) | Same; no plain-string hex left in `src/` | ✓ `be47817` |
+| 9 | **style:** convert `EmailDraftModal.tsx` + `ProposalDiffModal.tsx` (79) | Same | ✓ `3f58310`, `aa574d9` |
+| 10 | **style:** convert `ImportView.tsx` + `SettingsView.tsx` (104) | Same; **`check:colors` passes for the whole app** | ✓ `3431287`, `2bb225a` |
+| 11 | **ci:** turn on the `colors` job (delete `if: false`); extend `check-hex-colors.ts` to also catch standard Tailwind colour classes | Passes locally; green in CI after a push (Freeda approves the push) | ✓ `d20fdfd`, `77ff8aa`, `ffb5ae3`, `e92a735`; CI green on `e92a735` (run 36968192644) |
+| 12 | **feat:** light-theme values (`[data-theme="light"]`), the `data-theme` switch, and the no-white-flash script in `index.html`. **Before starting:** check `docs/SECURITY.md` for a planned Content Security Policy and tell Freeda how the inline no-flash script fits it | Dark screenshots identical; forcing light shows the light theme | ✓ `795a685` (A4 later: `de79678`) |
+| 13 | **feat:** theme toggle: sun/moon in the top bar; Light / Dark / System in the user switcher dropdown and phone menu; **default Dark**; saved in the browser | Toggle switches instantly; a first visit opens in Dark; choosing System follows the Windows setting; reload keeps the choice with no flash (each a Playwright test); only A2/A3 differ in dark screenshots | ✓ `2b7e1ec` |
+| 14 | **fix:** light-mode review: contrast check (DESIGN.md §9 item 2), light screenshots of every screen shared with Freeda, fixes; then light baselines committed | Freeda approves the light screenshots; contrast meets WCAG AA | ✓ `2334051` |
+| 15 | **chore:** check-only Prettier pre-commit hook | A badly formatted staged file blocks the commit | ✓ `5bcfdd7`, `53420b2` |
+| 16 | **docs:** DECISIONS.md lines (token mapping, extra tokens, screenshot approach, accepted changes, default theme Dark until the client approves light); tick PLAN.md Phase 0 boxes | Docs match what was built | ✓ this commit |
 
 Steps 3–10 also convert the standard Tailwind colour classes in each file. Swaps are done with a throwaway script (kept outside the repo) that applies the fixed mapping table; each file's diff is checked before committing.
 
