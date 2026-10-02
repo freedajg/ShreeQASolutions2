@@ -28,8 +28,8 @@ No other difference is accepted. If one appears, the step stops and is fixed or 
 | # | Change | Step | Why |
 |---|---|---|---|
 | A1 | The one element using `#1e2a4a` becomes `#1e2947` (overlay token). The element is named in the commit message | the step that converts its file | Near-duplicate colour; invisible difference |
-| A2 | New sun/moon theme button in the top bar (desktop and phone) | 13 | The theme toggle is a new feature (DESIGN.md §2a) |
-| A3 | New "Theme" row (Light / Dark / System) in the user switcher dropdown and the phone menu, only in screenshots where they're open | 13 | Same as A2 |
+| A2 | New sun/moon theme button in the top bar (desktop and phone). On desktop the nav tabs move 22 px left, as one block: the header spaces its three groups apart and the right group is now 44 px wider (accepted 02-Oct-2026). All 23 dark screenshots change | 13 | The theme toggle is a new feature (DESIGN.md §2a) |
+| A3 | New "Theme" row (Light / Dark / System) in the user switcher dropdown and the phone menu, only in screenshots where they're open. The phone menu sheet is bottom-anchored, so it grows upward: its content starts 109 px higher | 13 | Same as A2 |
 | A4 | Date fields' calendar icon turns from black to light grey (`color-scheme: dark`). Only `desktop-add-client` changes: 22 px, all inside the icon | after 12 (added 02-Oct-2026) | The black icon was nearly invisible on the dark field. Dropdown arrows and scrollbars don't change |
 
 After A2/A3, the baselines are updated once in step 13 and are strict again from then on. A4's one baseline was updated in its own commit.

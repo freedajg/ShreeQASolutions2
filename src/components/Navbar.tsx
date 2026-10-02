@@ -11,10 +11,14 @@ import {
   X,
   UserCheck,
   ChevronDown,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { TabKey, UserProfile } from '../types';
 import { TEAM_MEMBERS } from '../utils/seedData';
 import { useCrm } from '../context/CrmContext';
+import { useTheme } from '../lib/useTheme';
+import type { ThemePreference } from '../lib/theme';
 import { DrishtiFace } from './DrishtiFace';
 
 interface NavItem {
@@ -24,9 +28,51 @@ interface NavItem {
   badge?: number;
 }
 
+const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'System' },
+];
+
+// Light / Dark / System picker, used in the user dropdown and the phone menu.
+function ThemeChoice({
+  preference,
+  onChange,
+  buttonClassName,
+}: {
+  preference: ThemePreference;
+  onChange: (value: ThemePreference) => void;
+  buttonClassName: string;
+}) {
+  return (
+    <div role="radiogroup" aria-label="Theme" className="grid grid-cols-3 gap-1">
+      {THEME_OPTIONS.map((option) => {
+        const isActive = preference === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={isActive}
+            onClick={() => onChange(option.value)}
+            className={`${buttonClassName} rounded-lg border transition-colors ${
+              isActive
+                ? 'bg-primary-tint/20 text-text border-primary-tint/40 font-semibold'
+                : 'bg-surface text-text-secondary border-line/14 hover:text-text'
+            }`}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function Navbar() {
   const { activeTab, setActiveTab, activeUser, setActiveUser, clients, leads, isAiLoading } =
     useCrm();
+  const { preference, theme, setPreference, toggleTheme } = useTheme();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
 
@@ -151,52 +197,78 @@ export function Navbar() {
             })}
           </nav>
 
-          {/* Active User Switcher */}
-          <div className="relative">
+          <div className="flex items-center gap-2">
+            {/* Theme toggle: one click switches Light <-> Dark */}
             <button
-              onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-line/14 hover:border-line/30 transition-colors text-xs text-text"
-              aria-label="Switch active user"
+              type="button"
+              onClick={toggleTheme}
+              className="w-9 h-9 flex items-center justify-center rounded-lg bg-surface border border-line/14 hover:border-line/30 text-text-secondary hover:text-text transition-colors"
+              aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+              title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
             >
-              <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-primary to-info flex items-center justify-center text-[11px] font-bold text-on-primary">
-                {activeUser.name[0]}
-              </div>
-              <div className="text-left hidden sm:block">
-                <span className="font-semibold">{activeUser.name}</span>
-                <span className="text-[10px] text-muted ml-1.5">({activeUser.role})</span>
-              </div>
-              <ChevronDown size={13} className="text-muted" />
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>
 
-            {isUserDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-raised border border-line/20 rounded-xl shadow-2xl z-50 p-1 animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
-                  Active Team Member
+            {/* Active User Switcher */}
+            <div className="relative">
+              <button
+                onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-line/14 hover:border-line/30 transition-colors text-xs text-text"
+                aria-label="Switch active user"
+              >
+                <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-primary to-info flex items-center justify-center text-[11px] font-bold text-on-primary">
+                  {activeUser.name[0]}
                 </div>
-                {TEAM_MEMBERS.map((member) => (
-                  <button
-                    key={member.id}
-                    onClick={() => {
-                      setActiveUser(member);
-                      setIsUserDropdownOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-colors ${
-                      activeUser.id === member.id
-                        ? 'bg-primary-tint/20 text-text font-semibold'
-                        : 'text-text-secondary hover:bg-surface hover:text-text'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-full bg-surface border border-line/20 flex items-center justify-center text-[10px]">
-                        {member.name[0]}
+                <div className="text-left hidden sm:block">
+                  <span className="font-semibold">{activeUser.name}</span>
+                  <span className="text-[10px] text-muted ml-1.5">({activeUser.role})</span>
+                </div>
+                <ChevronDown size={13} className="text-muted" />
+              </button>
+
+              {isUserDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-raised border border-line/20 rounded-xl shadow-2xl z-50 p-1 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
+                    Active Team Member
+                  </div>
+                  {TEAM_MEMBERS.map((member) => (
+                    <button
+                      key={member.id}
+                      onClick={() => {
+                        setActiveUser(member);
+                        setIsUserDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-colors ${
+                        activeUser.id === member.id
+                          ? 'bg-primary-tint/20 text-text font-semibold'
+                          : 'text-text-secondary hover:bg-surface hover:text-text'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-full bg-surface border border-line/20 flex items-center justify-center text-[10px]">
+                          {member.name[0]}
+                        </div>
+                        <span>{member.name}</span>
                       </div>
-                      <span>{member.name}</span>
+                      <span className="text-[10px] text-muted">{member.role}</span>
+                    </button>
+                  ))}
+
+                  <div className="mt-1 pt-1 border-t border-line/14">
+                    <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
+                      Theme
                     </div>
-                    <span className="text-[10px] text-muted">{member.role}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+                    <div className="px-1 pb-1">
+                      <ThemeChoice
+                        preference={preference}
+                        onChange={setPreference}
+                        buttonClassName="py-1.5 text-[11px]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -313,6 +385,18 @@ export function Navbar() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Theme in Mobile Sheet */}
+            <div className="mt-6 pt-4 border-t border-line/14">
+              <div className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+                Theme
+              </div>
+              <ThemeChoice
+                preference={preference}
+                onChange={setPreference}
+                buttonClassName="min-h-[44px] text-xs"
+              />
             </div>
           </div>
         </div>
