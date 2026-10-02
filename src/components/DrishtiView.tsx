@@ -316,7 +316,7 @@ export function DrishtiView() {
       <div className="sticky bottom-20 md:bottom-4 z-30 pt-2">
         <form
           onSubmit={handleSend}
-          className="relative flex items-center bg-surface/95 backdrop-blur-md border border-line/22 rounded-2xl shadow-2xl p-1.5 focus-within:border-primary transition-colors"
+          className="control-border relative flex items-center bg-surface/95 backdrop-blur-md border border-line/22 rounded-2xl shadow-2xl p-1.5 focus-within:border-primary transition-colors"
         >
           <input
             ref={inputRef}

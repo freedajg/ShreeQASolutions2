@@ -1,10 +1,18 @@
-// Screenshot comparison of every main screen and dialog in the dark theme.
+// Screenshot comparison of every main screen and dialog, in the dark and the light theme.
 // Proves the colour-token conversion (Phase 0 part 2) doesn't change how the app looks.
-// Baselines live in tests/visual.spec.ts-snapshots/ and are Windows-specific, so this
-// runs locally only. Update baselines only for a change named in docs/PHASE-0-PART-2-PLAN.md:
+// Dark baselines keep their original names (desktop-drishti.png); light ones are prefixed
+// (light-desktop-drishti.png). Baselines live in tests/visual.spec.ts-snapshots/ and are
+// Windows-specific, so this runs locally only. Update baselines only for a change named in
+// docs/PHASE-0-PART-2-PLAN.md:
 //   bun run test:e2e tests/visual.spec.ts --update-snapshots
 import { expect, test, type Page } from '@playwright/test';
 import type { ActivityNote, Client, Lead } from '../src/types';
+
+type Theme = 'dark' | 'light';
+const THEMES: Theme[] = ['dark', 'light'];
+
+// Dark keeps the names its baselines were taken under, so they're never renamed or rewritten.
+const shotName = (theme: Theme, name: string) => (theme === 'dark' ? name : `light-${name}`);
 
 // A fixed "now", so countdowns, "days ago" and renewal buckets never drift.
 const FIXED_NOW = new Date('2026-10-01T10:00:00+05:30');
@@ -31,7 +39,11 @@ test.describe.configure({ timeout: 60_000 });
 
 // Opens the app with fresh demo data and a paused clock. Timers only move when
 // settle() advances them, so every run sees the same frame (e.g. the face's blink).
-async function openApp(page: Page) {
+async function openApp(page: Page, theme: Theme) {
+  // Dark is the default, so dark runs exactly as before; light is saved before the first load.
+  if (theme === 'light') {
+    await page.addInitScript(() => localStorage.setItem('drishti-theme', 'light'));
+  }
   // pauseAt can only move forward, so install just before FIXED_NOW.
   await page.clock.install({ time: FIXED_NOW.getTime() - 60_000 });
   await page.clock.pauseAt(FIXED_NOW);
@@ -95,143 +107,150 @@ async function openTab(page: Page, key: string) {
   await settle(page);
 }
 
-async function snap(page: Page, name: string) {
-  await expect(page).toHaveScreenshot(`${name}.png`, { ...STRICT, fullPage: true });
+async function snap(page: Page, theme: Theme, name: string) {
+  await expect(page).toHaveScreenshot(`${shotName(theme, name)}.png`, {
+    ...STRICT,
+    fullPage: true,
+  });
 }
 
 // Dialogs cover the visible screen only, so capture just that.
-async function snapDialog(page: Page, name: string) {
-  await expect(page).toHaveScreenshot(`${name}.png`, STRICT);
+async function snapDialog(page: Page, theme: Theme, name: string) {
+  await expect(page).toHaveScreenshot(`${shotName(theme, name)}.png`, STRICT);
 }
 
-test.describe('desktop', () => {
-  test.use({ viewport: { width: 1440, height: 900 } });
+for (const theme of THEMES) {
+  test.describe(theme, () => {
+    test.describe('desktop', () => {
+      test.use({ viewport: { width: 1440, height: 900 } });
 
-  for (const key of [
-    'drishti',
-    'dashboard',
-    'radar',
-    'pipeline',
-    'clients',
-    'import',
-    'settings',
-  ]) {
-    test(`tab: ${key}`, async ({ page }) => {
-      await openApp(page);
-      await openTab(page, key);
-      await snap(page, `desktop-${key}`);
+      for (const key of [
+        'drishti',
+        'dashboard',
+        'radar',
+        'pipeline',
+        'clients',
+        'import',
+        'settings',
+      ]) {
+        test(`tab: ${key}`, async ({ page }) => {
+          await openApp(page, theme);
+          await openTab(page, key);
+          await snap(page, theme, `desktop-${key}`);
+        });
+      }
+
+      test('pipeline: table view', async ({ page }) => {
+        await openApp(page, theme);
+        await openTab(page, 'pipeline');
+        await page.getByRole('button', { name: 'Table', exact: true }).click();
+        await settle(page);
+        await snap(page, theme, 'desktop-pipeline-table');
+      });
+
+      test('user switcher dropdown', async ({ page }) => {
+        await openApp(page, theme);
+        await page.getByRole('button', { name: 'Switch active user' }).click();
+        await settle(page);
+        await snap(page, theme, 'desktop-user-dropdown');
+      });
+
+      test('client detail dialog', async ({ page }) => {
+        await openApp(page, theme);
+        await openTab(page, 'clients');
+        await page.locator('tbody tr').first().click();
+        await settle(page);
+        await snapDialog(page, theme, 'desktop-client-detail');
+      });
+
+      test('add client dialog', async ({ page }) => {
+        await openApp(page, theme);
+        await openTab(page, 'clients');
+        await page.getByRole('button', { name: 'Add Client' }).click();
+        await settle(page);
+        await snapDialog(page, theme, 'desktop-add-client');
+      });
+
+      test('lead detail dialog', async ({ page }) => {
+        await openApp(page, theme);
+        await openTab(page, 'pipeline');
+        await page.getByRole('button', { name: 'Table', exact: true }).click();
+        await settle(page);
+        await page.locator('tbody tr').first().click();
+        await settle(page);
+        await snapDialog(page, theme, 'desktop-lead-detail');
+      });
+
+      test('add lead dialog', async ({ page }) => {
+        await openApp(page, theme);
+        await openTab(page, 'pipeline');
+        await page.getByRole('button', { name: 'Add Lead' }).click();
+        await settle(page);
+        await snapDialog(page, theme, 'desktop-add-lead');
+      });
+
+      test('email draft dialog', async ({ page }) => {
+        await openApp(page, theme);
+        await openTab(page, 'radar');
+        await page.getByTitle('Draft renewal reminder email').first().click();
+        await settle(page);
+        await snapDialog(page, theme, 'desktop-email-draft');
+      });
+
+      test('metric info popover', async ({ page }) => {
+        await openApp(page, theme);
+        await openTab(page, 'dashboard');
+        // Not a top-row card: their popovers open upwards and are hidden at the top of the page.
+        await page.getByLabel('Learn more about Deals Stuck by Stage').hover();
+        await settle(page);
+        await snap(page, theme, 'desktop-metric-info');
+      });
+
+      test('drishti change proposal', async ({ page }) => {
+        // Tall enough that the floating "Ask Drishti" bar sits below the proposal, not over it.
+        await page.setViewportSize({ width: 1440, height: 1400 });
+        await openApp(page, theme);
+        await page.getByRole('textbox').first().fill('move Lead01 to won');
+        await page.keyboard.press('Enter');
+        await settle(page);
+        await snap(page, theme, 'desktop-proposal');
+      });
+
+      test('hover: nav button', async ({ page }) => {
+        await openApp(page, theme);
+        await page.locator('#nav-tab-pipeline').hover();
+        await settle(page);
+        await snap(page, theme, 'desktop-hover-nav');
+      });
+
+      test('hover: clients table row', async ({ page }) => {
+        await openApp(page, theme);
+        await openTab(page, 'clients');
+        await page.locator('tbody tr').nth(1).hover();
+        await settle(page);
+        await snap(page, theme, 'desktop-hover-row');
+      });
     });
-  }
 
-  test('pipeline: table view', async ({ page }) => {
-    await openApp(page);
-    await openTab(page, 'pipeline');
-    await page.getByRole('button', { name: 'Table', exact: true }).click();
-    await settle(page);
-    await snap(page, 'desktop-pipeline-table');
-  });
+    test.describe('phone (375px)', () => {
+      test.use({ viewport: { width: 375, height: 812 } });
 
-  test('user switcher dropdown', async ({ page }) => {
-    await openApp(page);
-    await page.getByRole('button', { name: 'Switch active user' }).click();
-    await settle(page);
-    await snap(page, 'desktop-user-dropdown');
-  });
+      for (const label of ['Drishti', 'Radar', 'Pipeline', 'Clients']) {
+        test(`tab: ${label}`, async ({ page }) => {
+          await openApp(page, theme);
+          // The name may end with a badge count, e.g. "Radar 5".
+          await page.getByRole('button', { name: new RegExp(`^${label}( \\d+)?$`) }).click();
+          await settle(page);
+          await snap(page, theme, `phone-${label.toLowerCase()}`);
+        });
+      }
 
-  test('client detail dialog', async ({ page }) => {
-    await openApp(page);
-    await openTab(page, 'clients');
-    await page.locator('tbody tr').first().click();
-    await settle(page);
-    await snapDialog(page, 'desktop-client-detail');
-  });
-
-  test('add client dialog', async ({ page }) => {
-    await openApp(page);
-    await openTab(page, 'clients');
-    await page.getByRole('button', { name: 'Add Client' }).click();
-    await settle(page);
-    await snapDialog(page, 'desktop-add-client');
-  });
-
-  test('lead detail dialog', async ({ page }) => {
-    await openApp(page);
-    await openTab(page, 'pipeline');
-    await page.getByRole('button', { name: 'Table', exact: true }).click();
-    await settle(page);
-    await page.locator('tbody tr').first().click();
-    await settle(page);
-    await snapDialog(page, 'desktop-lead-detail');
-  });
-
-  test('add lead dialog', async ({ page }) => {
-    await openApp(page);
-    await openTab(page, 'pipeline');
-    await page.getByRole('button', { name: 'Add Lead' }).click();
-    await settle(page);
-    await snapDialog(page, 'desktop-add-lead');
-  });
-
-  test('email draft dialog', async ({ page }) => {
-    await openApp(page);
-    await openTab(page, 'radar');
-    await page.getByTitle('Draft renewal reminder email').first().click();
-    await settle(page);
-    await snapDialog(page, 'desktop-email-draft');
-  });
-
-  test('metric info popover', async ({ page }) => {
-    await openApp(page);
-    await openTab(page, 'dashboard');
-    // Not a top-row card: their popovers open upwards and are hidden at the top of the page.
-    await page.getByLabel('Learn more about Deals Stuck by Stage').hover();
-    await settle(page);
-    await snap(page, 'desktop-metric-info');
-  });
-
-  test('drishti change proposal', async ({ page }) => {
-    // Tall enough that the floating "Ask Drishti" bar sits below the proposal, not over it.
-    await page.setViewportSize({ width: 1440, height: 1400 });
-    await openApp(page);
-    await page.getByRole('textbox').first().fill('move Lead01 to won');
-    await page.keyboard.press('Enter');
-    await settle(page);
-    await snap(page, 'desktop-proposal');
-  });
-
-  test('hover: nav button', async ({ page }) => {
-    await openApp(page);
-    await page.locator('#nav-tab-pipeline').hover();
-    await settle(page);
-    await snap(page, 'desktop-hover-nav');
-  });
-
-  test('hover: clients table row', async ({ page }) => {
-    await openApp(page);
-    await openTab(page, 'clients');
-    await page.locator('tbody tr').nth(1).hover();
-    await settle(page);
-    await snap(page, 'desktop-hover-row');
-  });
-});
-
-test.describe('phone (375px)', () => {
-  test.use({ viewport: { width: 375, height: 812 } });
-
-  for (const label of ['Drishti', 'Radar', 'Pipeline', 'Clients']) {
-    test(`tab: ${label}`, async ({ page }) => {
-      await openApp(page);
-      // The name may end with a badge count, e.g. "Radar 5".
-      await page.getByRole('button', { name: new RegExp(`^${label}( \\d+)?$`) }).click();
-      await settle(page);
-      await snap(page, `phone-${label.toLowerCase()}`);
+      test('more menu', async ({ page }) => {
+        await openApp(page, theme);
+        await page.getByRole('button', { name: 'More', exact: true }).click();
+        await settle(page);
+        await snap(page, theme, 'phone-more-menu');
+      });
     });
-  }
-
-  test('more menu', async ({ page }) => {
-    await openApp(page);
-    await page.getByRole('button', { name: 'More', exact: true }).click();
-    await settle(page);
-    await snap(page, 'phone-more-menu');
   });
-});
+}

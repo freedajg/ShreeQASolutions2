@@ -96,7 +96,7 @@
 
   --color-text: #0f172a;
   --color-text-secondary: #334155;
-  --color-muted: #64748b;
+  --color-muted: #607087; /* darker than slate-500: 4.6:1 on raised (step 14 contrast check) */
   --color-text-strong: #020617;
   --color-on-primary: #fff; /* the fills it sits on are darker in light mode */
 
@@ -107,25 +107,46 @@
   --color-primary: #4f46e5;
   --color-primary-strong: #4338ca;
   --color-primary-soft: #7c3aed; /* used as text, so not DESIGN.md's indigo-50 (see DECISIONS.md) */
-  --color-teal: #0f766e;
+  --color-teal: #08736b;
 
-  --color-danger: #dc2626;
+  /*
+   * Meaning colours: same hues as Tailwind's red/amber/cyan/teal/emerald, darkened just enough
+   * that text reaches 4.6:1 on every background and on its own badge tint (step 14).
+   */
+  --color-danger: #ba0412;
   --color-danger-light: #b91c1c;
-  --color-danger-medium: #dc2626;
+  --color-danger-medium: #d51b1f;
   --color-danger-strong: #ef4444;
-  --color-warning: #b45309;
-  --color-info: #0e7490;
-  --color-success: #047857;
+  --color-warning: #9e4703;
+  --color-info: #036984;
+  --color-success: #067253;
   --color-success-lighter: #064e3b;
   --color-success-light: #065f46;
   --color-success-strong: #059669;
   --color-on-success: #fff;
-  --color-neutral: #64748b;
+  --color-neutral: #607087;
 
   --color-backdrop: #0f172a;
   --color-avatar: #e2e8f0;
   --color-subtle: #f1f5f9;
   --color-subtle-border: #cbd5e1;
+
+  /* Form controls only: 3:1 against bg, surface and raised (WCAG 1.4.11). Cards keep `line`. */
+  --color-control-border: #7c8aa0;
+}
+
+/*
+ * Light mode only: form controls get a border strong enough to see the field (step 14).
+ * Dark mode keeps the MVP's faint `border-line/*`. A control's own focus colour
+ * (`focus:border-primary`) still wins while it has focus. `.control-border` is for a
+ * control whose border sits on a wrapper (the Drishti Ask bar).
+ */
+:root[data-theme='light']
+  :is(input:not([type='checkbox'], [type='radio'], [type='file']), select, textarea):not(
+    :focus[class*='focus:border-']
+  ),
+:root[data-theme='light'] .control-border:not(:focus-within) {
+  border-color: var(--color-control-border);
 }
 
 body {
