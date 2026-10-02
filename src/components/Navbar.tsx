@@ -71,9 +71,9 @@ export function Navbar() {
   return (
     <>
       {/* Desktop Header Rail */}
-      <header className="sticky top-0 z-40 w-full bg-[#080c16]/90 backdrop-blur-md border-b border-[rgba(148,175,235,0.14)]">
+      <header className="sticky top-0 z-40 w-full bg-bg/90 backdrop-blur-md border-b border-line/14">
         {/* Glow indicator line at top */}
-        <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-[#818cf8]/50 to-transparent" />
+        <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           {/* Logo & Assistant Identity */}
@@ -89,14 +89,14 @@ export function Navbar() {
               />
               <div className="text-left">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-base tracking-tight text-[#e9eefb] group-hover:text-white">
+                  <span className="font-bold text-base tracking-tight text-text group-hover:text-text-strong">
                     Drishti
                   </span>
-                  <span className="text-[10px] uppercase font-semibold px-1.5 py-0.2 rounded bg-indigo-500/20 text-[#818cf8] border border-indigo-500/30">
+                  <span className="text-[10px] uppercase font-semibold px-1.5 py-0.2 rounded bg-primary-tint/20 text-primary border border-primary-tint/30">
                     CRM Partner
                   </span>
                 </div>
-                <p className="text-[11px] text-[#6d7c9c] truncate hidden sm:block">
+                <p className="text-[11px] text-muted truncate hidden sm:block">
                   Process Standards Consulting
                 </p>
               </div>
@@ -115,8 +115,8 @@ export function Navbar() {
                   onClick={() => setActiveTab(item.key)}
                   className={`relative px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150 flex items-center gap-2 min-h-[38px] ${
                     isActive
-                      ? 'text-[#e9eefb] bg-[#18213a] shadow-inner font-semibold'
-                      : 'text-[#9aabcc] hover:text-[#e9eefb] hover:bg-[#111828]'
+                      ? 'text-text bg-raised shadow-inner font-semibold'
+                      : 'text-text-secondary hover:text-text hover:bg-surface'
                   }`}
                 >
                   <Icon
@@ -124,9 +124,9 @@ export function Navbar() {
                     className={
                       isActive
                         ? item.key === 'drishti'
-                          ? 'text-[#a78bfa]'
-                          : 'text-[#818cf8]'
-                        : 'text-[#6d7c9c]'
+                          ? 'text-primary-soft'
+                          : 'text-primary'
+                        : 'text-muted'
                     }
                   />
                   <span>{item.label}</span>
@@ -134,8 +134,8 @@ export function Navbar() {
                     <span
                       className={`px-1.5 py-0.5 text-[10px] rounded-full tabular-nums ${
                         item.key === 'radar' && radarAlertCount > 0
-                          ? 'bg-[#fb7185]/20 text-[#fb7185] border border-[#fb7185]/30'
-                          : 'bg-[#18213a] text-[#9aabcc]'
+                          ? 'bg-danger/20 text-danger border border-danger/30'
+                          : 'bg-raised text-text-secondary'
                       }`}
                     >
                       {item.badge}
@@ -144,7 +144,7 @@ export function Navbar() {
 
                   {/* Active lit underline */}
                   {isActive && (
-                    <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-gradient-to-r from-[#818cf8] to-[#22d3ee] rounded-full" />
+                    <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-gradient-to-r from-primary to-info rounded-full" />
                   )}
                 </button>
               );
@@ -155,22 +155,22 @@ export function Navbar() {
           <div className="relative">
             <button
               onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#111828] border border-[rgba(148,175,235,0.14)] hover:border-[rgba(148,175,235,0.3)] transition-colors text-xs text-[#e9eefb]"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-line/14 hover:border-line/30 transition-colors text-xs text-text"
               aria-label="Switch active user"
             >
-              <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#818cf8] to-[#22d3ee] flex items-center justify-center text-[11px] font-bold text-slate-950">
+              <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-primary to-info flex items-center justify-center text-[11px] font-bold text-on-primary">
                 {activeUser.name[0]}
               </div>
               <div className="text-left hidden sm:block">
                 <span className="font-semibold">{activeUser.name}</span>
-                <span className="text-[10px] text-[#6d7c9c] ml-1.5">({activeUser.role})</span>
+                <span className="text-[10px] text-muted ml-1.5">({activeUser.role})</span>
               </div>
-              <ChevronDown size={13} className="text-[#6d7c9c]" />
+              <ChevronDown size={13} className="text-muted" />
             </button>
 
             {isUserDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-[#18213a] border border-[rgba(148,175,235,0.2)] rounded-xl shadow-2xl z-50 p-1 animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#6d7c9c]">
+              <div className="absolute right-0 mt-2 w-48 bg-raised border border-line/20 rounded-xl shadow-2xl z-50 p-1 animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
                   Active Team Member
                 </div>
                 {TEAM_MEMBERS.map((member) => (
@@ -182,17 +182,17 @@ export function Navbar() {
                     }}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-colors ${
                       activeUser.id === member.id
-                        ? 'bg-indigo-500/20 text-[#e9eefb] font-semibold'
-                        : 'text-[#9aabcc] hover:bg-[#111828] hover:text-[#e9eefb]'
+                        ? 'bg-primary-tint/20 text-text font-semibold'
+                        : 'text-text-secondary hover:bg-surface hover:text-text'
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-full bg-[#111828] border border-[rgba(148,175,235,0.2)] flex items-center justify-center text-[10px]">
+                      <div className="w-5 h-5 rounded-full bg-surface border border-line/20 flex items-center justify-center text-[10px]">
                         {member.name[0]}
                       </div>
                       <span>{member.name}</span>
                     </div>
-                    <span className="text-[10px] text-[#6d7c9c]">{member.role}</span>
+                    <span className="text-[10px] text-muted">{member.role}</span>
                   </button>
                 ))}
               </div>
@@ -202,7 +202,7 @@ export function Navbar() {
       </header>
 
       {/* Mobile Fixed Bottom Navigation Bar (<768px) */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#080c16]/95 backdrop-blur-lg border-t border-[rgba(148,175,235,0.14)] pb-[env(safe-area-inset-bottom)]">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-bg/95 backdrop-blur-lg border-t border-line/14 pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-center justify-around px-2 py-1">
           {mobilePrimaryItems.map((item) => {
             const isActive = activeTab === item.key;
@@ -215,13 +215,13 @@ export function Navbar() {
                   setIsMoreOpen(false);
                 }}
                 className={`relative flex flex-col items-center justify-center min-w-[64px] min-h-[48px] px-2 py-1 rounded-xl text-[11px] transition-all ${
-                  isActive ? 'text-[#818cf8] font-bold' : 'text-[#6d7c9c]'
+                  isActive ? 'text-primary font-bold' : 'text-muted'
                 }`}
               >
-                <Icon size={18} className={isActive ? 'text-[#818cf8]' : 'text-[#6d7c9c]'} />
+                <Icon size={18} className={isActive ? 'text-primary' : 'text-muted'} />
                 <span className="mt-0.5">{item.label}</span>
                 {item.badge !== undefined && item.badge > 0 && (
-                  <span className="absolute top-1 right-2.5 px-1 py-0.2 text-[9px] font-bold rounded-full bg-[#fb7185] text-slate-950 tabular-nums">
+                  <span className="absolute top-1 right-2.5 px-1 py-0.2 text-[9px] font-bold rounded-full bg-danger text-on-primary tabular-nums">
                     {item.badge}
                   </span>
                 )}
@@ -234,8 +234,8 @@ export function Navbar() {
             onClick={() => setIsMoreOpen(true)}
             className={`flex flex-col items-center justify-center min-w-[64px] min-h-[48px] px-2 py-1 rounded-xl text-[11px] ${
               ['dashboard', 'import', 'settings'].includes(activeTab) || isMoreOpen
-                ? 'text-[#818cf8] font-bold'
-                : 'text-[#6d7c9c]'
+                ? 'text-primary font-bold'
+                : 'text-muted'
             }`}
           >
             <Menu size={18} />
@@ -247,18 +247,18 @@ export function Navbar() {
       {/* Mobile More Sheet Drawer */}
       {isMoreOpen && (
         <div
-          className="md:hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex flex-col justify-end animate-in fade-in duration-200"
+          className="md:hidden fixed inset-0 z-50 bg-backdrop/70 backdrop-blur-sm flex flex-col justify-end animate-in fade-in duration-200"
           onClick={() => setIsMoreOpen(false)}
         >
           <div
-            className="bg-[#111828] border-t border-[rgba(148,175,235,0.2)] rounded-t-2xl p-5 pb-8 max-h-[85vh] overflow-y-auto"
+            className="bg-surface border-t border-line/20 rounded-t-2xl p-5 pb-8 max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-[rgba(148,175,235,0.14)]">
-              <span className="text-sm font-bold text-[#e9eefb]">Navigation & Options</span>
+            <div className="flex items-center justify-between pb-3 border-b border-line/14">
+              <span className="text-sm font-bold text-text">Navigation & Options</span>
               <button
                 onClick={() => setIsMoreOpen(false)}
-                className="p-1.5 text-[#6d7c9c] hover:text-white rounded-lg bg-[#18213a]"
+                className="p-1.5 text-muted hover:text-text-strong rounded-lg bg-raised"
               >
                 <X size={18} />
               </button>
@@ -277,11 +277,11 @@ export function Navbar() {
                     }}
                     className={`w-full min-h-[52px] flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
                       isActive
-                        ? 'bg-indigo-500/20 text-[#818cf8] font-bold'
-                        : 'text-[#9aabcc] hover:bg-[#18213a] hover:text-[#e9eefb]'
+                        ? 'bg-primary-tint/20 text-primary font-bold'
+                        : 'text-text-secondary hover:bg-raised hover:text-text'
                     }`}
                   >
-                    <Icon size={18} className={isActive ? 'text-[#818cf8]' : 'text-[#6d7c9c]'} />
+                    <Icon size={18} className={isActive ? 'text-primary' : 'text-muted'} />
                     <span>{item.label}</span>
                   </button>
                 );
@@ -289,8 +289,8 @@ export function Navbar() {
             </div>
 
             {/* Active User in Mobile Sheet */}
-            <div className="mt-6 pt-4 border-t border-[rgba(148,175,235,0.14)]">
-              <div className="text-xs font-semibold text-[#6d7c9c] uppercase tracking-wider mb-2">
+            <div className="mt-6 pt-4 border-t border-line/14">
+              <div className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
                 Viewing as
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -302,11 +302,11 @@ export function Navbar() {
                     }}
                     className={`min-h-[44px] flex items-center gap-2 p-2.5 rounded-xl text-xs transition-colors border ${
                       activeUser.id === member.id
-                        ? 'bg-indigo-500/20 text-[#e9eefb] border-indigo-500/40 font-bold'
-                        : 'bg-[#18213a] text-[#9aabcc] border-transparent'
+                        ? 'bg-primary-tint/20 text-text border-primary-tint/40 font-bold'
+                        : 'bg-raised text-text-secondary border-transparent'
                     }`}
                   >
-                    <div className="w-5 h-5 rounded-full bg-slate-900 flex items-center justify-center font-bold text-[10px]">
+                    <div className="w-5 h-5 rounded-full bg-avatar flex items-center justify-center font-bold text-[10px]">
                       {member.name[0]}
                     </div>
                     <span>{member.name}</span>

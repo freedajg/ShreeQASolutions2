@@ -14,7 +14,7 @@ function MainAppContent() {
   const { activeTab, selectedDraftTarget, closeDraftModal } = useCrm();
 
   return (
-    <div className="min-h-screen bg-[#080c16] text-[#e9eefb] flex flex-col font-sans selection:bg-[#818cf8]/30 selection:text-white">
+    <div className="min-h-screen bg-bg text-text flex flex-col font-sans selection:bg-primary/30 selection:text-text-strong">
       {/* Navigation Bar */}
       <Navbar />
 
