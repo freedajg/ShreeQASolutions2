@@ -1,28 +1,78 @@
 @import 'tailwindcss';
 
-:root {
-  --canvas: #080c16;
-  --surface: #111828;
-  --raised: #18213a;
-  --overlay: #1e2947;
-  --ink: #e9eefb;
-  --ink-secondary: #9aabcc;
-  --ink-muted: #6d7c9c;
-  --brand: #818cf8;
-  --brand-strong: #6366f1;
-  --brand-soft: #a78bfa;
-  --accent-cyan: #22d3ee;
-  --accent-teal: #2dd4bf;
-  --accent-rose: #fb7185;
-  --accent-amber: #fbbf24;
-  --line-subtle: rgba(148, 175, 235, 0.12);
-  --line-default: rgba(148, 175, 235, 0.18);
-  --line-strong: rgba(148, 175, 235, 0.32);
+/*
+ * Design tokens (docs/DESIGN.md §2). Components use these only, never raw colours,
+ * e.g. `bg-surface`, `text-muted`, `border-line/16`, `bg-primary/30`.
+ * Values below are the dark theme: exactly the MVP's colours.
+ * Where the MVP used a Tailwind built-in colour (e.g. `emerald-400`), the token copies
+ * Tailwind's own oklch value, which is not the same as the old hex, so nothing shifts.
+ */
+@theme {
+  /* Surfaces */
+  --color-bg: #080c16;
+  --color-surface: #111828;
+  --color-raised: #18213a;
+  --color-overlay: #1e2947;
+
+  /* Text */
+  --color-text: #e9eefb;
+  --color-text-secondary: #9aabcc;
+  --color-muted: #6d7c9c;
+  --color-text-strong: #fff; /* was white: hover/emphasis text */
+  --color-on-primary: oklch(12.9% 0.042 264.695); /* was slate-950: text on bright fills */
+
+  /* Lines. The MVP uses many strengths (6%-35%): write them as `border-line/16`. */
+  --color-line: rgb(148 175 235);
+  --color-border: rgb(148 175 235 / 0.18); /* the default strength, for new code */
+
+  /* Brand */
+  --color-primary: #818cf8;
+  --color-primary-strong: #6366f1;
+  --color-primary-soft: #a78bfa;
+  --color-primary-tint: oklch(58.5% 0.233 277.117); /* was indigo-500: tints, borders */
+  --color-violet: oklch(60.6% 0.25 292.717); /* was violet-500: gradients */
+  --color-teal: #2dd4bf; /* accent: gradients, "active" dots */
+
+  /* Meaning */
+  --color-danger: #fb7185;
+  --color-danger-light: oklch(81% 0.117 11.638); /* was rose-300 */
+  --color-danger-medium: oklch(71.2% 0.194 13.428); /* was rose-400 */
+  --color-danger-strong: oklch(64.5% 0.246 16.439); /* was rose-500 */
+  --color-warning: #fbbf24;
+  --color-info: #22d3ee;
+  --color-info-tint: oklch(78.9% 0.154 211.53); /* was cyan-400: gradients */
+  --color-success: oklch(76.5% 0.177 163.223); /* was emerald-400 */
+  --color-success-lighter: oklch(90.5% 0.093 164.15); /* was emerald-200 */
+  --color-success-light: oklch(84.5% 0.143 164.978); /* was emerald-300 */
+  --color-success-strong: oklch(69.6% 0.17 162.48); /* was emerald-500 */
+  --color-on-success: oklch(26.2% 0.051 172.552); /* was emerald-950 */
+  --color-neutral: #6d7c9c;
+
+  /* Small UI pieces */
+  --color-backdrop: #000; /* was black: behind dialogs, used at 70-80% */
+  --color-avatar: oklch(20.8% 0.042 265.755); /* was slate-900 */
+  --color-subtle: oklch(27.9% 0.041 260.031); /* was slate-800: "offline" badge */
+  --color-subtle-border: oklch(37.2% 0.044 257.287); /* was slate-700 */
+
+  /* Drishti face (same values in both themes; DESIGN.md §2a "gradients") */
+  --color-face-indigo: #6366f1;
+  --color-face-violet: #8b5cf6;
+  --color-face-cyan: #06b6d4;
+  --color-face-cheek: #fb7185;
+  --color-face-bulb-glow: #38bdf8;
+  --color-face-bulb-core: #e0f2fe;
+  --color-face-stem: #a78bfa;
+  --color-face-highlight: #fff;
+  --color-face-ink: #0f172a;
+  --color-face-mouth: #1e293b;
+  --color-face-offline-stem: #64748b;
+  --color-face-offline-bulb: #94a3b8;
+  --color-face-offline-bulb-core: #cbd5e1;
 }
 
 body {
-  background-color: var(--canvas);
-  color: var(--ink);
+  background-color: var(--color-bg);
+  color: var(--color-text);
   font-family:
     'Inter',
     -apple-system,
@@ -50,16 +100,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #080c16;
+  background: var(--color-bg);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e2947;
+  background: var(--color-overlay);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #818cf8;
+  background: var(--color-primary);
 }
 
 /* Prefers reduced motion */
