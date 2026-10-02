@@ -61,7 +61,7 @@ jobs:
         run: gitleaks git --redact --verbose --no-banner
 
   colors:
-    name: No hardcoded hex colour classes
+    name: No hardcoded colour classes
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
