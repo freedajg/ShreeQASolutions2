@@ -63,6 +63,9 @@
   --color-face-bulb-core: #e0f2fe;
   --color-face-stem: #a78bfa;
   --color-face-highlight: #fff;
+  /* Exact see-through whites: `fill-face-highlight/8` would round 1 shade differently. */
+  --color-face-glass: rgb(255 255 255 / 0.08);
+  --color-face-rim: rgb(255 255 255 / 0.25);
   --color-face-ink: #0f172a;
   --color-face-mouth: #1e293b;
   --color-face-offline-stem: #64748b;
