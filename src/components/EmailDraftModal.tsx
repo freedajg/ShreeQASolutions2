@@ -120,37 +120,37 @@ export function EmailDraftModal({ target, onClose }: EmailDraftModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 bg-backdrop/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="bg-[#111828] border border-[rgba(148,175,235,0.22)] rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="bg-surface border border-line/22 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="p-4 sm:p-5 border-b border-[rgba(148,175,235,0.14)] flex items-center justify-between bg-[#18213a]/50">
+        <div className="p-4 sm:p-5 border-b border-line/14 flex items-center justify-between bg-raised/50">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500/30 to-violet-500/30 border border-indigo-500/40 flex items-center justify-center text-[#a78bfa]">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary-tint/30 to-violet/30 border border-primary-tint/40 flex items-center justify-center text-primary-soft">
               <Sparkles size={18} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-[#e9eefb]">Follow-Up: {entity.company}</h3>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#18213a] text-[#2dd4bf] border border-[#2dd4bf]/20 flex items-center gap-1">
+                <h3 className="font-bold text-base text-text">Follow-Up: {entity.company}</h3>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-raised text-teal border border-teal/20 flex items-center gap-1">
                   <Mail size={11} />
                   Ready to Send
                 </span>
               </div>
-              <p className="text-xs text-[#9aabcc]">
-                Prepared for <strong className="text-[#e9eefb]">{entity.owner}</strong> to send to{' '}
-                <strong className="text-[#e9eefb]">{entity.contactName}</strong>
+              <p className="text-xs text-text-secondary">
+                Prepared for <strong className="text-text">{entity.owner}</strong> to send to{' '}
+                <strong className="text-text">{entity.contactName}</strong>
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#6d7c9c] hover:text-white hover:bg-[#18213a] transition-colors"
+            className="p-1.5 rounded-lg text-muted hover:text-text-strong hover:bg-raised transition-colors"
             title="Close"
           >
             <X size={18} />
@@ -158,22 +158,22 @@ export function EmailDraftModal({ target, onClose }: EmailDraftModalProps) {
         </div>
 
         {/* Guidance Notice Banner */}
-        <div className="px-4 py-2.5 bg-[#080c16]/60 border-b border-[rgba(148,175,235,0.1)] flex items-start gap-2.5 text-xs text-[#9aabcc]">
-          <AlertCircle size={15} className="text-[#818cf8] shrink-0 mt-0.5" />
+        <div className="px-4 py-2.5 bg-bg/60 border-b border-line/10 flex items-start gap-2.5 text-xs text-text-secondary">
+          <AlertCircle size={15} className="text-primary shrink-0 mt-0.5" />
           <div className="leading-relaxed">
             <span>
-              Clicking <strong className="text-[#2dd4bf]">Send Email</strong> opens your default
-              email client with recipient and draft pre-filled, advances the last contact date to
-              today, and logs an activity record in your CRM.
+              Clicking <strong className="text-teal">Send Email</strong> opens your default email
+              client with recipient and draft pre-filled, advances the last contact date to today,
+              and logs an activity record in your CRM.
             </span>
           </div>
         </div>
 
         {/* Success Confirmation Banner */}
         {sentSuccess && (
-          <div className="mx-4 mt-3 px-3.5 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300 flex items-center justify-between animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="mx-4 mt-3 px-3.5 py-2.5 rounded-xl bg-success-strong/10 border border-success-strong/30 text-xs text-success-light flex items-center justify-between animate-in fade-in slide-in-from-top-1 duration-200">
             <div className="flex items-center gap-2">
-              <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+              <CheckCircle2 size={16} className="text-success shrink-0" />
               <span>
                 <strong>Mail dispatched!</strong> Activity note logged and contact date updated for{' '}
                 {entity.company}.
@@ -181,7 +181,7 @@ export function EmailDraftModal({ target, onClose }: EmailDraftModalProps) {
             </div>
             <button
               onClick={() => setSentSuccess(false)}
-              className="text-emerald-400 hover:text-emerald-200 text-[11px] font-medium underline ml-2"
+              className="text-success hover:text-success-lighter text-[11px] font-medium underline ml-2"
             >
               Dismiss
             </button>
@@ -190,8 +190,8 @@ export function EmailDraftModal({ target, onClose }: EmailDraftModalProps) {
 
         {/* Error Banner */}
         {errorMessage && (
-          <div className="mx-4 mt-3 px-3.5 py-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300 flex items-center gap-2">
-            <AlertCircle size={15} className="text-rose-400 shrink-0" />
+          <div className="mx-4 mt-3 px-3.5 py-2 rounded-xl bg-danger-strong/10 border border-danger-strong/30 text-xs text-danger-light flex items-center gap-2">
+            <AlertCircle size={15} className="text-danger-medium shrink-0" />
             <span>{errorMessage}</span>
           </div>
         )}
@@ -200,7 +200,7 @@ export function EmailDraftModal({ target, onClose }: EmailDraftModalProps) {
         <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
           {/* Recipient Field */}
           <div>
-            <label className="block text-[11px] font-semibold text-[#6d7c9c] uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-semibold text-muted uppercase tracking-wider mb-1">
               Recipient Email (To:)
             </label>
             <div className="relative">
@@ -209,9 +209,9 @@ export function EmailDraftModal({ target, onClose }: EmailDraftModalProps) {
                 value={recipientEmail}
                 onChange={(e) => setRecipientEmail(e.target.value)}
                 placeholder="contact@company.com"
-                className="w-full px-3.5 py-2 rounded-xl bg-[#080c16] border border-[rgba(148,175,235,0.18)] text-sm text-[#e9eefb] focus:outline-none focus:border-[#818cf8] transition-colors"
+                className="w-full px-3.5 py-2 rounded-xl bg-bg border border-line/18 text-sm text-text focus:outline-none focus:border-primary transition-colors"
               />
-              <span className="absolute right-3 top-2.5 text-xs text-[#9aabcc]/70">
+              <span className="absolute right-3 top-2.5 text-xs text-text-secondary/70">
                 {entity.contactName}
               </span>
             </div>
@@ -219,26 +219,26 @@ export function EmailDraftModal({ target, onClose }: EmailDraftModalProps) {
 
           {/* Subject Field */}
           <div>
-            <label className="block text-[11px] font-semibold text-[#6d7c9c] uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-semibold text-muted uppercase tracking-wider mb-1">
               Subject Line
             </label>
             <input
               type="text"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-[#080c16] border border-[rgba(148,175,235,0.18)] text-sm text-[#e9eefb] focus:outline-none focus:border-[#818cf8] transition-colors"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-bg border border-line/18 text-sm text-text focus:outline-none focus:border-primary transition-colors"
             />
           </div>
 
           {/* Body Field */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-[11px] font-semibold text-[#6d7c9c] uppercase tracking-wider">
+              <label className="text-[11px] font-semibold text-muted uppercase tracking-wider">
                 Email Body (First-Person, Concise)
               </label>
               <span
                 className={`text-[11px] font-mono tabular-nums ${
-                  wordCount <= 110 ? 'text-[#2dd4bf]' : 'text-[#fbbf24]'
+                  wordCount <= 110 ? 'text-teal' : 'text-warning'
                 }`}
               >
                 {wordCount} / 110 words
@@ -248,36 +248,36 @@ export function EmailDraftModal({ target, onClose }: EmailDraftModalProps) {
               rows={8}
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              className="w-full p-3.5 rounded-xl bg-[#080c16] border border-[rgba(148,175,235,0.18)] text-sm text-[#e9eefb] font-sans leading-relaxed focus:outline-none focus:border-[#818cf8] transition-colors resize-none"
+              className="w-full p-3.5 rounded-xl bg-bg border border-line/18 text-sm text-text font-sans leading-relaxed focus:outline-none focus:border-primary transition-colors resize-none"
             />
           </div>
 
           {/* Internal meeting context reference */}
           {leadEntity?.meetingContext && (
-            <div className="p-3 rounded-xl bg-[#18213a]/50 border border-[rgba(148,175,235,0.1)] text-xs">
-              <span className="text-[11px] font-semibold text-[#6d7c9c] block mb-1">
+            <div className="p-3 rounded-xl bg-raised/50 border border-line/10 text-xs">
+              <span className="text-[11px] font-semibold text-muted block mb-1">
                 Internal CRM Meeting Context (Reference Only):
               </span>
-              <p className="text-[#9aabcc] italic">"{leadEntity.meetingContext}"</p>
+              <p className="text-text-secondary italic">"{leadEntity.meetingContext}"</p>
             </div>
           )}
 
           {/* Client notes reference if present */}
           {clientEntity?.notes && !leadEntity && (
-            <div className="p-3 rounded-xl bg-[#18213a]/50 border border-[rgba(148,175,235,0.1)] text-xs">
-              <span className="text-[11px] font-semibold text-[#6d7c9c] block mb-1">
+            <div className="p-3 rounded-xl bg-raised/50 border border-line/10 text-xs">
+              <span className="text-[11px] font-semibold text-muted block mb-1">
                 Account Notes (Reference Only):
               </span>
-              <p className="text-[#9aabcc] italic">"{clientEntity.notes}"</p>
+              <p className="text-text-secondary italic">"{clientEntity.notes}"</p>
             </div>
           )}
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 sm:p-5 border-t border-[rgba(148,175,235,0.14)] bg-[#18213a]/40 flex flex-wrap items-center justify-between gap-3">
+        <div className="p-4 sm:p-5 border-t border-line/14 bg-raised/40 flex flex-wrap items-center justify-between gap-3">
           <button
             onClick={handleRegenerate}
-            className="px-3 py-2 rounded-xl text-xs font-medium text-[#9aabcc] hover:text-[#e9eefb] hover:bg-[#18213a] transition-colors flex items-center gap-1.5"
+            className="px-3 py-2 rounded-xl text-xs font-medium text-text-secondary hover:text-text hover:bg-raised transition-colors flex items-center gap-1.5"
             title="Reset and regenerate draft"
           >
             <RefreshCw size={13} />
@@ -287,7 +287,7 @@ export function EmailDraftModal({ target, onClose }: EmailDraftModalProps) {
           <div className="flex items-center gap-2.5">
             <button
               onClick={onClose}
-              className="px-3.5 py-2.5 rounded-xl text-xs font-semibold text-[#9aabcc] hover:text-white hover:bg-[#18213a] transition-colors"
+              className="px-3.5 py-2.5 rounded-xl text-xs font-semibold text-text-secondary hover:text-text-strong hover:bg-raised transition-colors"
             >
               Close
             </button>
@@ -295,17 +295,17 @@ export function EmailDraftModal({ target, onClose }: EmailDraftModalProps) {
             {/* Secondary Action: Copy Draft */}
             <button
               onClick={handleCopy}
-              className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-[#18213a] hover:bg-[#1e2a4a] text-[#e9eefb] border border-[rgba(148,175,235,0.22)] active:scale-[0.98] transition-all flex items-center gap-2"
+              className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-raised hover:bg-overlay text-text border border-line/22 active:scale-[0.98] transition-all flex items-center gap-2"
               title="Copy subject and body to clipboard"
             >
               {copied ? (
                 <>
-                  <Check size={14} className="text-[#2dd4bf]" />
-                  <span className="text-[#2dd4bf]">Copied!</span>
+                  <Check size={14} className="text-teal" />
+                  <span className="text-teal">Copied!</span>
                 </>
               ) : (
                 <>
-                  <Copy size={14} className="text-[#9aabcc]" />
+                  <Copy size={14} className="text-text-secondary" />
                   <span>Copy Draft</span>
                 </>
               )}
@@ -314,10 +314,10 @@ export function EmailDraftModal({ target, onClose }: EmailDraftModalProps) {
             {/* Primary Action: Send Email */}
             <button
               onClick={handleSend}
-              className={`px-5 py-2.5 rounded-xl text-xs font-bold text-slate-950 shadow-md active:scale-[0.98] transition-all flex items-center gap-2 ${
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold text-on-primary shadow-md active:scale-[0.98] transition-all flex items-center gap-2 ${
                 sentSuccess
-                  ? 'bg-emerald-400 hover:bg-emerald-300 text-emerald-950'
-                  : 'bg-gradient-to-r from-[#818cf8] via-[#6366f1] to-[#2dd4bf] hover:from-[#a78bfa] hover:to-[#22d3ee] shadow-indigo-500/25'
+                  ? 'bg-success hover:bg-success-light text-on-success'
+                  : 'bg-gradient-to-r from-primary via-primary-strong to-teal hover:from-primary-soft hover:to-info shadow-primary-tint/25'
               }`}
               title="Launch default email app and record CRM touchpoint"
             >

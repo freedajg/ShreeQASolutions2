@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   checks:
-    name: Typecheck, lint, unit tests
+    name: Typecheck, lint, format, unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -29,6 +29,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
       - run: bun run lint
+      - run: bun run format:check
       - run: bun run test
 
   gitleaks:
@@ -61,10 +62,7 @@ jobs:
         run: gitleaks git --redact --verbose --no-banner
 
   colors:
-    name: No hardcoded hex colour classes
-    # Off until Phase 0 part 2 converts the MVP's classes to design tokens.
-    # To turn it on, delete the `if: false` line below.
-    if: false
+    name: No hardcoded colour classes
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

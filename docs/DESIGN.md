@@ -83,7 +83,7 @@ Rules:
 
 ## 2a. Light and dark themes
 
-Users choose **Light**, **Dark** or **System** (follows the device setting). **Default: System.**
+Users choose **Light**, **Dark** or **System** (follows the device setting). **Default: Dark for now; it switches to System after the client approves the light theme** (see `DECISIONS.md`, 02-Oct-2026).
 
 **Where the switch lives:** a sun/moon icon in the top bar (one click toggles Light ↔ Dark), and a three-way choice (Light / Dark / System) in the user menu → Preferences.
 
@@ -99,7 +99,7 @@ Users choose **Light**, **Dark** or **System** (follows the device setting). **D
 |---|---|
 | `--color-primary` | `#4F46E5` (indigo-600 — darker than dark mode's, for contrast on white) |
 | `--color-primary-strong` | `#4338CA` (indigo-700) |
-| `--color-primary-soft` | `#EEF2FF` (indigo-50) |
+| `--color-primary-soft` | `#7C3AED` (violet-600). The MVP uses it as text and gradient ends, so indigo-50 would be invisible (DECISIONS.md, 02-Oct-2026) |
 | `--color-bg` | `#F8FAFC` (slate-50) |
 | `--color-surface` | `#FFFFFF` |
 | `--color-raised` | `#F1F5F9` (slate-100) |

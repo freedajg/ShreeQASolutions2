@@ -275,10 +275,10 @@ export function ImportView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#e9eefb]">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
             Import Excel & CSV
           </h1>
-          <p className="text-xs sm:text-sm text-[#9aabcc] mt-0.5">
+          <p className="text-xs sm:text-sm text-text-secondary mt-0.5">
             Migrate from your existing consulting Excel workbook directly into browser local
             storage.
           </p>
@@ -286,7 +286,7 @@ export function ImportView() {
 
         <button
           onClick={downloadTemplate}
-          className="px-3.5 py-2 rounded-xl bg-[#18213a] hover:bg-indigo-500/20 text-[#818cf8] hover:text-[#e9eefb] border border-[rgba(148,175,235,0.18)] text-xs font-semibold flex items-center gap-1.5 self-start sm:self-auto transition-colors"
+          className="px-3.5 py-2 rounded-xl bg-raised hover:bg-primary-tint/20 text-primary hover:text-text border border-line/18 text-xs font-semibold flex items-center gap-1.5 self-start sm:self-auto transition-colors"
         >
           <Download size={14} />
           <span>Download Sample Excel Template</span>
@@ -294,10 +294,10 @@ export function ImportView() {
       </div>
 
       {/* Target Selector Card */}
-      <div className="bg-[#111828] border border-[rgba(148,175,235,0.16)] rounded-2xl p-5 shadow-lg space-y-4">
+      <div className="bg-surface border border-line/16 rounded-2xl p-5 shadow-lg space-y-4">
         <div className="flex items-center gap-4">
           <div className="space-y-1 flex-1">
-            <label className="text-xs font-bold text-[#e9eefb] uppercase tracking-wider block">
+            <label className="text-xs font-bold text-text uppercase tracking-wider block">
               1. Choose Import Target
             </label>
             <div className="flex items-center gap-3">
@@ -309,8 +309,8 @@ export function ImportView() {
                 }}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
                   importTarget === 'clients'
-                    ? 'bg-indigo-500/20 text-[#818cf8] border-indigo-500/40'
-                    : 'bg-[#080c16] text-[#9aabcc] border-[rgba(148,175,235,0.12)]'
+                    ? 'bg-primary-tint/20 text-primary border-primary-tint/40'
+                    : 'bg-bg text-text-secondary border-line/12'
                 }`}
               >
                 Certified Clients Register ({clients.length} current)
@@ -323,8 +323,8 @@ export function ImportView() {
                 }}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
                   importTarget === 'leads'
-                    ? 'bg-indigo-500/20 text-[#818cf8] border-indigo-500/40'
-                    : 'bg-[#080c16] text-[#9aabcc] border-[rgba(148,175,235,0.12)]'
+                    ? 'bg-primary-tint/20 text-primary border-primary-tint/40'
+                    : 'bg-bg text-text-secondary border-line/12'
                 }`}
               >
                 Pipeline Prospects / Leads ({leads.length} current)
@@ -345,15 +345,15 @@ export function ImportView() {
           />
           <label
             htmlFor="excel-file-input"
-            className="border-2 border-dashed border-[rgba(148,175,235,0.22)] hover:border-[#818cf8] rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors text-center bg-[#080c16]/50 hover:bg-[#18213a]/30"
+            className="border-2 border-dashed border-line/22 hover:border-primary rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors text-center bg-bg/50 hover:bg-raised/30"
           >
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-[#818cf8] mb-3">
+            <div className="w-12 h-12 rounded-2xl bg-primary-tint/10 border border-primary-tint/20 flex items-center justify-center text-primary mb-3">
               <FileSpreadsheet size={24} />
             </div>
-            <span className="text-sm font-bold text-[#e9eefb]">
+            <span className="text-sm font-bold text-text">
               {fileName ? fileName : 'Click to select or drop an Excel (.xlsx) / CSV file'}
             </span>
-            <span className="text-xs text-[#6d7c9c] mt-1">
+            <span className="text-xs text-muted mt-1">
               Supports multi-sheet workbooks, standard ISO/CMMI date strings, and Indian Rupee
               values.
             </span>
@@ -361,14 +361,14 @@ export function ImportView() {
         </div>
 
         {successMessage && (
-          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2">
+          <div className="p-3.5 rounded-xl bg-success-strong/10 border border-success-strong/20 text-success text-xs flex items-center gap-2">
             <CheckCircle size={16} />
             <span>{successMessage}</span>
           </div>
         )}
 
         {errorMessage && (
-          <div className="p-3.5 rounded-xl bg-[#fb7185]/10 border border-[#fb7185]/20 text-[#fb7185] text-xs flex items-center gap-2">
+          <div className="p-3.5 rounded-xl bg-danger/10 border border-danger/20 text-danger text-xs flex items-center gap-2">
             <AlertCircle size={16} />
             <span>{errorMessage}</span>
           </div>
@@ -377,13 +377,13 @@ export function ImportView() {
 
       {/* Interactive Column Mapping */}
       {parsedRows.length > 0 && (
-        <div className="bg-[#111828] border border-[rgba(148,175,235,0.18)] rounded-2xl p-5 shadow-xl space-y-5 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between pb-3 border-b border-[rgba(148,175,235,0.12)]">
+        <div className="bg-surface border border-line/18 rounded-2xl p-5 shadow-xl space-y-5 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between pb-3 border-b border-line/12">
             <div>
-              <h3 className="font-bold text-sm text-[#e9eefb]">
+              <h3 className="font-bold text-sm text-text">
                 2. Map File Columns to Drishti CRM Fields
               </h3>
-              <p className="text-xs text-[#9aabcc]">
+              <p className="text-xs text-text-secondary">
                 Found {columnHeaders.length} columns and {parsedRows.length} rows in {fileName}.
               </p>
             </div>
@@ -393,11 +393,11 @@ export function ImportView() {
             {targetFields.map((field) => (
               <div
                 key={field.key}
-                className="p-3 rounded-xl bg-[#080c16] border border-[rgba(148,175,235,0.12)] space-y-1.5"
+                className="p-3 rounded-xl bg-bg border border-line/12 space-y-1.5"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-[#e9eefb]">
-                    {field.label} {field.required && <strong className="text-[#fb7185]">*</strong>}
+                  <span className="font-semibold text-text">
+                    {field.label} {field.required && <strong className="text-danger">*</strong>}
                   </span>
                 </div>
 
@@ -406,7 +406,7 @@ export function ImportView() {
                   onChange={(e) =>
                     setColumnMapping({ ...columnMapping, [field.key]: e.target.value })
                   }
-                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#18213a] text-xs text-[#e9eefb] border border-[rgba(148,175,235,0.18)] focus:outline-none focus:border-[#818cf8]"
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-raised text-xs text-text border border-line/18 focus:outline-none focus:border-primary"
                 >
                   <option value="">— Ignore / Not in file —</option>
                   {columnHeaders.map((col) => (
@@ -421,12 +421,12 @@ export function ImportView() {
 
           {/* 5-Row Preview Table */}
           <div className="space-y-2 pt-2">
-            <h4 className="text-xs font-bold text-[#6d7c9c] uppercase tracking-wider">
+            <h4 className="text-xs font-bold text-muted uppercase tracking-wider">
               Preview (First {Math.min(5, parsedRows.length)} rows)
             </h4>
-            <div className="overflow-x-auto border border-[rgba(148,175,235,0.12)] rounded-xl">
+            <div className="overflow-x-auto border border-line/12 rounded-xl">
               <table className="w-full text-left text-xs">
-                <thead className="bg-[#18213a] text-[#9aabcc] text-[10px] uppercase">
+                <thead className="bg-raised text-text-secondary text-[10px] uppercase">
                   <tr>
                     {targetFields.slice(0, 5).map((f) => (
                       <th key={f.key} className="px-3 py-2">
@@ -435,11 +435,11 @@ export function ImportView() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[rgba(148,175,235,0.06)] text-[#e9eefb]">
+                <tbody className="divide-y divide-line/6 text-text">
                   {parsedRows.slice(0, 5).map((row, idx) => (
-                    <tr key={idx} className="hover:bg-[#18213a]/30">
+                    <tr key={idx} className="hover:bg-raised/30">
                       {targetFields.slice(0, 5).map((f) => (
-                        <td key={f.key} className="px-3 py-2 text-[#9aabcc]">
+                        <td key={f.key} className="px-3 py-2 text-text-secondary">
                           {columnMapping[f.key] ? String(row[columnMapping[f.key]] || '—') : '—'}
                         </td>
                       ))}
@@ -451,21 +451,21 @@ export function ImportView() {
           </div>
 
           {/* Execute Button */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[rgba(148,175,235,0.12)]">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-line/12">
             <button
               type="button"
               onClick={() => {
                 setParsedRows([]);
                 setFileName(null);
               }}
-              className="px-4 py-2 rounded-xl text-xs text-[#9aabcc] hover:text-white"
+              className="px-4 py-2 rounded-xl text-xs text-text-secondary hover:text-text-strong"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleExecuteImport}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#818cf8] to-[#2dd4bf] hover:from-[#a78bfa] hover:to-[#22d3ee] text-slate-950 font-bold text-xs shadow-lg transition-all flex items-center gap-2"
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-primary to-teal hover:from-primary-soft hover:to-info text-on-primary font-bold text-xs shadow-lg transition-all flex items-center gap-2"
             >
               <CheckCircle size={15} />
               <span>Import {parsedRows.length} Records</span>

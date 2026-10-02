@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
 
+// The first page load waits for the dev server to compile the app.
+test.describe.configure({ timeout: 60_000 });
+
 test('app loads with its title and main navigation', async ({ page }) => {
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));

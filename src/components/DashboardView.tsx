@@ -136,10 +136,10 @@ export function DashboardView() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-12 space-y-6">
       {/* Executive Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#e9eefb]">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
           Executive Dashboard
         </h1>
-        <p className="text-xs sm:text-sm text-[#9aabcc]">
+        <p className="text-xs sm:text-sm text-text-secondary">
           High-level view of active contracts, renewal risks, pipeline bottlenecks, and team
           portfolios.
         </p>
@@ -148,9 +148,9 @@ export function DashboardView() {
       {/* 4 Primary Figures (Client's plain words) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Figure 1: Money you have */}
-        <div className="bg-[#111828] border border-[rgba(148,175,235,0.16)] rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div className="bg-surface border border-line/16 rounded-2xl p-5 shadow-lg relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#9aabcc] uppercase tracking-wider">
+            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
               Money you have
             </span>
             <MetricInfo
@@ -161,17 +161,17 @@ export function DashboardView() {
           </div>
 
           <div className="mt-3">
-            <span className="text-2xl sm:text-3xl font-bold text-[#e9eefb] font-mono tabular-nums tracking-tight">
+            <span className="text-2xl sm:text-3xl font-bold text-text font-mono tabular-nums tracking-tight">
               {formatINR(totalCertifiedValue)}
             </span>
-            <p className="mt-1 text-xs text-[#6d7c9c]">{clients.length} active certified clients</p>
+            <p className="mt-1 text-xs text-muted">{clients.length} active certified clients</p>
           </div>
         </div>
 
         {/* Figure 2: Money you could win */}
-        <div className="bg-[#111828] border border-[rgba(148,175,235,0.16)] rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div className="bg-surface border border-line/16 rounded-2xl p-5 shadow-lg relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#9aabcc] uppercase tracking-wider">
+            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
               Money you could win
             </span>
             <MetricInfo
@@ -182,17 +182,17 @@ export function DashboardView() {
           </div>
 
           <div className="mt-3">
-            <span className="text-2xl sm:text-3xl font-bold text-[#22d3ee] font-mono tabular-nums tracking-tight">
+            <span className="text-2xl sm:text-3xl font-bold text-info font-mono tabular-nums tracking-tight">
               {formatINR(totalOpenPipelineValue)}
             </span>
-            <p className="mt-1 text-xs text-[#6d7c9c]">{openLeads.length} open deals in pipeline</p>
+            <p className="mt-1 text-xs text-muted">{openLeads.length} open deals in pipeline</p>
           </div>
         </div>
 
         {/* Figure 3: Money at risk (With Ring: share of book) */}
-        <div className="bg-[#111828] border border-[#fb7185]/30 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div className="bg-surface border border-danger/30 rounded-2xl p-5 shadow-lg relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#fb7185] uppercase tracking-wider">
+            <span className="text-xs font-semibold text-danger uppercase tracking-wider">
               Money at risk
             </span>
             <MetricInfo
@@ -204,10 +204,10 @@ export function DashboardView() {
 
           <div className="mt-3 flex items-center justify-between">
             <div>
-              <span className="text-2xl sm:text-3xl font-bold text-[#fb7185] font-mono tabular-nums tracking-tight">
+              <span className="text-2xl sm:text-3xl font-bold text-danger font-mono tabular-nums tracking-tight">
                 {formatINR(totalRiskValue)}
               </span>
-              <p className="mt-1 text-xs text-[#fb7185]/80">
+              <p className="mt-1 text-xs text-danger/80">
                 {riskClients.length} clients lapsed or due within 90 days
               </p>
             </div>
@@ -216,14 +216,14 @@ export function DashboardView() {
             <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
               <svg className="w-14 h-14 transform -rotate-90" viewBox="0 0 36 36">
                 <path
-                  className="text-[#18213a]"
+                  className="text-raised"
                   strokeWidth="3.5"
                   stroke="currentColor"
                   fill="none"
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                 />
                 <path
-                  className="text-[#fb7185]"
+                  className="text-danger"
                   strokeDasharray={`${riskPercent}, 100`}
                   strokeWidth="3.5"
                   strokeLinecap="round"
@@ -233,21 +233,21 @@ export function DashboardView() {
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-[11px] font-bold font-mono text-[#fb7185] tabular-nums leading-none">
+                <span className="text-[11px] font-bold font-mono text-danger tabular-nums leading-none">
                   {riskPercent}%
                 </span>
               </div>
             </div>
           </div>
-          <p className="mt-2 text-[10px] text-[#6d7c9c] italic border-t border-[rgba(148,175,235,0.08)] pt-1.5">
+          <p className="mt-2 text-[10px] text-muted italic border-t border-line/8 pt-1.5">
             Share of certified book ({riskPercent}% of {formatINR(totalCertifiedValue, true)})
           </p>
         </div>
 
         {/* Figure 4: Money won (With Ring: win rate) */}
-        <div className="bg-[#111828] border border-[#2dd4bf]/30 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div className="bg-surface border border-teal/30 rounded-2xl p-5 shadow-lg relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#2dd4bf] uppercase tracking-wider">
+            <span className="text-xs font-semibold text-teal uppercase tracking-wider">
               Money won
             </span>
             <MetricInfo
@@ -259,10 +259,10 @@ export function DashboardView() {
 
           <div className="mt-3 flex items-center justify-between">
             <div>
-              <span className="text-2xl sm:text-3xl font-bold text-[#2dd4bf] font-mono tabular-nums tracking-tight">
+              <span className="text-2xl sm:text-3xl font-bold text-teal font-mono tabular-nums tracking-tight">
                 {formatINR(totalWonValue)}
               </span>
-              <p className="mt-1 text-xs text-[#2dd4bf]/80">
+              <p className="mt-1 text-xs text-teal/80">
                 {wonLeads.length} deals won ({closedCount} closed)
               </p>
             </div>
@@ -271,14 +271,14 @@ export function DashboardView() {
             <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
               <svg className="w-14 h-14 transform -rotate-90" viewBox="0 0 36 36">
                 <path
-                  className="text-[#18213a]"
+                  className="text-raised"
                   strokeWidth="3.5"
                   stroke="currentColor"
                   fill="none"
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                 />
                 <path
-                  className="text-[#2dd4bf]"
+                  className="text-teal"
                   strokeDasharray={`${winRate}, 100`}
                   strokeWidth="3.5"
                   strokeLinecap="round"
@@ -288,24 +288,24 @@ export function DashboardView() {
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-[11px] font-bold font-mono text-[#2dd4bf] tabular-nums leading-none">
+                <span className="text-[11px] font-bold font-mono text-teal tabular-nums leading-none">
                   {winRate}%
                 </span>
               </div>
             </div>
           </div>
-          <p className="mt-2 text-[10px] text-[#6d7c9c] italic border-t border-[rgba(148,175,235,0.08)] pt-1.5">
+          <p className="mt-2 text-[10px] text-muted italic border-t border-line/8 pt-1.5">
             Win rate of closed deals (Won / (Won + Lost))
           </p>
         </div>
       </div>
 
       {/* Primary Chart: When your renewals are due (Next 12 Months) - The chart that earns the app! */}
-      <div className="bg-[#111828] border border-[rgba(148,175,235,0.18)] rounded-2xl p-5 sm:p-6 shadow-xl">
-        <div className="flex items-center justify-between pb-4 border-b border-[rgba(148,175,235,0.12)]">
+      <div className="bg-surface border border-line/18 rounded-2xl p-5 sm:p-6 shadow-xl">
+        <div className="flex items-center justify-between pb-4 border-b border-line/12">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-bold text-[#e9eefb]">
+              <h2 className="text-base sm:text-lg font-bold text-text">
                 When your renewals are due
               </h2>
               <MetricInfo
@@ -313,11 +313,11 @@ export function DashboardView() {
                 explanation="Shows which clients need renewals across each of the upcoming 12 months based on their 3-year (CMMI) or 1-year (ISO/IPA) audit cycles."
               />
             </div>
-            <p className="text-xs text-[#9aabcc] mt-0.5">
+            <p className="text-xs text-text-secondary mt-0.5">
               Client certification expiry projected across the next 12 months
             </p>
           </div>
-          <span className="text-xs font-mono text-[#818cf8] hidden sm:block">
+          <span className="text-xs font-mono text-primary hidden sm:block">
             Next 12 Months Projection
           </span>
         </div>
@@ -341,12 +341,12 @@ export function DashboardView() {
                   >
                     {/* Tooltip on hover */}
                     {hasClients && (
-                      <div className="absolute bottom-full mb-2 hidden group-hover:block z-30 p-2.5 bg-[#18213a] border border-[rgba(148,175,235,0.25)] rounded-xl shadow-2xl text-left w-48 text-xs pointer-events-none">
-                        <div className="font-bold text-[#e9eefb] border-b border-[rgba(148,175,235,0.1)] pb-1 mb-1">
+                      <div className="absolute bottom-full mb-2 hidden group-hover:block z-30 p-2.5 bg-raised border border-line/25 rounded-xl shadow-2xl text-left w-48 text-xs pointer-events-none">
+                        <div className="font-bold text-text border-b border-line/10 pb-1 mb-1">
                           {m.label} · {formatINR(m.totalValue)}
                         </div>
                         {m.clients.map((c, i) => (
-                          <div key={i} className="text-[#9aabcc] py-0.5 truncate">
+                          <div key={i} className="text-text-secondary py-0.5 truncate">
                             • {c.company} ({c.service})
                           </div>
                         ))}
@@ -354,20 +354,20 @@ export function DashboardView() {
                     )}
 
                     {/* Value label */}
-                    <span className="text-[10px] font-mono text-[#9aabcc] mb-1 tabular-nums truncate w-full text-center">
+                    <span className="text-[10px] font-mono text-text-secondary mb-1 tabular-nums truncate w-full text-center">
                       {m.totalValue > 0 ? formatINR(m.totalValue, true) : '—'}
                     </span>
 
                     {/* Bar Pillar */}
-                    <div className="w-full bg-[#18213a] rounded-t-lg h-40 flex items-end p-1">
+                    <div className="w-full bg-raised rounded-t-lg h-40 flex items-end p-1">
                       <div
                         style={{ height: `${heightPercent}%` }}
                         className={`w-full rounded-t-md transition-all duration-300 ${
                           !hasClients
-                            ? 'bg-[#18213a]'
+                            ? 'bg-raised'
                             : isImmediate
-                              ? 'bg-gradient-to-t from-[#fb7185] to-[#fbbf24]'
-                              : 'bg-gradient-to-t from-[#6366f1] to-[#22d3ee]'
+                              ? 'bg-gradient-to-t from-danger to-warning'
+                              : 'bg-gradient-to-t from-primary-strong to-info'
                         }`}
                       />
                     </div>
@@ -375,12 +375,12 @@ export function DashboardView() {
                     {/* Month Label */}
                     <span
                       className={`text-xs mt-2 font-medium ${
-                        hasClients ? 'text-[#e9eefb] font-semibold' : 'text-[#6d7c9c]'
+                        hasClients ? 'text-text font-semibold' : 'text-muted'
                       }`}
                     >
                       {m.label}
                     </span>
-                    <span className="text-[10px] text-[#6d7c9c]">
+                    <span className="text-[10px] text-muted">
                       {m.clients.length > 0 ? `${m.clients.length} due` : ''}
                     </span>
                   </div>
@@ -394,16 +394,16 @@ export function DashboardView() {
       {/* Grid of 4 analytical charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Chart 2: Where open deals are stuck */}
-        <div className="bg-[#111828] border border-[rgba(148,175,235,0.16)] rounded-2xl p-5 shadow-lg space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-[rgba(148,175,235,0.1)]">
+        <div className="bg-surface border border-line/16 rounded-2xl p-5 shadow-lg space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-line/10">
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm text-[#e9eefb]">Where your open deals are stuck</h3>
+              <h3 className="font-bold text-sm text-text">Where your open deals are stuck</h3>
               <MetricInfo
                 title="Deals Stuck by Stage"
                 explanation="Total potential pipeline value waiting at each qualification stage before closing."
               />
             </div>
-            <span className="text-xs font-mono text-[#22d3ee]">
+            <span className="text-xs font-mono text-info">
               {formatINR(totalOpenPipelineValue)} Total
             </span>
           </div>
@@ -414,18 +414,18 @@ export function DashboardView() {
               return (
                 <div key={item.stage} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-[#e9eefb] font-medium">{item.stage}</span>
+                    <span className="text-text font-medium">{item.stage}</span>
                     <div className="flex items-center gap-2 font-mono">
-                      <span className="text-[#6d7c9c] text-[11px]">
+                      <span className="text-muted text-[11px]">
                         ({item.count} {item.count === 1 ? 'deal' : 'deals'})
                       </span>
-                      <span className="text-[#22d3ee] font-semibold">{formatINR(item.value)}</span>
+                      <span className="text-info font-semibold">{formatINR(item.value)}</span>
                     </div>
                   </div>
-                  <div className="w-full bg-[#18213a] rounded-full h-2.5 overflow-hidden">
+                  <div className="w-full bg-raised rounded-full h-2.5 overflow-hidden">
                     <div
                       style={{ width: `${Math.max(widthPct, 2)}%` }}
-                      className="bg-gradient-to-r from-[#818cf8] to-[#22d3ee] h-full rounded-full transition-all duration-300"
+                      className="bg-gradient-to-r from-primary to-info h-full rounded-full transition-all duration-300"
                     />
                   </div>
                 </div>
@@ -435,16 +435,16 @@ export function DashboardView() {
         </div>
 
         {/* Chart 3: Who owns which clients */}
-        <div className="bg-[#111828] border border-[rgba(148,175,235,0.16)] rounded-2xl p-5 shadow-lg space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-[rgba(148,175,235,0.1)]">
+        <div className="bg-surface border border-line/16 rounded-2xl p-5 shadow-lg space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-line/10">
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm text-[#e9eefb]">Who owns which clients</h3>
+              <h3 className="font-bold text-sm text-text">Who owns which clients</h3>
               <MetricInfo
                 title="Client Ownership Distribution"
                 explanation="Breakdown of existing certified client book value and count across the 4 team members."
               />
             </div>
-            <span className="text-xs font-mono text-[#818cf8]">4 Team Members</span>
+            <span className="text-xs font-mono text-primary">4 Team Members</span>
           </div>
 
           <div className="space-y-3 pt-2">
@@ -453,18 +453,20 @@ export function DashboardView() {
               return (
                 <div key={item.owner} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-[#e9eefb] font-semibold">{item.owner}</span>
+                    <span className="text-text font-semibold">{item.owner}</span>
                     <div className="flex items-center gap-2 font-mono">
-                      <span className="text-[#6d7c9c] text-[11px]">
+                      <span className="text-muted text-[11px]">
                         ({item.count} {item.count === 1 ? 'client' : 'clients'})
                       </span>
-                      <span className="text-[#a78bfa] font-semibold">{formatINR(item.value)}</span>
+                      <span className="text-primary-soft font-semibold">
+                        {formatINR(item.value)}
+                      </span>
                     </div>
                   </div>
-                  <div className="w-full bg-[#18213a] rounded-full h-2.5 overflow-hidden">
+                  <div className="w-full bg-raised rounded-full h-2.5 overflow-hidden">
                     <div
                       style={{ width: `${Math.max(widthPct, 2)}%` }}
-                      className="bg-gradient-to-r from-[#6366f1] to-[#a78bfa] h-full rounded-full transition-all duration-300"
+                      className="bg-gradient-to-r from-primary-strong to-primary-soft h-full rounded-full transition-all duration-300"
                     />
                   </div>
                 </div>
@@ -474,16 +476,16 @@ export function DashboardView() {
         </div>
 
         {/* Chart 4: Work delivered by quarter */}
-        <div className="bg-[#111828] border border-[rgba(148,175,235,0.16)] rounded-2xl p-5 shadow-lg space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-[rgba(148,175,235,0.1)]">
+        <div className="bg-surface border border-line/16 rounded-2xl p-5 shadow-lg space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-line/10">
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm text-[#e9eefb]">Work you delivered, by quarter</h3>
+              <h3 className="font-bold text-sm text-text">Work you delivered, by quarter</h3>
               <MetricInfo
                 title="Historical Appraisal Delivery"
                 explanation="Value of process certifications completed across the last 8 quarters, calculated directly from client last appraisal dates."
               />
             </div>
-            <span className="text-xs font-mono text-[#2dd4bf]">Last 8 Quarters</span>
+            <span className="text-xs font-mono text-teal">Last 8 Quarters</span>
           </div>
 
           <div className="grid grid-cols-8 gap-1.5 pt-4 text-center">
@@ -499,38 +501,40 @@ export function DashboardView() {
                 >
                   {/* Tooltip */}
                   {q.count > 0 && (
-                    <div className="absolute bottom-full mb-1 hidden group-hover:block z-30 p-2 bg-[#18213a] border border-[rgba(148,175,235,0.2)] rounded-lg text-xs w-28 text-left pointer-events-none">
-                      <div className="font-bold text-[#e9eefb]">{q.label}</div>
-                      <div className="text-[#2dd4bf] font-mono">{formatINR(q.value)}</div>
-                      <div className="text-[#9aabcc] text-[10px]">{q.count} audits delivered</div>
+                    <div className="absolute bottom-full mb-1 hidden group-hover:block z-30 p-2 bg-raised border border-line/20 rounded-lg text-xs w-28 text-left pointer-events-none">
+                      <div className="font-bold text-text">{q.label}</div>
+                      <div className="text-teal font-mono">{formatINR(q.value)}</div>
+                      <div className="text-text-secondary text-[10px]">
+                        {q.count} audits delivered
+                      </div>
                     </div>
                   )}
 
-                  <div className="w-full bg-[#18213a] rounded-t h-24 flex items-end p-0.5">
+                  <div className="w-full bg-raised rounded-t h-24 flex items-end p-0.5">
                     <div
                       style={{ height: `${hPct}%` }}
                       className={`w-full rounded-t transition-all duration-300 ${
-                        q.count > 0 ? 'bg-[#2dd4bf]' : 'bg-[#18213a]'
+                        q.count > 0 ? 'bg-teal' : 'bg-raised'
                       }`}
                     />
                   </div>
-                  <span className="text-[10px] text-[#9aabcc] mt-1 font-medium truncate w-full">
+                  <span className="text-[10px] text-text-secondary mt-1 font-medium truncate w-full">
                     {q.label}
                   </span>
                 </div>
               );
             })}
           </div>
-          <p className="text-[11px] text-[#6d7c9c] italic">
+          <p className="text-[11px] text-muted italic">
             *Derived from recorded appraisal completion dates in active client ledger.
           </p>
         </div>
 
         {/* Chart 5: Standard revenue breakdown */}
-        <div className="bg-[#111828] border border-[rgba(148,175,235,0.16)] rounded-2xl p-5 shadow-lg space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-[rgba(148,175,235,0.1)]">
+        <div className="bg-surface border border-line/16 rounded-2xl p-5 shadow-lg space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-line/10">
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm text-[#e9eefb]">
+              <h3 className="font-bold text-sm text-text">
                 Which standard your revenue comes from
               </h3>
               <MetricInfo
@@ -538,7 +542,7 @@ export function DashboardView() {
                 explanation="Share of total certified revenue generated by CMMI appraisals vs ISO vs IPA certifications."
               />
             </div>
-            <span className="text-xs font-mono text-[#818cf8]">Standards Share</span>
+            <span className="text-xs font-mono text-primary">Standards Share</span>
           </div>
 
           <div className="space-y-3 pt-2">
@@ -546,18 +550,20 @@ export function DashboardView() {
               <div key={std.standard} className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
-                    <span className="text-[#e9eefb] font-semibold">{std.standard}</span>
-                    <span className="text-[11px] text-[#6d7c9c]">({std.count} clients)</span>
+                    <span className="text-text font-semibold">{std.standard}</span>
+                    <span className="text-[11px] text-muted">({std.count} clients)</span>
                   </div>
                   <div className="flex items-center gap-2 font-mono">
-                    <span className="text-[#818cf8] font-bold">{std.percent}%</span>
-                    <span className="text-[#9aabcc] text-[11px]">({formatINR(std.value)})</span>
+                    <span className="text-primary font-bold">{std.percent}%</span>
+                    <span className="text-text-secondary text-[11px]">
+                      ({formatINR(std.value)})
+                    </span>
                   </div>
                 </div>
-                <div className="w-full bg-[#18213a] rounded-full h-2.5 overflow-hidden">
+                <div className="w-full bg-raised rounded-full h-2.5 overflow-hidden">
                   <div
                     style={{ width: `${Math.max(std.percent, 2)}%` }}
-                    className="bg-gradient-to-r from-[#6366f1] to-[#818cf8] h-full rounded-full transition-all duration-300"
+                    className="bg-gradient-to-r from-primary-strong to-primary h-full rounded-full transition-all duration-300"
                   />
                 </div>
               </div>

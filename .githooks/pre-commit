@@ -1,5 +1,10 @@
 #!/bin/sh
-# Blocks any commit whose staged changes contain a secret.
+# Pre-commit checks, in this order:
+#   1. Gitleaks: blocks any commit whose staged changes contain a secret. Always runs.
+#   2. Prettier, check only: blocks staged files that aren't formatted. It checks the
+#      staged version of each file (exactly what will be committed) and never rewrites
+#      anything. Emergency skip for this check only (Gitleaks still runs):
+#        SKIP_PRETTIER=1 git commit ...
 # Enabled by `bun install` (the "prepare" script sets core.hooksPath to .githooks).
 
 if ! command -v gitleaks >/dev/null 2>&1; then
@@ -8,4 +13,38 @@ if ! command -v gitleaks >/dev/null 2>&1; then
   exit 1
 fi
 
-exec gitleaks git --pre-commit --staged --redact --verbose --no-banner
+gitleaks git --pre-commit --staged --redact --verbose --no-banner || exit 1
+
+if [ "$SKIP_PRETTIER" = "1" ]; then
+  echo "pre-commit: Prettier check skipped (SKIP_PRETTIER=1). Gitleaks still ran." >&2
+  exit 0
+fi
+
+if ! command -v bun >/dev/null 2>&1; then
+  echo "pre-commit: bun is not on PATH, so the Prettier check couldn't run and the commit was blocked." >&2
+  echo "Install Bun, or skip only this check with: SKIP_PRETTIER=1 git commit ..." >&2
+  exit 1
+fi
+
+files=$(git -c core.quotePath=false diff --cached --name-only --diff-filter=ACMR)
+unformatted=""
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+  case "$file" in
+    # Binary files: nothing for Prettier to check.
+    *.png | *.jpg | *.jpeg | *.gif | *.webp | *.ico | *.pdf | *.xlsx | *.zip | *.woff | *.woff2 | *.ttf) continue ;;
+  esac
+  # Prettier itself skips files in .prettierignore and file types it doesn't know.
+  if ! git show ":$file" | bun x prettier --check --ignore-unknown --stdin-filepath "$file" >/dev/null 2>&1; then
+    unformatted="$unformatted
+  $file"
+  fi
+done <<EOF
+$files
+EOF
+
+if [ -n "$unformatted" ]; then
+  echo "pre-commit: these staged files aren't formatted with Prettier (or couldn't be parsed):$unformatted" >&2
+  echo "Fix: bun x prettier --write <file>  (or: bun run format), then git add it and commit again." >&2
+  exit 1
+fi
