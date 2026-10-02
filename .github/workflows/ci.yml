@@ -62,9 +62,6 @@ jobs:
 
   colors:
     name: No hardcoded hex colour classes
-    # Off until Phase 0 part 2 converts the MVP's classes to design tokens.
-    # To turn it on, delete the `if: false` line below.
-    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
