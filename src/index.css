@@ -76,11 +76,19 @@
   --color-face-offline-bulb-core: #cbd5e1;
 }
 
+/* Tells the browser to draw its own controls (date picker icon, etc.) for a dark page.
+   Accepted dark-mode change A4 (PHASE-0-PART-2-PLAN.md). */
+:root {
+  color-scheme: dark;
+}
+
 /*
  * Light theme (DESIGN.md §2a). Same token names, light values.
  * Tokens not listed here (the tints and the Drishti face) keep their dark values.
  */
 :root[data-theme='light'] {
+  color-scheme: light;
+
   --color-bg: #f8fafc;
   --color-surface: #fff;
   --color-raised: #f1f5f9;

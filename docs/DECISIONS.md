@@ -33,7 +33,8 @@ Locked decisions from before the build are in `PLAN.md` §3.
 | 02-Oct-2026 | Light `primary-soft` is `#7C3AED` (violet-600), not DESIGN.md's `#EEF2FF` | The MVP uses `primary-soft` as text and gradient ends (12 places), never as a background; indigo-50 would be invisible on white. DESIGN.md updated |
 | 02-Oct-2026 | Light values for tokens DESIGN.md doesn't list: `line` slate-500 (≈ slate-200 at its usual 16–18%), `on-primary`/`on-success` white, `teal` teal-700, danger/success shades from Tailwind's red/emerald, `backdrop` slate-900; tints and the Drishti face keep their dark values | Each picked by how the MVP uses the token; all text colours reach WCAG AA on white. See the light block in `src/index.css` |
 | 02-Oct-2026 | Theme choice saved in `localStorage` (`drishti-theme`); default Dark when nothing is saved; no-flash script inline in `index.html` | Phase 2 adds the profile copy. SECURITY.md plans no Content-Security-Policy; if one is added, it must allow this script by its hash |
-| 02-Oct-2026 | No `color-scheme` set for dark mode | It turns the date field's calendar icon from black to light grey, a dark-mode pixel change outside the accepted list (PHASE-0-PART-2-PLAN.md A1–A3) |
+| 02-Oct-2026 | No `color-scheme` set for dark mode | It turns the date field's calendar icon from black to light grey, a dark-mode pixel change outside the accepted list (PHASE-0-PART-2-PLAN.md A1–A3). Superseded by the next line |
+| 02-Oct-2026 | `color-scheme: dark` / `light` set per theme; accepted dark-mode change **A4** | Freeda approved: the black calendar icon was nearly invisible on dark fields. Only the `desktop-add-client` baseline changed (22 px, inside the icon); dropdown arrows and scrollbars (custom-styled) are unchanged |
 
 ## Notes to check later
 
