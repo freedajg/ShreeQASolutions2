@@ -28,7 +28,7 @@ Locked decisions from before the build are in `PLAN.md` §3.
 | 30-Sep-2026 | ESLint: 55 existing MVP violations downgraded to `warn` only in 13 listed files, and only for the rules each one fails | No MVP code changes in Phase 0. All other files, including new code, keep these rules as errors. Remove a file from the list when its phase rewrites it |
 | 30-Sep-2026 | Hex-colour check (`bun run check:colors`) built but disabled in CI (`if: false`) | It fails today: **776** hex classes (PLAN.md estimated ~490). Turn on in Phase 0 part 2 once tokens land. Another **23** hex colours are plain strings (style objects, SVG, charts): the check doesn't count them, but they need tokens too |
 | 02-Oct-2026 | Email draft "Copy" button hover `#1e2a4a` now uses `overlay` (`#1e2947`) | Its only use in the app; the difference can't be seen, and a one-off token would need its own light value |
-| 02-Oct-2026 | Hex-colour check turned on in CI (removed `if: false`) | All hex classes in `src/` are now design tokens (0 left). The 23 plain-string colours are still not counted by the check |
+| 02-Oct-2026 | Hex-colour check turned on in CI (removed `if: false`) | All hex classes in `src/` are now design tokens (0 left). The 23 plain-string colours and all Tailwind built-in colours (`slate-950`, `emerald-400`…) were converted too, though the check doesn't count those |
 
 ## Notes to check later
 
