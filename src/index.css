@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 
+/* Theme switch (DESIGN.md §2a): `data-theme` on <html>, set by the script in index.html. */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
 /*
  * Design tokens (docs/DESIGN.md §2). Components use these only, never raw colours,
  * e.g. `bg-surface`, `text-muted`, `border-line/16`, `bg-primary/30`.
@@ -71,6 +74,50 @@
   --color-face-offline-stem: #64748b;
   --color-face-offline-bulb: #94a3b8;
   --color-face-offline-bulb-core: #cbd5e1;
+}
+
+/*
+ * Light theme (DESIGN.md §2a). Same token names, light values.
+ * Tokens not listed here (the tints and the Drishti face) keep their dark values.
+ */
+:root[data-theme='light'] {
+  --color-bg: #f8fafc;
+  --color-surface: #fff;
+  --color-raised: #f1f5f9;
+  --color-overlay: #fff;
+
+  --color-text: #0f172a;
+  --color-text-secondary: #334155;
+  --color-muted: #64748b;
+  --color-text-strong: #020617;
+  --color-on-primary: #fff; /* the fills it sits on are darker in light mode */
+
+  /* slate-500: at the usual 16-18% strength this lands near slate-200 on white */
+  --color-line: #64748b;
+  --color-border: #e2e8f0;
+
+  --color-primary: #4f46e5;
+  --color-primary-strong: #4338ca;
+  --color-primary-soft: #7c3aed; /* used as text, so not DESIGN.md's indigo-50 (see DECISIONS.md) */
+  --color-teal: #0f766e;
+
+  --color-danger: #dc2626;
+  --color-danger-light: #b91c1c;
+  --color-danger-medium: #dc2626;
+  --color-danger-strong: #ef4444;
+  --color-warning: #b45309;
+  --color-info: #0e7490;
+  --color-success: #047857;
+  --color-success-lighter: #064e3b;
+  --color-success-light: #065f46;
+  --color-success-strong: #059669;
+  --color-on-success: #fff;
+  --color-neutral: #64748b;
+
+  --color-backdrop: #0f172a;
+  --color-avatar: #e2e8f0;
+  --color-subtle: #f1f5f9;
+  --color-subtle-border: #cbd5e1;
 }
 
 body {

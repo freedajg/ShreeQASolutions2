@@ -29,6 +29,10 @@ Locked decisions from before the build are in `PLAN.md` §3.
 | 30-Sep-2026 | Hex-colour check (`bun run check:colors`) built but disabled in CI (`if: false`) | It fails today: **776** hex classes (PLAN.md estimated ~490). Turn on in Phase 0 part 2 once tokens land. Another **23** hex colours are plain strings (style objects, SVG, charts): the check doesn't count them, but they need tokens too |
 | 02-Oct-2026 | Email draft "Copy" button hover `#1e2a4a` now uses `overlay` (`#1e2947`) | Its only use in the app; the difference can't be seen, and a one-off token would need its own light value |
 | 02-Oct-2026 | Hex-colour check turned on in CI (removed `if: false`) | All hex classes in `src/` are now design tokens (0 left). The 23 plain-string colours and all Tailwind built-in colours (`slate-950`, `emerald-400`…) were converted too, though the check doesn't count those |
+| 02-Oct-2026 | Light `primary-soft` is `#7C3AED` (violet-600), not DESIGN.md's `#EEF2FF` | The MVP uses `primary-soft` as text and gradient ends (12 places), never as a background; indigo-50 would be invisible on white. DESIGN.md updated |
+| 02-Oct-2026 | Light values for tokens DESIGN.md doesn't list: `line` slate-500 (≈ slate-200 at its usual 16–18%), `on-primary`/`on-success` white, `teal` teal-700, danger/success shades from Tailwind's red/emerald, `backdrop` slate-900; tints and the Drishti face keep their dark values | Each picked by how the MVP uses the token; all text colours reach WCAG AA on white. See the light block in `src/index.css` |
+| 02-Oct-2026 | Theme choice saved in `localStorage` (`drishti-theme`); default Dark when nothing is saved; no-flash script inline in `index.html` | Phase 2 adds the profile copy. SECURITY.md plans no Content-Security-Policy; if one is added, it must allow this script by its hash |
+| 02-Oct-2026 | No `color-scheme` set for dark mode | It turns the date field's calendar icon from black to light grey, a dark-mode pixel change outside the accepted list (PHASE-0-PART-2-PLAN.md A1–A3) |
 
 ## Notes to check later
 

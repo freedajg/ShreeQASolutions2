@@ -4,6 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Drishti - Consulting CRM</title>
+    <script>
+      // Sets the theme before anything paints, so there's no flash of the wrong theme.
+      // Same rules as src/lib/theme.ts: Light or Dark if chosen, the device's setting for
+      // System, and Dark when nothing is saved.
+      (function () {
+        var pref = null;
+        try {
+          pref = localStorage.getItem('drishti-theme');
+        } catch (e) {}
+        var theme = pref === 'light' ? 'light' : 'dark';
+        if (pref === 'system' && window.matchMedia) {
+          theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
     <meta
       name="description"
       content="Client, renewal radar, and pipeline manager with AI partner Drishti for CMMI and ISO process certification consulting."
