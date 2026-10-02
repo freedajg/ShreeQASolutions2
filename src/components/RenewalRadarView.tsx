@@ -68,8 +68,8 @@ export function RenewalRadarView() {
       totalValue: totalOverdueVal,
       clients: overdueList,
       color: 'rose',
-      borderClass: 'border-[#fb7185]/35 bg-[#fb7185]/5',
-      badgeClass: 'bg-[#fb7185]/20 text-[#fb7185] border-[#fb7185]/40',
+      borderClass: 'border-danger/35 bg-danger/5',
+      badgeClass: 'bg-danger/20 text-danger border-danger/40',
       icon: ShieldAlert,
     },
     {
@@ -80,8 +80,8 @@ export function RenewalRadarView() {
       totalValue: totalDueSoonVal,
       clients: dueSoonList,
       color: 'amber',
-      borderClass: 'border-[#fbbf24]/35 bg-[#fbbf24]/5',
-      badgeClass: 'bg-[#fbbf24]/20 text-[#fbbf24] border-[#fbbf24]/40',
+      borderClass: 'border-warning/35 bg-warning/5',
+      badgeClass: 'bg-warning/20 text-warning border-warning/40',
       icon: Clock,
     },
     {
@@ -92,8 +92,8 @@ export function RenewalRadarView() {
       totalValue: totalUpcomingVal,
       clients: upcomingList,
       color: 'cyan',
-      borderClass: 'border-[#22d3ee]/35 bg-[#22d3ee]/5',
-      badgeClass: 'bg-[#22d3ee]/20 text-[#22d3ee] border-[#22d3ee]/40',
+      borderClass: 'border-info/35 bg-info/5',
+      badgeClass: 'bg-info/20 text-info border-info/40',
       icon: Calendar,
     },
     {
@@ -104,8 +104,8 @@ export function RenewalRadarView() {
       totalValue: totalLaterVal,
       clients: laterList,
       color: 'brand',
-      borderClass: 'border-[#818cf8]/25 bg-[#111828]',
-      badgeClass: 'bg-[#818cf8]/15 text-[#818cf8] border-[#818cf8]/30',
+      borderClass: 'border-primary/25 bg-surface',
+      badgeClass: 'bg-primary/15 text-primary border-primary/30',
       icon: CheckCircle,
     },
   ];
@@ -116,14 +116,14 @@ export function RenewalRadarView() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#e9eefb]">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
               Renewal Radar
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#fb7185]/15 text-[#fb7185] border border-[#fb7185]/30">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-danger/15 text-danger border border-danger/30">
               {overdueList.length} Overdue
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-[#9aabcc] mt-0.5">
+          <p className="text-xs sm:text-sm text-text-secondary mt-0.5">
             Deterministic calendar arithmetic (CMMI = 3 years, ISO/IPA = 1 year). Zero model
             dependency.
           </p>
@@ -131,15 +131,15 @@ export function RenewalRadarView() {
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 bg-[#111828] p-3 rounded-2xl border border-[rgba(148,175,235,0.16)]">
+      <div className="flex flex-col sm:flex-row items-center gap-3 bg-surface p-3 rounded-2xl border border-line/16">
         <div className="relative flex-1 w-full">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#6d7c9c]" />
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search company, contact, or standard level..."
-            className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#080c16] border border-[rgba(148,175,235,0.14)] text-sm text-[#e9eefb] placeholder-[#6d7c9c] focus:outline-none focus:border-[#818cf8]"
+            className="w-full pl-9 pr-4 py-2 rounded-xl bg-bg border border-line/14 text-sm text-text placeholder-muted focus:outline-none focus:border-primary"
           />
         </div>
 
@@ -147,7 +147,7 @@ export function RenewalRadarView() {
           <select
             value={serviceFilter}
             onChange={(e) => setServiceFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-[#080c16] border border-[rgba(148,175,235,0.14)] text-xs text-[#e9eefb] focus:outline-none focus:border-[#818cf8]"
+            className="px-3 py-2 rounded-xl bg-bg border border-line/14 text-xs text-text focus:outline-none focus:border-primary"
           >
             <option value="ALL">All Standards</option>
             <option value="CMMI">CMMI (3 Years)</option>
@@ -158,7 +158,7 @@ export function RenewalRadarView() {
           <select
             value={ownerFilter}
             onChange={(e) => setOwnerFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-[#080c16] border border-[rgba(148,175,235,0.14)] text-xs text-[#e9eefb] focus:outline-none focus:border-[#818cf8]"
+            className="px-3 py-2 rounded-xl bg-bg border border-line/14 text-xs text-text focus:outline-none focus:border-primary"
           >
             <option value="ALL">All Owners</option>
             <option value="Ramesh">Ramesh</option>
@@ -179,29 +179,29 @@ export function RenewalRadarView() {
               className={`rounded-2xl border p-5 shadow-lg space-y-4 ${band.borderClass}`}
             >
               {/* Band Summary Bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[rgba(148,175,235,0.1)]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-line/10">
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-xl border ${band.badgeClass}`}>
                     <Icon size={18} />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-base font-bold text-[#e9eefb]">{band.title}</h2>
+                      <h2 className="text-base font-bold text-text">{band.title}</h2>
                       <span
                         className={`text-xs font-bold px-2 py-0.5 rounded-full border ${band.badgeClass}`}
                       >
                         {band.count} {band.count === 1 ? 'client' : 'clients'}
                       </span>
                     </div>
-                    <p className="text-xs text-[#9aabcc]">{band.subtitle}</p>
+                    <p className="text-xs text-text-secondary">{band.subtitle}</p>
                   </div>
                 </div>
 
                 <div className="text-right sm:self-center">
-                  <span className="text-xs text-[#6d7c9c] block uppercase font-semibold">
+                  <span className="text-xs text-muted block uppercase font-semibold">
                     Value at stake
                   </span>
-                  <span className="text-base sm:text-lg font-bold font-mono text-[#e9eefb] tabular-nums">
+                  <span className="text-base sm:text-lg font-bold font-mono text-text tabular-nums">
                     {formatINR(band.totalValue)}
                   </span>
                 </div>
@@ -209,7 +209,7 @@ export function RenewalRadarView() {
 
               {/* Band Client Cards Grid */}
               {band.clients.length === 0 ? (
-                <div className="py-6 text-center text-xs text-[#6d7c9c]">
+                <div className="py-6 text-center text-xs text-muted">
                   No clients currently in this band.
                 </div>
               ) : (
@@ -222,38 +222,36 @@ export function RenewalRadarView() {
                     return (
                       <div
                         key={client.id}
-                        className="bg-[#111828] border border-[rgba(148,175,235,0.16)] hover:border-[rgba(148,175,235,0.3)] rounded-xl p-4 shadow-md flex flex-col justify-between space-y-3 transition-all"
+                        className="bg-surface border border-line/16 hover:border-line/30 rounded-xl p-4 shadow-md flex flex-col justify-between space-y-3 transition-all"
                       >
                         <div className="space-y-2">
                           <div className="flex items-start justify-between gap-2">
-                            <h3 className="font-bold text-sm text-[#e9eefb] line-clamp-2">
+                            <h3 className="font-bold text-sm text-text line-clamp-2">
                               {client.company}
                             </h3>
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-[#18213a] text-[#818cf8] border border-[#818cf8]/20 shrink-0">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-raised text-primary border border-primary/20 shrink-0">
                               {client.service} {client.level || ''}
                             </span>
                           </div>
 
                           {/* Contact Info */}
-                          <div className="text-xs text-[#9aabcc]">
+                          <div className="text-xs text-text-secondary">
                             <div>{client.contactName}</div>
-                            <div className="text-[11px] text-[#6d7c9c] truncate">
-                              {client.email}
-                            </div>
+                            <div className="text-[11px] text-muted truncate">{client.email}</div>
                           </div>
 
                           {/* Renewal Date & Countdown pill */}
-                          <div className="pt-2 border-t border-[rgba(148,175,235,0.1)] space-y-1.5 text-xs">
-                            <div className="flex items-center justify-between text-[#9aabcc]">
+                          <div className="pt-2 border-t border-line/10 space-y-1.5 text-xs">
+                            <div className="flex items-center justify-between text-text-secondary">
                               <span>Last Audit:</span>
-                              <span className="font-mono text-[#e9eefb]">
+                              <span className="font-mono text-text">
                                 {formatStandardDate(client.lastAppraisalDate)} ({cycleYears}y cycle)
                               </span>
                             </div>
 
                             <div className="flex items-center justify-between">
-                              <span className="text-[#9aabcc]">Renewal Due:</span>
-                              <span className="font-mono font-semibold text-[#e9eefb]">
+                              <span className="text-text-secondary">Renewal Due:</span>
+                              <span className="font-mono font-semibold text-text">
                                 {formatStandardDate(renewalDate)}
                               </span>
                             </div>
@@ -261,26 +259,26 @@ export function RenewalRadarView() {
                             {/* Status pill */}
                             <div className="pt-1">
                               {days < 0 ? (
-                                <div className="px-2.5 py-1 rounded-lg bg-[#fb7185]/15 border border-[#fb7185]/30 text-[#fb7185] font-bold text-xs flex items-center justify-between">
+                                <div className="px-2.5 py-1 rounded-lg bg-danger/15 border border-danger/30 text-danger font-bold text-xs flex items-center justify-between">
                                   <span>Lapsed / Overdue</span>
                                   <span className="font-mono tabular-nums">
                                     {Math.abs(days)} days ago
                                   </span>
                                 </div>
                               ) : days <= 90 ? (
-                                <div className="px-2.5 py-1 rounded-lg bg-[#fbbf24]/15 border border-[#fbbf24]/30 text-[#fbbf24] font-bold text-xs flex items-center justify-between">
+                                <div className="px-2.5 py-1 rounded-lg bg-warning/15 border border-warning/30 text-warning font-bold text-xs flex items-center justify-between">
                                   <span>Due Soon</span>
                                   <span className="font-mono tabular-nums">
                                     {days} days remaining
                                   </span>
                                 </div>
                               ) : days <= 180 ? (
-                                <div className="px-2.5 py-1 rounded-lg bg-[#22d3ee]/10 border border-[#22d3ee]/20 text-[#22d3ee] font-medium text-xs flex items-center justify-between">
+                                <div className="px-2.5 py-1 rounded-lg bg-info/10 border border-info/20 text-info font-medium text-xs flex items-center justify-between">
                                   <span>Upcoming</span>
                                   <span className="font-mono tabular-nums">{days} days left</span>
                                 </div>
                               ) : (
-                                <div className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium text-xs flex items-center justify-between">
+                                <div className="px-2.5 py-1 rounded-lg bg-success-strong/10 border border-success-strong/20 text-success font-medium text-xs flex items-center justify-between">
                                   <span>Active & Compliant</span>
                                   <span className="font-mono tabular-nums">{days} days left</span>
                                 </div>
@@ -290,12 +288,12 @@ export function RenewalRadarView() {
                         </div>
 
                         {/* Card Bottom: Owner, Value, Action */}
-                        <div className="pt-2.5 border-t border-[rgba(148,175,235,0.1)] flex items-center justify-between gap-2 text-xs">
+                        <div className="pt-2.5 border-t border-line/10 flex items-center justify-between gap-2 text-xs">
                           <div>
-                            <span className="text-[10px] text-[#6d7c9c] block">
+                            <span className="text-[10px] text-muted block">
                               Owner: {client.owner}
                             </span>
-                            <span className="font-bold font-mono text-[#e9eefb]">
+                            <span className="font-bold font-mono text-text">
                               {formatINR(client.contractValue)}
                             </span>
                           </div>
@@ -303,7 +301,7 @@ export function RenewalRadarView() {
                           <div className="flex items-center gap-1.5">
                             <button
                               onClick={() => openDraftModal({ type: 'client', entity: client })}
-                              className="px-2.5 py-1.5 rounded-lg bg-[#18213a] hover:bg-indigo-500/20 text-[#818cf8] hover:text-[#e9eefb] border border-[rgba(148,175,235,0.15)] font-semibold transition-colors flex items-center gap-1"
+                              className="px-2.5 py-1.5 rounded-lg bg-raised hover:bg-primary-tint/20 text-primary hover:text-text border border-line/15 font-semibold transition-colors flex items-center gap-1"
                               title="Draft renewal reminder email"
                             >
                               <Mail size={13} />
@@ -311,7 +309,7 @@ export function RenewalRadarView() {
                             </button>
                             <button
                               onClick={() => setActiveTab('clients')}
-                              className="p-1.5 rounded-lg bg-[#18213a] text-[#9aabcc] hover:text-white transition-colors"
+                              className="p-1.5 rounded-lg bg-raised text-text-secondary hover:text-text-strong transition-colors"
                               title="View client record"
                             >
                               <ArrowRight size={14} />
