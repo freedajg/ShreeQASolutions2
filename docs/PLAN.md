@@ -118,11 +118,11 @@ A phase is **done only when every "Done when" item passes and the Security gate 
 - [x] No hardcoded hex colour classes remain in `src/` (a grep check in CI)
 - [x] The toggle switches Light ↔ Dark instantly; System follows the device; reloading keeps the choice with no white flash
 - [x] Every screen is readable in light mode (text, badges, charts, focus rings)
-- [ ] Claude Code cannot read `.env` (try it: it should be refused)
-- [ ] A commit containing a fake key is blocked by Gitleaks
+- [x] Claude Code cannot read `.env` (try it: it should be refused)
+- [x] A commit containing a fake key is blocked by Gitleaks
 - [ ] Pushing straight to `main` is blocked
   - Not possible on the GitHub Free plan; open question for the client (paid plan).
-- [ ] Memory Palace `recall` returns the first memory
+- [x] Memory Palace `recall` returns the first memory
 
 ---
 
