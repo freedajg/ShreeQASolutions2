@@ -16,6 +16,10 @@
     "test:e2e": "playwright test",
     "clean": "bun scripts/clean.ts",
     "check:colors": "bun scripts/check-hex-colors.ts",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:test": "supabase test db",
+    "db:types": "supabase gen types typescript --local > src/types/database.ts",
     "prepare": "git config core.hooksPath .githooks",
     "hooks:install": "git config core.hooksPath .githooks"
   },
@@ -45,6 +49,7 @@
     "eslint-plugin-react-refresh": "0.5.7",
     "globals": "17.12.0",
     "prettier": "3.9.9",
+    "supabase": "2.119.0",
     "tailwindcss": "^4.1.14",
     "typescript": "~5.8.2",
     "typescript-eslint": "8.71.0",
