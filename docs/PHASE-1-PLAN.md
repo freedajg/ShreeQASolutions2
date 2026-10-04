@@ -52,8 +52,8 @@ So the steps are ordered **demo-critical first**. The can-wait steps come after 
 | 2 | **chore:** Supabase CLI as an exact-version dev dependency; `trustedDependencies` entry; scripts `db:start`, `db:stop`, `db:test`, `db:types`; permission rules updated for the new script names | ● | 1 | | The CLI runs (`bun x supabase --version`); `bun pm untrusted` shows nothing blocked; the lockfile is committed; the install script's download source and checksum check recorded in DECISIONS | |
 | 3 | *(no commit)* Check `docker info` works. Docker Desktop 4.93.0 (WSL 2) is already installed, and WSL already caps itself at 4 GB. `.wslconfig` is changed only if it's slow later. | ● | 0.25 | | `docker info` reports a running engine | |
 | 4 | **chore:** `supabase init`. `config.toml` with sign-up off, and Studio, analytics, Storage, Realtime and Edge Runtime off; first local start; RAM measured | ● | 1 | ⚠ | The local stack starts and stops cleanly; RAM use recorded in DECISIONS | |
-| 5 | **feat(db):** migration `…_profiles_roles`: role type; `profiles` (name, role, booking link, mailbox connected, `can_see_values`, `theme_preference`, active); the trigger that creates a profile for each new login (role only from server-set `app_metadata`); role helpers (`current_app_role`, `is_owner`, `can_see_values`) in the private `app` schema; a guard so only an Owner changes role, values access, active status, email or mailbox status, and **the last active Owner can never be demoted, deactivated or deleted**; `team_members` view of colleagues' safe columns only. *(Swapped with the old step 6 on 03-Oct-2026: lookups need the role helpers.)* | ● | 2 | ⚠ | `bun run db:test` passes (36 pgTAP checks): a user edits their own name but not their own role, values access or active status; a Consultant can't see a colleague's `can_see_values`; a role-less or inactive user gets no data access; the last active Owner can't remove their own role or deactivate themselves; `anon` gets nothing | |
-| 6 | **feat(db):** migration `…_lookups`: lookup tables (16 certification types with default cycles, 10 statuses with their group, payment statuses, priorities, lead sources); RLS | ● | 2 | ⚠ | pgTAP: every role can read lookups, only Owners can change them, `anon` gets nothing | |
+| 5 | **feat(db):** migration `…_profiles_roles`: role type; `profiles` (name, role, booking link, mailbox connected, `can_see_values`, `theme_preference`, active); the trigger that creates a profile for each new login (role only from server-set `app_metadata`); role helpers (`current_app_role`, `is_owner`, `can_see_values`) in the private `app` schema; a guard so only an Owner changes role, values access, active status, email or mailbox status, and **the last active Owner can never be demoted, deactivated or deleted**; `team_members` view of colleagues' safe columns only. *(Swapped with the old step 6 on 03-Oct-2026: lookups need the role helpers.)* | ● | 2 | ⚠ | `bun run db:test` passes (38 pgTAP checks): a user edits their own name but not their own role, values access or active status; a Consultant can't see a colleague's `can_see_values`; a role-less or inactive user gets no data access; the last active Owner can't remove their own role or deactivate themselves; `anon` gets nothing | |
+| 6 | **feat(db):** migration `…_lookups`: lookup tables (16 certification types with default cycles, 10 statuses with their group, payment statuses, priorities, lead sources), keyed by the exact Excel spellings; RLS. Statuses are read-only (changed only by a new migration); in the other four lists Owners can add values and change cycles, sort order and `active`, but can't rename or delete a value | ● | 2 | ⚠ | pgTAP (34 checks): exact values and default cycles; every role-holder can read; only Owners can change the four editable lists; nobody can change statuses, rename or delete a value; `anon`, role-less and inactive users get nothing | |
 | 7 | **feat(db):** migration `…_clients_engagements`: `clients` and `engagements` (one client, many engagements) with every Excel column (PRD §6.2), plus last contacted, next follow-up, do-not-contact, date-is-estimated, created by, archived. Contract value and payment status go in a separate `engagement_financials` table (choice 3). | ● | 2 | ⚠ | Every one of the 30 Excel columns has exactly one home (checked against PRD §6.2) | |
 | 8 | **feat(db):** RLS on `clients`, `engagements`, `engagement_financials` for each role, with pgTAP tests per role per table, for **reading and editing** (Owner, Consultant, Consultant with `can_see_values`, Marketing, `anon`) | ● | 3.5 | ⚠ | pgTAP proves the rules below | |
 | 9 | **feat(db):** views `pipeline` (Lead, Proposal, On Hold), `delivery` (In Progress, Implemented, Audit Completed), `active_clients` (Certified, Renewal Due, Completed), all `security_invoker = true`, with pgTAP tests | ● | 1 | ⚠ | pgTAP: each view returns only its statuses and obeys RLS (Marketing gets `pipeline` rows only) | |
@@ -82,6 +82,8 @@ So the steps are ordered **demo-critical first**. The can-wait steps come after 
 | `anon` (not logged in) | Nothing | Nothing |
 
 Nobody can hard-delete.
+
+**Note (04-Oct-2026):** in `statuses`, On Hold is in the `paused` group, not `pipeline` (PRD §6.4). Marketing's "leads only" must include On Hold, so the rule matches both groups (`pipeline` and `paused`) or names the three statuses. Checking `status_group = 'pipeline'` alone would hide On Hold. The same applies to the step 9 `pipeline` view.
 
 **Totals:**
 - Phase 1 demo-critical (steps 1–14): **≈ 23.25 h**
@@ -127,6 +129,16 @@ Everything that proves the role rules (steps 8, 9, 13) stays before the demo.
 - [ ] The renewal function returns the expected bucket for every dummy row (Test Notes sheet, reference date 29-Sep-2026)
 - [ ] An Owner without MFA is asked to set it up before continuing
 - [ ] An uninvited email can't sign up
+
+## Open questions for Checkpoint A
+
+- **Confirm the default renewal cycles** (added 03-Oct-2026):
+  - all ISO: 12-month surveillance + 36-month recertification;
+  - CMMI and CMMC: 36 months;
+  - SOC 1, SOC 2 and VAPT: 12 months;
+  - GDPR, DPDP, HIPAA and Other: no automatic cycle.
+
+  These are in the `…_lookups` migration as defaults (PRD FR-4). An Owner can change them later; a change of default for everyone goes in a new migration.
 
 ## Choices (approved 03-Oct-2026)
 
