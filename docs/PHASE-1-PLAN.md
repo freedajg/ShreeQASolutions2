@@ -85,6 +85,8 @@ Nobody can hard-delete.
 
 **Note (04-Oct-2026):** in `statuses`, On Hold is in the `paused` group, not `pipeline` (PRD §6.4). Marketing's "leads only" must include On Hold, so the rule matches both groups (`pipeline` and `paused`) or names the three statuses. Checking `status_group = 'pipeline'` alone would hide On Hold. The same applies to the step 9 `pipeline` view.
 
+**Note for step 9 (06-Oct-2026):** any view that shows financials must **left join** `engagement_financials`. Engagements created by Marketing, or by Consultants without values access, have no financials row, so an inner join would drop them from the view.
+
 **Totals:**
 - Phase 1 demo-critical (steps 1–14): **≈ 23.25 h**
 - Phase 1 can-wait (steps 15–21): **≈ 12.5 h**

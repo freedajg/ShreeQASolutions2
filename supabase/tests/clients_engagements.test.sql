@@ -2,14 +2,16 @@
 -- Everything runs in one transaction that is rolled back at the end, so the test users and
 -- every row disappear. Test users and clients are fake (@example.test).
 --
--- Step 7 builds the tables only; the per-role reading and editing rules come in step 8.
--- Until then these tests prove the shape (every Excel column has one home, every dropdown
--- points at its lookup) and that no role can reach the tables through the API.
+-- Step 7 builds the tables only. These tests prove the shape (every Excel column has one
+-- home, every dropdown points at its lookup) and that anon can't reach the tables. The
+-- per-role reading and editing rules, and their tests, are in step 8
+-- (clients_engagements_rls.test.sql); the step 7 "no role can read yet" checks were removed
+-- then (06-Oct-2026).
 
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(54);
+select plan(41);
 
 -- ---------------------------------------------------------------------------
 -- Test users (created as the server; the step 5 trigger makes their profiles)
@@ -203,7 +205,7 @@ select ok(
 );
 
 -- ---------------------------------------------------------------------------
--- 39-53: no role can reach the tables through the API before step 8
+-- 39-41: anon can't reach the tables (per-role rules: step 8 tests)
 -- ---------------------------------------------------------------------------
 set local role anon;
 set local request.jwt.claims to '{"role": "anon"}';
@@ -212,62 +214,6 @@ select throws_ok('select 1 from public.clients', '42501', null::text, 'anon cann
 select throws_ok('select 1 from public.engagements', '42501', null::text, 'anon cannot read engagements');
 select throws_ok('select 1 from public.engagement_financials', '42501', null::text,
   'anon cannot read engagement_financials');
-
-reset role;
-
-set local role authenticated;
-set local request.jwt.claims to '{"sub": "c0000000-0000-4000-8000-000000000001", "role": "authenticated"}';
-
-select throws_ok('select 1 from public.clients', '42501', null::text, 'An Owner cannot read clients yet');
-select throws_ok('select 1 from public.engagements', '42501', null::text, 'An Owner cannot read engagements yet');
-select throws_ok('select 1 from public.engagement_financials', '42501', null::text,
-  'An Owner cannot read engagement_financials yet');
-
-reset role;
-
-set local role authenticated;
-set local request.jwt.claims to '{"sub": "c0000000-0000-4000-8000-000000000011", "role": "authenticated"}';
-
-select throws_ok('select 1 from public.clients', '42501', null::text, 'A Consultant cannot read clients yet');
-select throws_ok('select 1 from public.engagements', '42501', null::text,
-  'A Consultant cannot read engagements yet');
-select throws_ok('select 1 from public.engagement_financials', '42501', null::text,
-  'A Consultant cannot read engagement_financials yet');
-
-reset role;
-
-set local role authenticated;
-set local request.jwt.claims to '{"sub": "c0000000-0000-4000-8000-000000000021", "role": "authenticated"}';
-
-select throws_ok('select 1 from public.clients', '42501', null::text, 'Marketing cannot read clients yet');
-select throws_ok('select 1 from public.engagements', '42501', null::text, 'Marketing cannot read engagements yet');
-select throws_ok('select 1 from public.engagement_financials', '42501', null::text,
-  'Marketing cannot read engagement_financials');
-
-reset role;
-
-set local role authenticated;
-set local request.jwt.claims to '{"sub": "c0000000-0000-4000-8000-000000000031", "role": "authenticated"}';
-
-select throws_ok('select 1 from public.clients', '42501', null::text, 'A user without a role cannot read clients');
-select throws_ok('select 1 from public.engagements', '42501', null::text,
-  'A user without a role cannot read engagements');
-select throws_ok('select 1 from public.engagement_financials', '42501', null::text,
-  'A user without a role cannot read engagement_financials');
-
-reset role;
-
--- ---------------------------------------------------------------------------
--- 54: nobody can write through the API before step 8
--- ---------------------------------------------------------------------------
-set local role authenticated;
-set local request.jwt.claims to '{"sub": "c0000000-0000-4000-8000-000000000001", "role": "authenticated"}';
-
-select throws_ok(
-  $$insert into public.clients (name) values ('Test Client Five')$$,
-  '42501', null::text,
-  'An Owner cannot add a client through the API yet'
-);
 
 reset role;
 
