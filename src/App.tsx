@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { CrmProvider, useCrm } from './context/CrmContext';
+import { useAuth, useSignedInUser } from './lib/auth/context';
+import { AuthLoading, ConfigProblem, LoginPage } from './components/LoginPage';
 import { Navbar } from './components/Navbar';
 import { DrishtiView } from './components/DrishtiView';
 import { DashboardView } from './components/DashboardView';
@@ -11,7 +13,13 @@ import { SettingsView } from './components/SettingsView';
 import { EmailDraftModal } from './components/EmailDraftModal';
 
 function MainAppContent() {
-  const { activeTab, selectedDraftTarget, closeDraftModal } = useCrm();
+  const { activeTab, setActiveTab, selectedDraftTarget, closeDraftModal } = useCrm();
+  const user = useSignedInUser();
+
+  // Landing tab: Marketing starts on Pipeline (its only data); everyone else on Drishti.
+  useEffect(() => {
+    if (user.role === 'marketing') setActiveTab('pipeline');
+  }, [user.id, user.role, setActiveTab]);
 
   return (
     <div className="min-h-screen bg-bg text-text flex flex-col font-sans selection:bg-primary/30 selection:text-text-strong">
@@ -37,9 +45,17 @@ function MainAppContent() {
   );
 }
 
+// Sign-in gate: nothing of the app renders until the user's profile grants access.
 export default function App() {
+  const { state } = useAuth();
+
+  if (state.status === 'loading') return <AuthLoading />;
+  if (state.status === 'not-configured') return <ConfigProblem problem={state.problem} />;
+  if (state.status === 'signed-out') return <LoginPage />;
+
+  // Keyed by user, so a different sign-in starts with fresh screen state.
   return (
-    <CrmProvider>
+    <CrmProvider key={state.user.id}>
       <MainAppContent />
     </CrmProvider>
   );

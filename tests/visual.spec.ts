@@ -5,8 +5,9 @@
 // Windows-specific, so this runs locally only. Update baselines only for a change named in
 // docs/PHASE-0-PART-2-PLAN.md:
 //   bun run test:e2e tests/visual.spec.ts --update-snapshots
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { ActivityNote, Client, Lead } from '../src/types';
+import { ACCOUNTS, mockSupabase, type FakeStack } from './support/auth';
 
 type Theme = 'dark' | 'light';
 const THEMES: Theme[] = ['dark', 'light'];
@@ -37,9 +38,8 @@ test.use({
 // The first page load waits for the dev server to compile the app.
 test.describe.configure({ timeout: 60_000 });
 
-// Opens the app with fresh demo data and a paused clock. Timers only move when
-// settle() advances them, so every run sees the same frame (e.g. the face's blink).
-async function openApp(page: Page, theme: Theme) {
+// Theme, frozen clock and blocked AI providers, before the first load.
+async function prepare(page: Page, theme: Theme) {
   // Dark is the default, so dark runs exactly as before; light is saved before the first load.
   if (theme === 'light') {
     await page.addInitScript(() => localStorage.setItem('drishti-theme', 'light'));
@@ -49,13 +49,65 @@ async function openApp(page: Page, theme: Theme) {
   await page.clock.pauseAt(FIXED_NOW);
   // Settings fetches live model lists from these AI providers; block them so it shows its defaults.
   await page.route(/^https:\/\/(openrouter\.ai|api\.groq\.com)\//, (route) => route.abort());
+}
+
+// Diagnostics for waitUntilShown: what the page asked the fake stack, what it logged and which
+// requests failed, each restarted at every main-frame navigation (so: since the latest load).
+type PageWatch = { calls: string[]; console: string[]; failed: string[] };
+
+function watchPage(page: Page, stack: FakeStack): PageWatch {
+  const watch: PageWatch = { calls: stack.calls, console: [], failed: [] };
+  page.on('framenavigated', (frame) => {
+    if (frame !== page.mainFrame()) return;
+    watch.calls.push(`--- navigation: ${frame.url()} ---`);
+    watch.console.length = 0;
+    watch.failed.length = 0;
+  });
+  page.on('console', (message) => watch.console.push(`${message.type()}: ${message.text()}`));
+  page.on('pageerror', (error) => watch.console.push(`pageerror: ${error.message}`));
+  page.on('requestfailed', (request) =>
+    watch.failed.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText}`),
+  );
+  return watch;
+}
+
+const listOrNone = (lines: string[]) => (lines.length ? lines.join('\n  ') : '(none)');
+
+// The app appears only after the sign-in check (a deferred callback, then a profile request).
+// Fires timers that are already due, without moving the frozen clock, until `ready` shows, so
+// every screen then starts from the same frozen time as before step 12.
+async function waitUntilShown(page: Page, ready: Locator, watch: PageWatch) {
+  const deadline = Date.now() + 30_000; // the test runner's clock, not the page's frozen one
+  while (Date.now() < deadline) {
+    if (await ready.isVisible()) return;
+    await page.clock.runFor(0);
+    await page.waitForTimeout(25);
+  }
+  throw new Error(
+    [
+      'The page never got past the sign-in check',
+      `Calls to the fake stack (all, with navigations):\n  ${listOrNone(watch.calls)}`,
+      `Console since the latest load:\n  ${listOrNone(watch.console)}`,
+      `Failed requests since the latest load:\n  ${listOrNone(watch.failed)}`,
+    ].join('\n'),
+  );
+}
+
+// Opens the app with fresh demo data and a paused clock. Timers only move when
+// settle() advances them, so every run sees the same frame (e.g. the face's blink).
+async function openApp(page: Page, theme: Theme) {
+  await prepare(page, theme);
+  // Signed in as a fake Owner against a fake Supabase (step 12); the screens are unchanged.
+  const watch = watchPage(page, await mockSupabase(page, { signedInAs: ACCOUNTS.owner }));
   await page.goto('/');
+  await waitUntilShown(page, page.locator('header'), watch);
   await settle(page);
   // The app has now saved its demo data under the frozen clock. Swap every name, email,
   // phone and note for obviously fake values, then reload. Dates, amounts and stages are
   // untouched, so every screen still shows the same states and colours.
   await page.evaluate(fakeIdentities);
   await page.reload();
+  await waitUntilShown(page, page.locator('header'), watch);
   // Test-only: background blur renders a few different corner pixels on every frame.
   // It holds no colour, so removing it hides nothing the token conversion could change.
   await page.addStyleTag({ content: '*, ::before, ::after { backdrop-filter: none !important; }' });
@@ -94,6 +146,16 @@ function fakeIdentities() {
     ...(l.lostReason ? { lostReason: 'Demo lost reason.' } : {}),
   }));
   localStorage.setItem(key, JSON.stringify(store));
+}
+
+// The login page, signed out (step 12; new baselines desktop-login / phone-login).
+async function openLogin(page: Page, theme: Theme) {
+  await prepare(page, theme);
+  const watch = watchPage(page, await mockSupabase(page));
+  await page.goto('/');
+  await waitUntilShown(page, page.getByRole('heading', { name: 'Sign in' }), watch);
+  await page.addStyleTag({ content: '*, ::before, ::after { backdrop-filter: none !important; }' });
+  await settle(page);
 }
 
 // 1.6s lets the Drishti briefing's staged reveal (last step at 1.5s) finish.
@@ -230,6 +292,11 @@ for (const theme of THEMES) {
         await settle(page);
         await snap(page, theme, 'desktop-hover-row');
       });
+
+      test('login page', async ({ page }) => {
+        await openLogin(page, theme);
+        await snap(page, theme, 'desktop-login');
+      });
     });
 
     test.describe('phone (375px)', () => {
@@ -250,6 +317,11 @@ for (const theme of THEMES) {
         await page.getByRole('button', { name: 'More', exact: true }).click();
         await settle(page);
         await snap(page, theme, 'phone-more-menu');
+      });
+
+      test('login page', async ({ page }) => {
+        await openLogin(page, theme);
+        await snap(page, theme, 'phone-login');
       });
     });
   });

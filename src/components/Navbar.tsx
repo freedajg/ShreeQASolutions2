@@ -13,10 +13,12 @@ import {
   ChevronDown,
   Sun,
   Moon,
+  LogOut,
 } from 'lucide-react';
 import { TabKey, UserProfile } from '../types';
 import { TEAM_MEMBERS } from '../utils/seedData';
 import { useCrm } from '../context/CrmContext';
+import { useAuth, useSignedInUser } from '../lib/auth/context';
 import { useTheme } from '../lib/useTheme';
 import type { ThemePreference } from '../lib/theme';
 import { DrishtiFace } from './DrishtiFace';
@@ -73,6 +75,8 @@ export function Navbar() {
   const { activeTab, setActiveTab, activeUser, setActiveUser, clients, leads, isAiLoading } =
     useCrm();
   const { preference, theme, setPreference, toggleTheme } = useTheme();
+  const { signOut } = useAuth();
+  const signedInUser = useSignedInUser();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
 
@@ -158,6 +162,7 @@ export function Navbar() {
                 <button
                   key={item.key}
                   id={`nav-tab-${item.key}`}
+                  aria-current={isActive ? 'page' : undefined}
                   onClick={() => setActiveTab(item.key)}
                   className={`relative px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150 flex items-center gap-2 min-h-[38px] ${
                     isActive
@@ -265,6 +270,27 @@ export function Navbar() {
                         buttonClassName="py-1.5 text-[11px]"
                       />
                     </div>
+                  </div>
+
+                  {/* Signed-in account (step 12) */}
+                  <div className="mt-1 pt-1 border-t border-line/14">
+                    <div className="px-3 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
+                      Signed in as
+                    </div>
+                    <div className="px-3 pb-1 text-xs text-text truncate">
+                      {signedInUser.fullName}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserDropdownOpen(false);
+                        void signOut();
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary hover:bg-surface hover:text-text transition-colors"
+                    >
+                      <LogOut size={13} className="text-muted" />
+                      <span>Sign out</span>
+                    </button>
                   </div>
                 </div>
               )}
@@ -397,6 +423,27 @@ export function Navbar() {
                 onChange={setPreference}
                 buttonClassName="min-h-[44px] text-xs"
               />
+            </div>
+
+            {/* Signed-in account in Mobile Sheet (step 12) */}
+            <div className="mt-6 pt-4 border-t border-line/14">
+              <div className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+                Signed in as
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-text truncate">{signedInUser.fullName}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMoreOpen(false);
+                    void signOut();
+                  }}
+                  className="min-h-[44px] flex items-center gap-2 px-4 rounded-xl text-xs font-medium bg-raised text-text-secondary hover:text-text transition-colors"
+                >
+                  <LogOut size={15} className="text-muted" />
+                  <span>Sign out</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
