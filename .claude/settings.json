@@ -69,7 +69,11 @@
       "PowerShell(supabase db reset --linked *)",
       "PowerShell(*supabase db reset*--linked*)",
       "PowerShell(*.env*)",
-      "PowerShell(*real-data*)"
+      "PowerShell(*real-data*)",
+      "Bash(*seed:passwords*)",
+      "Bash(*set-demo-passwords*)",
+      "PowerShell(*seed:passwords*)",
+      "PowerShell(*set-demo-passwords*)"
     ]
   }
 }
