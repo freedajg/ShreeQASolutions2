@@ -22,6 +22,7 @@
     "db:types": "supabase gen types typescript --local > src/types/database.ts",
     "seed:build": "bun scripts/build-seed.ts",
     "seed:passwords": "bun scripts/set-demo-passwords.ts",
+    "check:roles": "bun scripts/check-roles.ts",
     "db:seed": "docker cp supabase/seed.sql supabase_db_drishti:/tmp/seed.sql && docker exec supabase_db_drishti psql -U postgres -d postgres -v ON_ERROR_STOP=1 --single-transaction -f /tmp/seed.sql && docker exec supabase_db_drishti rm /tmp/seed.sql",
     "db:seed-check": "docker cp supabase/seed-checks/seed_check.sql supabase_db_drishti:/tmp/seed_check.sql && docker exec supabase_db_drishti psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/seed_check.sql && docker exec supabase_db_drishti rm /tmp/seed_check.sql",
     "prepare": "git config core.hooksPath .githooks",
