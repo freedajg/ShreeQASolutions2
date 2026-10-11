@@ -33,6 +33,10 @@ import { useCrm } from '../context/CrmContext';
 import { Lead, Stage, ServiceKind } from '../types';
 import { formatINR } from '../utils/currency';
 import { formatStandardDate, getDaysAgo } from '../utils/dateUtils';
+import { isFeatureEnabled } from '../lib/screens';
+
+// Email drafts are hidden until Phase 5 (src/lib/screens.ts).
+const showEmailDraft = isFeatureEnabled('emailDraft');
 
 const STAGES: Stage[] = [
   'New',
@@ -405,7 +409,7 @@ export function PipelineView() {
                   <th className="px-4 py-3">Value</th>
                   <th className="px-4 py-3">Owner</th>
                   <th className="px-4 py-3">Last Contact</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  {showEmailDraft && <th className="px-4 py-3 text-right">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-line/8 text-text">
@@ -447,18 +451,20 @@ export function PipelineView() {
                       <td className="px-4 py-3 text-muted">
                         {formatStandardDate(lead.lastContactDate)} ({daysQuiet}d ago)
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDraftModal({ type: 'lead', entity: lead });
-                          }}
-                          className="px-2.5 py-1 rounded bg-raised hover:bg-primary-tint/20 text-primary font-semibold text-[11px] border border-line/15 inline-flex items-center gap-1"
-                        >
-                          <Mail size={12} />
-                          <span>Draft</span>
-                        </button>
-                      </td>
+                      {showEmailDraft && (
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDraftModal({ type: 'lead', entity: lead });
+                            }}
+                            className="px-2.5 py-1 rounded bg-raised hover:bg-primary-tint/20 text-primary font-semibold text-[11px] border border-line/15 inline-flex items-center gap-1"
+                          >
+                            <Mail size={12} />
+                            <span>Draft</span>
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -493,13 +499,15 @@ export function PipelineView() {
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => openDraftModal({ type: 'lead', entity: currentSelectedLead })}
-                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-primary to-teal text-on-primary font-bold text-xs flex items-center gap-1.5 shadow-sm"
-                >
-                  <Mail size={13} />
-                  <span>Draft Follow-Up</span>
-                </button>
+                {showEmailDraft && (
+                  <button
+                    onClick={() => openDraftModal({ type: 'lead', entity: currentSelectedLead })}
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-primary to-teal text-on-primary font-bold text-xs flex items-center gap-1.5 shadow-sm"
+                  >
+                    <Mail size={13} />
+                    <span>Draft Follow-Up</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setSelectedLead(null)}
                   className="p-1.5 rounded-lg text-muted hover:text-text-strong bg-raised"
@@ -570,10 +578,12 @@ export function PipelineView() {
                 <p className="text-text leading-relaxed italic">
                   "{currentSelectedLead.meetingContext}"
                 </p>
-                <p className="text-[10px] text-muted pt-1">
-                  *When generating emails, Drishti automatically converts this internal note into a
-                  courteous first-person message for {currentSelectedLead.owner}.
-                </p>
+                {showEmailDraft && (
+                  <p className="text-[10px] text-muted pt-1">
+                    *When generating emails, Drishti automatically converts this internal note into
+                    a courteous first-person message for {currentSelectedLead.owner}.
+                  </p>
+                )}
               </div>
 
               {/* Activity Trail & Add Note */}

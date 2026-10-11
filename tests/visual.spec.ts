@@ -2,12 +2,22 @@
 // Proves the colour-token conversion (Phase 0 part 2) doesn't change how the app looks.
 // Dark baselines keep their original names (desktop-drishti.png); light ones are prefixed
 // (light-desktop-drishti.png). Baselines live in tests/visual.spec.ts-snapshots/ and are
-// Windows-specific, so this runs locally only. Update baselines only for a change named in
-// docs/PHASE-0-PART-2-PLAN.md:
-//   bun run test:e2e tests/visual.spec.ts --update-snapshots
+// Windows-specific, so this runs locally only.
+// Never use --update-snapshots. New baselines are copied in by name from
+// test-results/*-actual.png after review, with a SHA-256 before/after proof (DECISIONS.md).
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import type { ActivityNote, Client, Lead } from '../src/types';
+import type { ActivityNote, Client, Lead, TabKey } from '../src/types';
+import { SCREENS, isFeatureEnabled, isScreenEnabled } from '../src/lib/screens';
 import { ACCOUNTS, mockSupabase, type FakeStack } from './support/auth';
+
+// Hidden screens (src/lib/screens.ts) are skipped, not deleted: their tests and baselines come
+// back when the screen is switched on again.
+function skipUnlessShown(key: TabKey) {
+  test.skip(
+    !isScreenEnabled(key),
+    `${SCREENS[key].label} is hidden until it is wired (src/lib/screens.ts, ${SCREENS[key].wiredIn})`,
+  );
+}
 
 type Theme = 'dark' | 'light';
 const THEMES: Theme[] = ['dark', 'light'];
@@ -194,8 +204,9 @@ for (const theme of THEMES) {
         'clients',
         'import',
         'settings',
-      ]) {
+      ] as TabKey[]) {
         test(`tab: ${key}`, async ({ page }) => {
+          skipUnlessShown(key);
           await openApp(page, theme);
           await openTab(page, key);
           await snap(page, theme, `desktop-${key}`);
@@ -252,6 +263,8 @@ for (const theme of THEMES) {
       });
 
       test('email draft dialog', async ({ page }) => {
+        skipUnlessShown('radar');
+        test.skip(!isFeatureEnabled('emailDraft'), 'Email drafts are hidden until Phase 5');
         await openApp(page, theme);
         await openTab(page, 'radar');
         await page.getByTitle('Draft renewal reminder email').first().click();
@@ -260,6 +273,7 @@ for (const theme of THEMES) {
       });
 
       test('metric info popover', async ({ page }) => {
+        skipUnlessShown('dashboard');
         await openApp(page, theme);
         await openTab(page, 'dashboard');
         // Not a top-row card: their popovers open upwards and are hidden at the top of the page.
@@ -269,6 +283,7 @@ for (const theme of THEMES) {
       });
 
       test('drishti change proposal', async ({ page }) => {
+        skipUnlessShown('drishti');
         // Tall enough that the floating "Ask Drishti" bar sits below the proposal, not over it.
         await page.setViewportSize({ width: 1440, height: 1400 });
         await openApp(page, theme);
@@ -280,7 +295,8 @@ for (const theme of THEMES) {
 
       test('hover: nav button', async ({ page }) => {
         await openApp(page, theme);
-        await page.locator('#nav-tab-pipeline').hover();
+        // Clients, not Pipeline: Pipeline is the landing (active) tab, so hovering it shows nothing.
+        await page.locator('#nav-tab-clients').hover();
         await settle(page);
         await snap(page, theme, 'desktop-hover-nav');
       });
@@ -302,8 +318,14 @@ for (const theme of THEMES) {
     test.describe('phone (375px)', () => {
       test.use({ viewport: { width: 375, height: 812 } });
 
-      for (const label of ['Drishti', 'Radar', 'Pipeline', 'Clients']) {
+      for (const [label, key] of [
+        ['Drishti', 'drishti'],
+        ['Radar', 'radar'],
+        ['Pipeline', 'pipeline'],
+        ['Clients', 'clients'],
+      ] as [string, TabKey][]) {
         test(`tab: ${label}`, async ({ page }) => {
+          skipUnlessShown(key);
           await openApp(page, theme);
           // The name may end with a badge count, e.g. "Radar 5".
           await page.getByRole('button', { name: new RegExp(`^${label}( \\d+)?$`) }).click();

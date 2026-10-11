@@ -18,12 +18,16 @@ import {
 import { useCrm } from '../context/CrmContext';
 import { Client, ServiceKind } from '../types';
 import { formatINR } from '../utils/currency';
+import { isFeatureEnabled } from '../lib/screens';
 import {
   getDaysUntilRenewal,
   getRenewalDate,
   formatStandardDate,
   getRenewalCycleYears,
 } from '../utils/dateUtils';
+
+// Email drafts are hidden until Phase 5 (src/lib/screens.ts).
+const showEmailDraft = isFeatureEnabled('emailDraft');
 
 export function ClientsView() {
   const {
@@ -201,7 +205,7 @@ export function ClientsView() {
                 <th className="px-4 py-3">Renewal Status</th>
                 <th className="px-4 py-3">Contract Value</th>
                 <th className="px-4 py-3">Owner</th>
-                <th className="px-4 py-3 text-right">Actions</th>
+                {showEmailDraft && <th className="px-4 py-3 text-right">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-line/8 text-text">
@@ -250,18 +254,20 @@ export function ClientsView() {
                       {formatINR(client.contractValue)}
                     </td>
                     <td className="px-4 py-3 text-text-secondary">{client.owner}</td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openDraftModal({ type: 'client', entity: client });
-                        }}
-                        className="px-2.5 py-1 rounded bg-raised hover:bg-primary-tint/20 text-primary font-semibold text-[11px] border border-line/15 inline-flex items-center gap-1"
-                      >
-                        <Mail size={12} />
-                        <span>Draft</span>
-                      </button>
-                    </td>
+                    {showEmailDraft && (
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDraftModal({ type: 'client', entity: client });
+                          }}
+                          className="px-2.5 py-1 rounded bg-raised hover:bg-primary-tint/20 text-primary font-semibold text-[11px] border border-line/15 inline-flex items-center gap-1"
+                        >
+                          <Mail size={12} />
+                          <span>Draft</span>
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
@@ -303,13 +309,17 @@ export function ClientsView() {
                   <Edit2 size={13} />
                   <span>{isEditing ? 'Cancel Edit' : 'Edit'}</span>
                 </button>
-                <button
-                  onClick={() => openDraftModal({ type: 'client', entity: currentSelectedClient })}
-                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-primary to-teal text-on-primary font-bold text-xs flex items-center gap-1.5 shadow-sm"
-                >
-                  <Mail size={13} />
-                  <span>Draft Renewal</span>
-                </button>
+                {showEmailDraft && (
+                  <button
+                    onClick={() =>
+                      openDraftModal({ type: 'client', entity: currentSelectedClient })
+                    }
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-primary to-teal text-on-primary font-bold text-xs flex items-center gap-1.5 shadow-sm"
+                  >
+                    <Mail size={13} />
+                    <span>Draft Renewal</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setSelectedClient(null)}
                   className="p-1.5 rounded-lg text-muted hover:text-text-strong bg-raised"

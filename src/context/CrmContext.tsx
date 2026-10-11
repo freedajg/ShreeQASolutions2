@@ -23,6 +23,7 @@ import {
   TESTED_DEFAULT_MODELS,
   registerInFlightListener,
 } from '../services/aiService';
+import { LANDING_SCREEN, isFeatureEnabled, resolveScreen } from '../lib/screens';
 
 const STORAGE_KEY = 'drishti_crm_v1_store';
 
@@ -83,7 +84,7 @@ const CrmContext = createContext<CrmContextType | undefined>(undefined);
 
 export function CrmProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabKey>('drishti');
+  const [activeTab, setActiveTabState] = useState<TabKey>(LANDING_SCREEN);
   const [activeUser, setActiveUserState] = useState<UserProfile>(TEAM_MEMBERS[0]);
   const [clients, setClients] = useState<Client[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -125,6 +126,9 @@ export function CrmProvider({ children }: { children: ReactNode }) {
             ...defaultSettings,
             ...parsed.settings,
             openRouterModels: fixedModels,
+            // AI provider keys are never kept in the browser (DECISIONS 11-Oct-2026): any key
+            // saved earlier is dropped here, and the next save removes it from storage.
+            ...(isFeatureEnabled('aiProviders') ? {} : { openRouterApiKey: '', groqApiKey: '' }),
           });
 
           if (parsed.settings.activeUserId) {
@@ -172,6 +176,11 @@ export function CrmProvider({ children }: { children: ReactNode }) {
       setIsAiLoading(false);
     });
     return unregister;
+  }, []);
+
+  // A hidden screen (src/lib/screens.ts) can never become the active one, whoever asks.
+  const setActiveTab = useCallback((tab: TabKey) => {
+    setActiveTabState(resolveScreen(tab));
   }, []);
 
   const setActiveUser = useCallback((user: UserProfile) => {

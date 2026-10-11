@@ -91,16 +91,17 @@ test('a failed profile check after a good sign-in shows the connection message',
   expect(stack.calls.filter((c) => c === 'GET /rest/v1/profiles')).toHaveLength(1);
 });
 
-test('Owner and Consultant land on Drishti; Marketing lands on Pipeline', async ({ page }) => {
-  for (const [account, tab] of [
-    [ACCOUNTS.owner, 'drishti'],
-    [ACCOUNTS.consultant, 'drishti'],
-    [ACCOUNTS.marketing, 'pipeline'],
-  ] as [FakeAccount, string][]) {
+test('every role lands on Pipeline', async ({ page }) => {
+  // Pipeline is the landing screen for everyone while the other screens are hidden (step 2-a2).
+  for (const account of [
+    ACCOUNTS.owner,
+    ACCOUNTS.consultant,
+    ACCOUNTS.marketing,
+  ] as FakeAccount[]) {
     await mockSupabase(page);
     await page.goto('/');
     await signIn(page, account.email, TEST_PASSWORD);
-    await expect(page.locator(`#nav-tab-${tab}`)).toHaveAttribute('aria-current', 'page');
+    await expect(page.locator('#nav-tab-pipeline')).toHaveAttribute('aria-current', 'page');
 
     await page.getByRole('button', { name: 'Switch active user' }).click();
     await expect(page.getByText(account.full_name, { exact: true })).toBeVisible();
@@ -128,7 +129,7 @@ test('a saved session opens the app; sign-out ends it and returns to the login p
 }) => {
   const stack = await mockSupabase(page, { signedInAs: ACCOUNTS.owner });
   await page.goto('/');
-  await expect(page.locator('#nav-tab-drishti')).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('#nav-tab-pipeline')).toHaveAttribute('aria-current', 'page');
 
   await page.getByRole('button', { name: 'Switch active user' }).click();
   await page.getByRole('button', { name: 'Sign out' }).click();

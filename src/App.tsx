@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { CrmProvider, useCrm } from './context/CrmContext';
-import { useAuth, useSignedInUser } from './lib/auth/context';
+import { useAuth } from './lib/auth/context';
+import { isFeatureEnabled, isScreenEnabled, resolveScreen } from './lib/screens';
 import { AuthLoading, ConfigProblem, LoginPage } from './components/LoginPage';
 import { Navbar } from './components/Navbar';
 import { DrishtiView } from './components/DrishtiView';
@@ -13,13 +14,11 @@ import { SettingsView } from './components/SettingsView';
 import { EmailDraftModal } from './components/EmailDraftModal';
 
 function MainAppContent() {
-  const { activeTab, setActiveTab, selectedDraftTarget, closeDraftModal } = useCrm();
-  const user = useSignedInUser();
-
-  // Landing tab: Marketing starts on Pipeline (its only data); everyone else on Drishti.
-  useEffect(() => {
-    if (user.role === 'marketing') setActiveTab('pipeline');
-  }, [user.id, user.role, setActiveTab]);
+  const { activeTab, selectedDraftTarget, closeDraftModal } = useCrm();
+  // Every role lands on Pipeline. A hidden screen (src/lib/screens.ts) is never mounted, so its
+  // effects never run, even if something asks for it.
+  const screen = resolveScreen(activeTab);
+  const shows = (key: typeof screen) => screen === key && isScreenEnabled(key);
 
   return (
     <div className="min-h-screen bg-bg text-text flex flex-col font-sans selection:bg-primary/30 selection:text-text-strong">
@@ -28,17 +27,17 @@ function MainAppContent() {
 
       {/* Main Tab Content */}
       <main className="flex-1 w-full">
-        {activeTab === 'drishti' && <DrishtiView />}
-        {activeTab === 'dashboard' && <DashboardView />}
-        {activeTab === 'radar' && <RenewalRadarView />}
-        {activeTab === 'pipeline' && <PipelineView />}
-        {activeTab === 'clients' && <ClientsView />}
-        {activeTab === 'import' && <ImportView />}
-        {activeTab === 'settings' && <SettingsView />}
+        {shows('drishti') && <DrishtiView />}
+        {shows('dashboard') && <DashboardView />}
+        {shows('radar') && <RenewalRadarView />}
+        {shows('pipeline') && <PipelineView />}
+        {shows('clients') && <ClientsView />}
+        {shows('import') && <ImportView />}
+        {shows('settings') && <SettingsView />}
       </main>
 
-      {/* Draft Email Modal */}
-      {selectedDraftTarget && (
+      {/* Draft Email Modal (hidden until Phase 5: owner's mailbox only) */}
+      {isFeatureEnabled('emailDraft') && selectedDraftTarget && (
         <EmailDraftModal target={selectedDraftTarget} onClose={closeDraftModal} />
       )}
     </div>

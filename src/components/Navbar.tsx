@@ -20,6 +20,7 @@ import { TEAM_MEMBERS } from '../utils/seedData';
 import { useCrm } from '../context/CrmContext';
 import { useAuth, useSignedInUser } from '../lib/auth/context';
 import { useTheme } from '../lib/useTheme';
+import { LANDING_SCREEN, isScreenEnabled } from '../lib/screens';
 import type { ThemePreference } from '../lib/theme';
 import { DrishtiFace } from './DrishtiFace';
 
@@ -90,33 +91,42 @@ export function Navbar() {
     return days <= 90;
   }).length;
 
-  const navItems: NavItem[] = [
-    { key: 'drishti', label: 'Drishti', icon: Sparkles },
-    { key: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { key: 'radar', label: 'Renewal Radar', icon: Radar, badge: radarAlertCount },
-    {
-      key: 'pipeline',
-      label: 'Pipeline',
-      icon: Kanban,
-      badge: leads.filter((l) => l.stage !== 'Won' && l.stage !== 'Lost').length,
-    },
-    { key: 'clients', label: 'Clients', icon: Building2, badge: clients.length },
-    { key: 'import', label: 'Import', icon: FileSpreadsheet },
-    { key: 'settings', label: 'Settings', icon: SettingsIcon },
-  ];
+  // Hidden screens (src/lib/screens.ts) get no nav item anywhere.
+  const shown = (item: NavItem) => isScreenEnabled(item.key);
 
-  const mobilePrimaryItems: NavItem[] = [
-    { key: 'drishti', label: 'Drishti', icon: Sparkles },
-    { key: 'radar', label: 'Radar', icon: Radar, badge: radarAlertCount },
-    { key: 'pipeline', label: 'Pipeline', icon: Kanban },
-    { key: 'clients', label: 'Clients', icon: Building2 },
-  ];
+  const navItems: NavItem[] = (
+    [
+      { key: 'drishti', label: 'Drishti', icon: Sparkles },
+      { key: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+      { key: 'radar', label: 'Renewal Radar', icon: Radar, badge: radarAlertCount },
+      {
+        key: 'pipeline',
+        label: 'Pipeline',
+        icon: Kanban,
+        badge: leads.filter((l) => l.stage !== 'Won' && l.stage !== 'Lost').length,
+      },
+      { key: 'clients', label: 'Clients', icon: Building2, badge: clients.length },
+      { key: 'import', label: 'Import', icon: FileSpreadsheet },
+      { key: 'settings', label: 'Settings', icon: SettingsIcon },
+    ] satisfies NavItem[]
+  ).filter(shown);
 
-  const mobileMoreItems: NavItem[] = [
-    { key: 'dashboard', label: 'Executive Dashboard', icon: BarChart3 },
-    { key: 'import', label: 'Import Excel / CSV', icon: FileSpreadsheet },
-    { key: 'settings', label: 'API Keys & Settings', icon: SettingsIcon },
-  ];
+  const mobilePrimaryItems: NavItem[] = (
+    [
+      { key: 'drishti', label: 'Drishti', icon: Sparkles },
+      { key: 'radar', label: 'Radar', icon: Radar, badge: radarAlertCount },
+      { key: 'pipeline', label: 'Pipeline', icon: Kanban },
+      { key: 'clients', label: 'Clients', icon: Building2 },
+    ] satisfies NavItem[]
+  ).filter(shown);
+
+  const mobileMoreItems: NavItem[] = (
+    [
+      { key: 'dashboard', label: 'Executive Dashboard', icon: BarChart3 },
+      { key: 'import', label: 'Import Excel / CSV', icon: FileSpreadsheet },
+      { key: 'settings', label: 'API Keys & Settings', icon: SettingsIcon },
+    ] satisfies NavItem[]
+  ).filter(shown);
 
   return (
     <>
@@ -129,7 +139,7 @@ export function Navbar() {
           {/* Logo & Assistant Identity */}
           <div className="flex items-center gap-3 min-w-0">
             <button
-              onClick={() => setActiveTab('drishti')}
+              onClick={() => setActiveTab(LANDING_SCREEN)}
               className="flex items-center gap-2.5 group focus:outline-none"
             >
               <DrishtiFace
@@ -331,7 +341,7 @@ export function Navbar() {
           <button
             onClick={() => setIsMoreOpen(true)}
             className={`flex flex-col items-center justify-center min-w-[64px] min-h-[48px] px-2 py-1 rounded-xl text-[11px] ${
-              ['dashboard', 'import', 'settings'].includes(activeTab) || isMoreOpen
+              mobileMoreItems.some((item) => item.key === activeTab) || isMoreOpen
                 ? 'text-primary font-bold'
                 : 'text-muted'
             }`}
