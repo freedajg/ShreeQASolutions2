@@ -98,17 +98,17 @@ Nobody can hard-delete.
 
 ### Phase 2 demo-critical steps (summary; detailed plan comes after Phase 1)
 
-| # | What | Hrs |
-|---|---|---|
-| 2-a | supabase-js data layer + TanStack Query (approval); generated database types | 1.5 |
-| 2-b | Types become `Client` + `Engagement`; adapt Pipeline and Clients | 4 |
-| 2-c | Pipeline board reads `pipeline`; drag calls `change_engagement_status()` | 2.5 |
-| 2-d | Clients list reads `active_clients`; client detail with its engagements | 2.5 |
-| 2-e | Hard-coded team replaced with `profiles` | 2 |
-| 2-f | ₹ values come only from `engagement_financials`, so roles without access see no value at all | 1 |
-| 2-g | Minimum loading, empty and error states on Pipeline and Clients | 1 |
-| 2-h | Demo rehearsal per role, with screenshots | 1.5 |
-| | **Total** | **≈ 16 h** |
+| # | What | Hrs | Done |
+|---|---|---|---|
+| 2-a | supabase-js data layer + TanStack Query (approval); generated database types | 1.5 | ✓ aa0d805. `@tanstack/react-query` 5.104.0 (exact; lockfile adds only it and `query-core` 5.104.0; `bun pm untrusted` 0). `src/types/database.ts` from `bun run db:types`, no keys in it. typecheck PASS; lint 0 errors; test 129 PASS (30 new in `src/lib/data/`); format:check PASS. Manual login check passed 11-Oct-2026: Owner sign-in, sign-out, Marketing sign-in all work; Console shows no errors (only the React DevTools tip). No screen reads the new layer yet |
+| 2-b | Types become `Client` + `Engagement`; adapt Pipeline and Clients | 4 | |
+| 2-c | Pipeline board reads `pipeline`; drag calls `change_engagement_status()` | 2.5 | |
+| 2-d | Clients list reads `active_clients`; client detail with its engagements | 2.5 | |
+| 2-e | Hard-coded team replaced with `profiles` | 2 | |
+| 2-f | ₹ values come only from `engagement_financials`, so roles without access see no value at all | 1 | |
+| 2-g | Minimum loading, empty and error states on Pipeline and Clients | 1 | |
+| 2-h | Demo rehearsal per role, with screenshots | 1.5 | |
+| | **Total** | **≈ 16 h** | |
 
 ### Time to the demo
 
