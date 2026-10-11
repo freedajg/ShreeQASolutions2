@@ -54,7 +54,8 @@ export const MESSAGES = {
   generic: "Sign-in didn't work. Please try again.",
 } as const;
 
-const NETWORK_FAILURE = /failed to fetch|networkerror|load failed|network request failed/i;
+// Also used by the data layer's error mapping (src/lib/data/errors.ts).
+export const NETWORK_FAILURE = /failed to fetch|networkerror|load failed|network request failed/i;
 
 /** Maps an error from supabase-js (or a thrown fetch error) to a message. Never echoes input. */
 export function loginErrorMessage(error: unknown): string {
