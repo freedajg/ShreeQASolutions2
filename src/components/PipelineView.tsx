@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -13,50 +13,44 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import {
-  Plus,
-  Kanban,
-  Table as TableIcon,
-  Search,
-  User,
-  AlertCircle,
-  Clock,
-  Mail,
-  X,
-  Check,
-  Building,
-  Phone,
-  ArrowRight,
-  MessageSquare,
-} from 'lucide-react';
+import { Plus, Kanban, Table as TableIcon, Search, AlertCircle, Clock, X } from 'lucide-react';
 import { useCrm } from '../context/CrmContext';
 import { Lead, Stage, ServiceKind } from '../types';
+import { PIPELINE_COLUMNS, type Engagement, type PipelineStatus } from '../types/crm';
+import { groupByPipelineStatus, isPipelineStatus, sumValues } from '../lib/data/mappers';
+import { useOwnerName, usePipelineEngagements } from '../lib/data/hooks';
 import { formatINR } from '../utils/currency';
 import { formatStandardDate, getDaysAgo } from '../utils/dateUtils';
 import { isFeatureEnabled } from '../lib/screens';
 
-// Email drafts are hidden until Phase 5 (src/lib/screens.ts).
-const showEmailDraft = isFeatureEnabled('emailDraft');
+// Hidden until wired (src/lib/screens.ts). The email-draft buttons were removed in 2-b: the MVP
+// draft dialog takes the old types, and drafts are rebuilt in Phase 5 (CLAUDE.md rule 4).
+const showAddLead = isFeatureEnabled('addLead');
+const showNeedsAttention = isFeatureEnabled('needsAttention');
 
-const STAGES: Stage[] = [
-  'New',
-  'Contacted',
-  'Demo scheduled',
-  'Demo done',
-  'Proposal sent',
-  'Won',
-  'Lost',
-];
+// MVP rule, kept until the follow-up interval setting exists (step 16).
+const QUIET_AFTER_DAYS = 7;
 
-interface SortableLeadCardProps {
-  lead: Lead;
-  onOpenDetails: (lead: Lead) => void;
+const dateOrDash = (date: string | null) => (date ? formatStandardDate(date) : '—');
+
+/** Days since the last contact; null when no contact is recorded. */
+const daysQuiet = (engagement: Engagement) =>
+  engagement.lastContactedOn ? getDaysAgo(engagement.lastContactedOn) : null;
+
+const isQuiet = (engagement: Engagement) => (daysQuiet(engagement) ?? 0) >= QUIET_AFTER_DAYS;
+
+type OwnerName = (ownerId: string | null) => string | null;
+
+interface SortableEngagementCardProps {
+  engagement: Engagement;
+  ownerName: OwnerName;
+  onOpenDetails: (engagement: Engagement) => void;
 }
 
-function LeadCardItem({ lead, onOpenDetails }: SortableLeadCardProps) {
+function EngagementCardItem({ engagement, ownerName, onOpenDetails }: SortableEngagementCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: lead.id,
-    data: { lead },
+    id: engagement.id,
+    data: { engagement },
   });
 
   const style = {
@@ -64,8 +58,8 @@ function LeadCardItem({ lead, onOpenDetails }: SortableLeadCardProps) {
     transition,
   };
 
-  const daysQuiet = getDaysAgo(lead.lastContactDate);
-  const isQuiet = lead.stage !== 'Won' && lead.stage !== 'Lost' && daysQuiet >= 7;
+  const owner = ownerName(engagement.ownerId);
+  const quietDays = daysQuiet(engagement);
 
   return (
     <div
@@ -73,42 +67,50 @@ function LeadCardItem({ lead, onOpenDetails }: SortableLeadCardProps) {
       style={style}
       {...attributes}
       {...listeners}
-      onClick={() => onOpenDetails(lead)}
+      onClick={() => onOpenDetails(engagement)}
       className={`bg-raised border rounded-xl p-3.5 shadow-md cursor-grab active:cursor-grabbing select-none transition-all duration-150 space-y-2.5 ${
         isDragging
           ? 'opacity-40 border-primary'
           : 'border-line/18 hover:border-line/35 hover:shadow-lg'
       }`}
     >
-      {/* Top row: Company name (15px semibold wrapping to 2 lines) & Value */}
+      {/* Top row: Company name (15px semibold wrapping to 2 lines) & certification */}
       <div className="flex items-start justify-between gap-2">
         <h4 className="text-[15px] font-semibold text-text leading-tight line-clamp-2 min-w-0 flex-1">
-          {lead.company}
+          {engagement.client.name}
         </h4>
-        <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-surface text-primary border border-primary/20 shrink-0">
-          {lead.serviceInterest || 'ISO'}
-        </span>
+        {engagement.certificationType && (
+          <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-surface text-primary border border-primary/20 shrink-0">
+            {engagement.certificationType}
+          </span>
+        )}
       </div>
 
-      {/* Value */}
-      <div className="text-sm font-bold font-mono text-info tabular-nums">
-        {formatINR(lead.value)}
-      </div>
+      {/* Value, only when there is one */}
+      {engagement.contractValue !== null && (
+        <div className="text-sm font-bold font-mono text-info tabular-nums">
+          {formatINR(engagement.contractValue)}
+        </div>
+      )}
 
       {/* Bottom row: Owner avatar, contact name, status pill ONLY when in trouble */}
       <div className="pt-2 border-t border-line/10 flex items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-1.5 min-w-0">
-          <div className="w-5 h-5 rounded-full bg-surface border border-line/25 flex items-center justify-center text-[10px] font-bold text-text shrink-0">
-            {lead.owner[0]}
+          <div
+            title={owner ?? 'No owner'}
+            className="w-5 h-5 rounded-full bg-surface border border-line/25 flex items-center justify-center text-[10px] font-bold text-text shrink-0"
+          >
+            {owner ? owner[0] : '?'}
           </div>
-          <span className="text-text-secondary text-[11px] truncate">{lead.contactName}</span>
+          <span className="text-text-secondary text-[11px] truncate">
+            {engagement.client.contactPerson ?? '—'}
+          </span>
         </div>
 
-        {/* Status pill ONLY when quiet > 7 days */}
-        {isQuiet && (
+        {showNeedsAttention && quietDays !== null && isQuiet(engagement) && (
           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-warning/15 text-warning border border-warning/30 shrink-0 flex items-center gap-1">
             <Clock size={10} />
-            <span>{daysQuiet}d quiet</span>
+            <span>{quietDays}d quiet</span>
           </span>
         )}
       </div>
@@ -117,24 +119,23 @@ function LeadCardItem({ lead, onOpenDetails }: SortableLeadCardProps) {
 }
 
 export function PipelineView() {
-  const {
-    leads,
-    setLeadStage,
-    addLead,
-    updateLead,
-    addLeadActivityNote,
-    openDraftModal,
-    activeUser,
-  } = useCrm();
+  const { addLead } = useCrm();
+  const loaded = usePipelineEngagements();
+  const ownerName = useOwnerName();
 
   const [viewMode, setViewMode] = useState<'board' | 'table'>('board');
   const [searchTerm, setSearchTerm] = useState('');
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
-  const [lostPromptLeadId, setLostPromptLeadId] = useState<string | null>(null);
-  const [lostReasonInput, setLostReasonInput] = useState('');
-  const [newNoteText, setNewNoteText] = useState('');
+  // Moves made by dragging, kept in memory only until 2-c saves them with
+  // change_engagement_status(). A reload starts again from the loaded rows.
+  const [movedTo, setMovedTo] = useState<Record<string, PipelineStatus>>({});
+
+  const engagements = useMemo(
+    () => loaded.map((e) => (movedTo[e.id] ? { ...e, status: movedTo[e.id] } : e)),
+    [loaded, movedTo],
+  );
 
   // Sensors for dnd-kit
   const pointerSensor = useSensor(PointerSensor, {
@@ -146,18 +147,20 @@ export function PipelineView() {
   const keyboardSensor = useSensor(KeyboardSensor);
   const sensors = useSensors(pointerSensor, touchSensor, keyboardSensor);
 
-  // Filter leads
-  const filteredLeads = leads.filter(
-    (l) =>
-      l.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      l.contactName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      l.owner.toLowerCase().includes(searchTerm.toLowerCase()),
+  // Filter by company, contact or owner
+  const term = searchTerm.toLowerCase();
+  const filtered = engagements.filter(
+    (e) =>
+      e.client.name.toLowerCase().includes(term) ||
+      (e.client.contactPerson ?? '').toLowerCase().includes(term) ||
+      (ownerName(e.ownerId) ?? '').toLowerCase().includes(term),
   );
+  const columns = groupByPipelineStatus(filtered);
 
-  // Needs-attention leads: quiet leads (>7 days)
-  const quietLeads = leads
-    .filter((l) => l.stage !== 'Won' && l.stage !== 'Lost' && getDaysAgo(l.lastContactDate) >= 7)
-    .sort((a, b) => getDaysAgo(b.lastContactDate) - getDaysAgo(a.lastContactDate));
+  // Needs-attention: quiet for 7 days or more (no contact recorded = not counted)
+  const quiet = engagements
+    .filter(isQuiet)
+    .sort((a, b) => (daysQuiet(b) ?? 0) - (daysQuiet(a) ?? 0));
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveDragId(event.active.id as string);
@@ -168,60 +171,22 @@ export function PipelineView() {
     setActiveDragId(null);
     if (!over) return;
 
-    const leadId = active.id as string;
+    const engagementId = active.id as string;
     const overId = over.id as string;
 
-    // Check if dropped over a column container or another card in that stage
-    let targetStage: Stage | undefined;
+    // Dropped over a column container or another card in that column
+    const target = isPipelineStatus(overId)
+      ? overId
+      : engagements.find((e) => e.id === overId)?.status;
 
-    if (STAGES.includes(overId as Stage)) {
-      targetStage = overId as Stage;
-    } else {
-      const overLead = leads.find((l) => l.id === overId);
-      if (overLead) {
-        targetStage = overLead.stage;
-      }
-    }
-
-    if (targetStage) {
-      const draggedLead = leads.find((l) => l.id === leadId);
-      if (draggedLead && draggedLead.stage !== targetStage) {
-        if (targetStage === 'Lost') {
-          // Prompt for reason
-          setLostPromptLeadId(leadId);
-          setLostReasonInput('');
-        } else {
-          setLeadStage(leadId, targetStage);
-        }
-      }
+    const dragged = engagements.find((e) => e.id === engagementId);
+    if (target && isPipelineStatus(target) && dragged && dragged.status !== target) {
+      setMovedTo((prev) => ({ ...prev, [engagementId]: target }));
     }
   };
 
-  const handleConfirmLost = () => {
-    if (!lostPromptLeadId) return;
-    setLeadStage(lostPromptLeadId, 'Lost', lostReasonInput || 'No specific reason given');
-    setLostPromptLeadId(null);
-    setLostReasonInput('');
-  };
-
-  const handleAddNoteToSelectedLead = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedLead || !newNoteText.trim()) return;
-    addLeadActivityNote(selectedLead.id, newNoteText);
-    setNewNoteText('');
-    // Refresh selected lead state
-    const refreshed = leads.find((l) => l.id === selectedLead.id);
-    if (refreshed) {
-      setSelectedLead(refreshed);
-    }
-  };
-
-  // Keep selected lead state in sync with context updates
-  const currentSelectedLead = selectedLead
-    ? leads.find((l) => l.id === selectedLead.id) || selectedLead
-    : null;
-
-  const activeDraggingLead = activeDragId ? leads.find((l) => l.id === activeDragId) : null;
+  const selected = selectedId ? (engagements.find((e) => e.id === selectedId) ?? null) : null;
+  const activeDragging = activeDragId ? engagements.find((e) => e.id === activeDragId) : null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-12 space-y-6">
@@ -233,7 +198,7 @@ export function PipelineView() {
               Sales Pipeline
             </h1>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary-tint/20 text-primary border border-primary-tint/30">
-              {leads.filter((l) => l.stage !== 'Won' && l.stage !== 'Lost').length} Open Deals
+              {engagements.length} Open Deals
             </span>
           </div>
           <p className="text-xs sm:text-sm text-text-secondary mt-0.5">
@@ -268,19 +233,20 @@ export function PipelineView() {
             </button>
           </div>
 
-          {/* Add Lead Button */}
-          <button
-            onClick={() => setIsAddLeadOpen(true)}
-            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-primary to-teal hover:from-primary-soft hover:to-info text-on-primary font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
-          >
-            <Plus size={15} />
-            <span>Add Lead</span>
-          </button>
+          {showAddLead && (
+            <button
+              onClick={() => setIsAddLeadOpen(true)}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-primary to-teal hover:from-primary-soft hover:to-info text-on-primary font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
+            >
+              <Plus size={15} />
+              <span>Add Lead</span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* Needs-Attention Chips (Single row reading Company · 11d scrolling sideways) */}
-      {quietLeads.length > 0 && (
+      {showNeedsAttention && quiet.length > 0 && (
         <div className="bg-surface border border-line/16 rounded-2xl p-3 flex items-center gap-3 overflow-hidden">
           <div className="flex items-center gap-1.5 text-xs font-bold text-warning shrink-0 pl-1">
             <AlertCircle size={15} />
@@ -288,19 +254,16 @@ export function PipelineView() {
           </div>
 
           <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-none">
-            {quietLeads.map((l) => {
-              const days = getDaysAgo(l.lastContactDate);
-              return (
-                <button
-                  key={l.id}
-                  onClick={() => setSelectedLead(l)}
-                  className="shrink-0 px-3 py-1 rounded-full text-xs font-medium bg-raised hover:bg-warning/10 text-text border border-warning/30 hover:border-warning transition-colors flex items-center gap-1.5"
-                >
-                  <span className="font-semibold">{l.company}</span>
-                  <span className="text-warning font-mono">· {days}d quiet</span>
-                </button>
-              );
-            })}
+            {quiet.map((e) => (
+              <button
+                key={e.id}
+                onClick={() => setSelectedId(e.id)}
+                className="shrink-0 px-3 py-1 rounded-full text-xs font-medium bg-raised hover:bg-warning/10 text-text border border-warning/30 hover:border-warning transition-colors flex items-center gap-1.5"
+              >
+                <span className="font-semibold">{e.client.name}</span>
+                <span className="text-warning font-mono">· {daysQuiet(e)}d quiet</span>
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -327,48 +290,51 @@ export function PipelineView() {
         >
           <div className="overflow-x-auto pb-6">
             <div className="flex items-start gap-4 min-w-max pb-2">
-              {STAGES.map((stage) => {
-                const stageLeads = filteredLeads.filter((l) => l.stage === stage);
-                const stageTotal = stageLeads.reduce((s, l) => s + l.value, 0);
+              {PIPELINE_COLUMNS.map((status) => {
+                const columnItems = columns[status];
+                const columnTotal = sumValues(columnItems);
 
                 return (
                   <div
-                    key={stage}
-                    id={`column-${stage}`}
+                    key={status}
+                    id={`column-${status}`}
                     className="w-[300px] flex-shrink-0 bg-surface border border-line/16 rounded-2xl flex flex-col max-h-[75vh]"
                   >
                     {/* Column Header */}
                     <div className="p-3.5 border-b border-line/12 bg-raised/50 rounded-t-2xl flex items-center justify-between">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-xs text-text">{stage}</span>
+                          <span className="font-bold text-xs text-text">{status}</span>
                           <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-raised text-text-secondary">
-                            {stageLeads.length}
+                            {columnItems.length}
                           </span>
                         </div>
-                        <span className="text-[11px] font-mono text-muted tabular-nums">
-                          {formatINR(stageTotal)}
-                        </span>
+                        {columnTotal !== null && (
+                          <span className="text-[11px] font-mono text-muted tabular-nums">
+                            {formatINR(columnTotal)}
+                          </span>
+                        )}
                       </div>
                     </div>
 
                     {/* Column Body Cards List */}
                     <SortableContext
-                      id={stage}
-                      items={stageLeads.map((l) => l.id)}
+                      id={status}
+                      items={columnItems.map((e) => e.id)}
                       strategy={verticalListSortingStrategy}
                     >
                       <div className="p-3 space-y-3 overflow-y-auto flex-1 min-h-[140px]">
-                        {stageLeads.length === 0 ? (
+                        {columnItems.length === 0 ? (
                           <div className="h-24 flex items-center justify-center border-2 border-dashed border-line/8 rounded-xl text-xs text-muted">
                             Drag deals here
                           </div>
                         ) : (
-                          stageLeads.map((lead) => (
-                            <LeadCardItem
-                              key={lead.id}
-                              lead={lead}
-                              onOpenDetails={(l) => setSelectedLead(l)}
+                          columnItems.map((engagement) => (
+                            <EngagementCardItem
+                              key={engagement.id}
+                              engagement={engagement}
+                              ownerName={ownerName}
+                              onOpenDetails={(e) => setSelectedId(e.id)}
                             />
                           ))
                         )}
@@ -381,14 +347,16 @@ export function PipelineView() {
           </div>
 
           <DragOverlay>
-            {activeDraggingLead ? (
+            {activeDragging ? (
               <div className="w-[280px] bg-raised border-2 border-primary rounded-xl p-3.5 shadow-2xl space-y-2">
                 <h4 className="text-[15px] font-semibold text-text line-clamp-2">
-                  {activeDraggingLead.company}
+                  {activeDragging.client.name}
                 </h4>
-                <div className="text-sm font-bold font-mono text-info">
-                  {formatINR(activeDraggingLead.value)}
-                </div>
+                {activeDragging.contractValue !== null && (
+                  <div className="text-sm font-bold font-mono text-info">
+                    {formatINR(activeDragging.contractValue)}
+                  </div>
+                )}
               </div>
             ) : null}
           </DragOverlay>
@@ -409,62 +377,49 @@ export function PipelineView() {
                   <th className="px-4 py-3">Value</th>
                   <th className="px-4 py-3">Owner</th>
                   <th className="px-4 py-3">Last Contact</th>
-                  {showEmailDraft && <th className="px-4 py-3 text-right">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-line/8 text-text">
-                {filteredLeads.map((lead) => {
-                  const daysQuiet = getDaysAgo(lead.lastContactDate);
+                {filtered.map((engagement) => {
+                  const quietDays = daysQuiet(engagement);
                   return (
                     <tr
-                      key={lead.id}
-                      onClick={() => setSelectedLead(lead)}
+                      key={engagement.id}
+                      onClick={() => setSelectedId(engagement.id)}
                       className="hover:bg-raised/60 cursor-pointer transition-colors"
                     >
-                      <td className="px-4 py-3 font-semibold text-sm">{lead.company}</td>
+                      <td className="px-4 py-3 font-semibold text-sm">{engagement.client.name}</td>
                       <td className="px-4 py-3 text-text-secondary">
-                        <div>{lead.contactName}</div>
-                        <div className="text-[10px] text-muted">{lead.email}</div>
+                        <div>{engagement.client.contactPerson ?? '—'}</div>
+                        {engagement.client.email && (
+                          <div className="text-[10px] text-muted">{engagement.client.email}</div>
+                        )}
                       </td>
                       <td className="px-4 py-3">
-                        <span className="px-2 py-0.5 rounded bg-raised text-primary font-mono">
-                          {lead.serviceInterest || 'ISO'}
-                        </span>
+                        {engagement.certificationType && (
+                          <span className="px-2 py-0.5 rounded bg-raised text-primary font-mono">
+                            {engagement.certificationType}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                            lead.stage === 'Won'
-                              ? 'bg-teal/15 text-teal'
-                              : lead.stage === 'Lost'
-                                ? 'bg-danger/15 text-danger'
-                                : 'bg-raised text-text-secondary'
-                          }`}
-                        >
-                          {lead.stage}
+                        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-raised text-text-secondary">
+                          {engagement.status}
                         </span>
                       </td>
                       <td className="px-4 py-3 font-mono font-bold text-info tabular-nums">
-                        {formatINR(lead.value)}
+                        {engagement.contractValue !== null
+                          ? formatINR(engagement.contractValue)
+                          : '—'}
                       </td>
-                      <td className="px-4 py-3 text-text-secondary">{lead.owner}</td>
+                      <td className="px-4 py-3 text-text-secondary">
+                        {ownerName(engagement.ownerId) ?? 'No owner'}
+                      </td>
                       <td className="px-4 py-3 text-muted">
-                        {formatStandardDate(lead.lastContactDate)} ({daysQuiet}d ago)
+                        {quietDays === null
+                          ? '—'
+                          : `${dateOrDash(engagement.lastContactedOn)} (${quietDays}d ago)`}
                       </td>
-                      {showEmailDraft && (
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openDraftModal({ type: 'lead', entity: lead });
-                            }}
-                            className="px-2.5 py-1 rounded bg-raised hover:bg-primary-tint/20 text-primary font-semibold text-[11px] border border-line/15 inline-flex items-center gap-1"
-                          >
-                            <Mail size={12} />
-                            <span>Draft</span>
-                          </button>
-                        </td>
-                      )}
                     </tr>
                   );
                 })}
@@ -474,42 +429,36 @@ export function PipelineView() {
         </div>
       )}
 
-      {/* LEAD DETAILS DRAWER / MODAL */}
-      {currentSelectedLead && (
+      {/* ENGAGEMENT DETAILS DIALOG */}
+      {selected && (
         <div
           className="fixed inset-0 z-50 bg-backdrop/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => setSelectedLead(null)}
+          onClick={() => setSelectedId(null)}
         >
           <div
             className="bg-surface border border-line/22 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Drawer Header */}
+            {/* Dialog Header */}
             <div className="p-5 border-b border-line/14 bg-raised/60 flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-lg font-bold text-text">{currentSelectedLead.company}</h3>
-                  <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-raised text-primary border border-primary/20">
-                    {currentSelectedLead.serviceInterest || 'ISO'}
-                  </span>
+                  <h3 className="text-lg font-bold text-text">{selected.client.name}</h3>
+                  {selected.certificationType && (
+                    <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-raised text-primary border border-primary/20">
+                      {selected.certificationType}
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-text-secondary mt-0.5">
-                  Source: {currentSelectedLead.source} · Owner: {currentSelectedLead.owner}
+                  Source: {selected.leadSource ?? '—'} · Owner:{' '}
+                  {ownerName(selected.ownerId) ?? 'No owner'}
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
-                {showEmailDraft && (
-                  <button
-                    onClick={() => openDraftModal({ type: 'lead', entity: currentSelectedLead })}
-                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-primary to-teal text-on-primary font-bold text-xs flex items-center gap-1.5 shadow-sm"
-                  >
-                    <Mail size={13} />
-                    <span>Draft Follow-Up</span>
-                  </button>
-                )}
                 <button
-                  onClick={() => setSelectedLead(null)}
+                  onClick={() => setSelectedId(null)}
                   className="p-1.5 rounded-lg text-muted hover:text-text-strong bg-raised"
                 >
                   <X size={18} />
@@ -517,7 +466,7 @@ export function PipelineView() {
               </div>
             </div>
 
-            {/* Drawer Content */}
+            {/* Dialog Content */}
             <div className="p-5 overflow-y-auto space-y-5 flex-1 text-xs">
               {/* Core Details Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-bg p-3.5 rounded-xl border border-line/10">
@@ -526,7 +475,7 @@ export function PipelineView() {
                     Contact Person
                   </span>
                   <span className="text-text font-medium text-xs">
-                    {currentSelectedLead.contactName}
+                    {selected.client.contactPerson ?? '—'}
                   </span>
                 </div>
                 <div>
@@ -534,150 +483,40 @@ export function PipelineView() {
                     Deal Value
                   </span>
                   <span className="text-info font-bold font-mono text-xs">
-                    {formatINR(currentSelectedLead.value)}
+                    {selected.contractValue !== null ? formatINR(selected.contractValue) : '—'}
                   </span>
                 </div>
                 <div>
                   <span className="text-muted block text-[10px] uppercase font-semibold">
                     Current Stage
                   </span>
-                  <select
-                    value={currentSelectedLead.stage}
-                    onChange={(e) => {
-                      const newStage = e.target.value as Stage;
-                      if (newStage === 'Lost') {
-                        setLostPromptLeadId(currentSelectedLead.id);
-                      } else {
-                        setLeadStage(currentSelectedLead.id, newStage);
-                      }
-                    }}
-                    className="mt-0.5 px-2 py-1 rounded bg-raised text-text border border-line/15 text-xs font-semibold focus:outline-none"
-                  >
-                    {STAGES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                  {/* Plain text until 2-c, which changes it with change_engagement_status(). */}
+                  <span className="text-text font-semibold text-xs">{selected.status}</span>
                 </div>
                 <div>
                   <span className="text-muted block text-[10px] uppercase font-semibold">
                     Last Contact
                   </span>
                   <span className="text-text font-mono text-xs">
-                    {formatStandardDate(currentSelectedLead.lastContactDate)}
+                    {dateOrDash(selected.lastContactedOn)}
                   </span>
                 </div>
               </div>
 
-              {/* Internal Meeting Context (3rd person internal note) */}
+              {/* Remarks */}
               <div className="bg-raised/50 p-3.5 rounded-xl border border-line/12 space-y-1">
                 <span className="text-[11px] font-bold text-primary uppercase tracking-wider block">
-                  Internal Meeting Context (3rd Person CRM Note):
+                  Remarks
                 </span>
-                <p className="text-text leading-relaxed italic">
-                  "{currentSelectedLead.meetingContext}"
-                </p>
-                {showEmailDraft && (
-                  <p className="text-[10px] text-muted pt-1">
-                    *When generating emails, Drishti automatically converts this internal note into
-                    a courteous first-person message for {currentSelectedLead.owner}.
-                  </p>
-                )}
-              </div>
-
-              {/* Activity Trail & Add Note */}
-              <div className="space-y-3 pt-2">
-                <h4 className="text-xs font-bold text-text uppercase tracking-wider">
-                  Activity Trail ({currentSelectedLead.activity?.length || 0})
-                </h4>
-
-                {/* Add Note Input */}
-                <form onSubmit={handleAddNoteToSelectedLead} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={newNoteText}
-                    onChange={(e) => setNewNoteText(e.target.value)}
-                    placeholder="Log a call note, meeting takeaway, or next step..."
-                    className="flex-1 px-3.5 py-2 rounded-xl bg-bg border border-line/15 text-xs text-text focus:outline-none focus:border-primary"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!newNoteText.trim()}
-                    className="px-3.5 py-2 rounded-xl bg-raised hover:bg-primary-tint/20 text-primary font-bold text-xs border border-line/15 disabled:opacity-40"
-                  >
-                    Add Note
-                  </button>
-                </form>
-
-                {/* Trail list */}
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {currentSelectedLead.activity && currentSelectedLead.activity.length > 0 ? (
-                    currentSelectedLead.activity.map((act, i) => (
-                      <div
-                        key={i}
-                        className="p-2.5 rounded-lg bg-bg border border-line/8 space-y-1"
-                      >
-                        <div className="flex items-center justify-between text-[10px] text-muted">
-                          <span className="font-semibold text-primary">
-                            {act.author || 'System'}
-                          </span>
-                          <span>{formatStandardDate(act.at)}</span>
-                        </div>
-                        <p className="text-xs text-text-secondary">{act.note}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-3 text-muted text-xs italic">
-                      No activity recorded yet.
-                    </div>
-                  )}
-                </div>
+                <p className="text-text leading-relaxed">{selected.remarks ?? '—'}</p>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* LOST REASON PROMPT MODAL */}
-      {lostPromptLeadId && (
-        <div className="fixed inset-0 z-50 bg-backdrop/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-surface border border-danger/40 rounded-2xl p-5 shadow-2xl max-w-md w-full space-y-4">
-            <div className="flex items-center gap-2 text-danger font-bold text-sm">
-              <AlertCircle size={18} />
-              <span>Mark Deal as Lost</span>
-            </div>
-            <p className="text-xs text-text-secondary">
-              Please record why this prospect did not convert so the firm can analyze objections and
-              pricing friction.
-            </p>
-            <textarea
-              rows={3}
-              value={lostReasonInput}
-              onChange={(e) => setLostReasonInput(e.target.value)}
-              placeholder="e.g. Chose competitor on price, postponed budget to next FY, internal restructuring..."
-              className="w-full p-3 rounded-xl bg-bg border border-line/18 text-xs text-text focus:outline-none focus:border-danger"
-            />
-            <div className="flex items-center justify-end gap-2">
-              <button
-                onClick={() => setLostPromptLeadId(null)}
-                className="px-3.5 py-2 rounded-xl text-xs text-text-secondary hover:text-text-strong"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmLost}
-                className="px-4 py-2 rounded-xl bg-danger text-on-primary font-bold text-xs shadow-md"
-              >
-                Confirm Lost
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ADD LEAD MODAL */}
-      {isAddLeadOpen && (
+      {/* ADD LEAD MODAL (hidden: still the MVP form on the old browser store) */}
+      {showAddLead && isAddLeadOpen && (
         <AddLeadModal
           onClose={() => setIsAddLeadOpen(false)}
           onAdd={(leadData) => {
@@ -700,10 +539,10 @@ function AddLeadModal({
   const { activeUser } = useCrm();
   const [company, setCompany] = useState('');
   const [contactName, setContactName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [source, setSource] = useState('External Marketing');
-  const [stage, setStage] = useState<Stage>('New');
+  const [email] = useState('');
+  const [phone] = useState('');
+  const [source] = useState('External Marketing');
+  const [stage] = useState<Stage>('New');
   const [value, setValue] = useState(500000);
   const [owner, setOwner] = useState(activeUser.name);
   const [serviceInterest, setServiceInterest] = useState<ServiceKind>('ISO');

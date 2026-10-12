@@ -64,8 +64,23 @@ describe('resolveScreen', () => {
 
 describe('features', () => {
   it('keeps AI providers and email drafts off', () => {
-    expect(FEATURES).toEqual({ aiProviders: false, emailDraft: false });
     expect(isFeatureEnabled('aiProviders')).toBe(false);
     expect(isFeatureEnabled('emailDraft')).toBe(false);
+  });
+
+  it('keeps the step 2-b switches off until each part is wired', () => {
+    for (const key of ['addLead', 'addClient', 'needsAttention'] as const) {
+      expect(isFeatureEnabled(key)).toBe(false);
+    }
+  });
+
+  it('has exactly these switches, all off', () => {
+    expect(FEATURES).toEqual({
+      aiProviders: false,
+      emailDraft: false,
+      addLead: false,
+      addClient: false,
+      needsAttention: false,
+    });
   });
 });

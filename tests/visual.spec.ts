@@ -115,6 +115,8 @@ async function openApp(page: Page, theme: Theme) {
   // The app has now saved its demo data under the frozen clock. Swap every name, email,
   // phone and note for obviously fake values, then reload. Dates, amounts and stages are
   // untouched, so every screen still shows the same states and colours.
+  // Pipeline and Clients don't read this store since step 2-b: they show the sample rows in
+  // src/lib/data/sampleRows.ts, which are already fake. This still covers the hidden screens.
   await page.evaluate(fakeIdentities);
   await page.reload();
   await waitUntilShown(page, page.locator('header'), watch);
@@ -237,6 +239,10 @@ for (const theme of THEMES) {
       });
 
       test('add client dialog', async ({ page }) => {
+        test.skip(
+          !isFeatureEnabled('addClient'),
+          'Add Client is hidden until it is wired (src/lib/screens.ts)',
+        );
         await openApp(page, theme);
         await openTab(page, 'clients');
         await page.getByRole('button', { name: 'Add Client' }).click();
@@ -255,6 +261,10 @@ for (const theme of THEMES) {
       });
 
       test('add lead dialog', async ({ page }) => {
+        test.skip(
+          !isFeatureEnabled('addLead'),
+          'Add Lead is hidden until it is wired (src/lib/screens.ts)',
+        );
         await openApp(page, theme);
         await openTab(page, 'pipeline');
         await page.getByRole('button', { name: 'Add Lead' }).click();

@@ -21,6 +21,8 @@ import { useCrm } from '../context/CrmContext';
 import { useAuth, useSignedInUser } from '../lib/auth/context';
 import { useTheme } from '../lib/useTheme';
 import { LANDING_SCREEN, isScreenEnabled } from '../lib/screens';
+import { countOnBoard } from '../lib/data/mappers';
+import { useActiveClients, usePipelineEngagements } from '../lib/data/hooks';
 import type { ThemePreference } from '../lib/theme';
 import { DrishtiFace } from './DrishtiFace';
 
@@ -73,8 +75,10 @@ function ThemeChoice({
 }
 
 export function Navbar() {
-  const { activeTab, setActiveTab, activeUser, setActiveUser, clients, leads, isAiLoading } =
-    useCrm();
+  const { activeTab, setActiveTab, activeUser, setActiveUser, clients, isAiLoading } = useCrm();
+  // Pipeline and Clients badges count the same rows as those screens (step 2-b).
+  const pipelineCount = countOnBoard(usePipelineEngagements());
+  const activeClientCount = useActiveClients().length;
   const { preference, theme, setPreference, toggleTheme } = useTheme();
   const { signOut } = useAuth();
   const signedInUser = useSignedInUser();
@@ -103,9 +107,9 @@ export function Navbar() {
         key: 'pipeline',
         label: 'Pipeline',
         icon: Kanban,
-        badge: leads.filter((l) => l.stage !== 'Won' && l.stage !== 'Lost').length,
+        badge: pipelineCount,
       },
-      { key: 'clients', label: 'Clients', icon: Building2, badge: clients.length },
+      { key: 'clients', label: 'Clients', icon: Building2, badge: activeClientCount },
       { key: 'import', label: 'Import', icon: FileSpreadsheet },
       { key: 'settings', label: 'Settings', icon: SettingsIcon },
     ] satisfies NavItem[]

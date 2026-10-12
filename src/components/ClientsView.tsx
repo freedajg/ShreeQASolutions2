@@ -1,130 +1,67 @@
 import React, { useState } from 'react';
-import {
-  Building2,
-  Search,
-  Plus,
-  Mail,
-  X,
-  Trash2,
-  Clock,
-  ShieldAlert,
-  CheckCircle,
-  Calendar,
-  Phone,
-  User,
-  Edit2,
-  FileText,
-} from 'lucide-react';
+import { Search, Plus, X } from 'lucide-react';
 import { useCrm } from '../context/CrmContext';
-import { Client, ServiceKind } from '../types';
+import { Client as MvpClient, ServiceKind } from '../types';
+import type { Client } from '../types/crm';
+import { sumValues } from '../lib/data/mappers';
+import { useActiveClients, useOwnerName } from '../lib/data/hooks';
 import { formatINR } from '../utils/currency';
 import { isFeatureEnabled } from '../lib/screens';
-import {
-  getDaysUntilRenewal,
-  getRenewalDate,
-  formatStandardDate,
-  getRenewalCycleYears,
-} from '../utils/dateUtils';
+import { formatStandardDate } from '../utils/dateUtils';
 
-// Email drafts are hidden until Phase 5 (src/lib/screens.ts).
-const showEmailDraft = isFeatureEnabled('emailDraft');
+// Hidden until wired (src/lib/screens.ts). Removed in 2-b: the email-draft buttons (the MVP
+// draft dialog takes the old types; drafts come back in Phase 5), the MVP edit form and
+// activity trail (rebuilt on the database later), and Delete Client (nobody can
+// hard-delete; archive comes later). The client's engagements list comes in 2-d.
+const showAddClient = isFeatureEnabled('addClient');
+
+const dateOrDash = (date: string | null) => (date ? formatStandardDate(date) : '—');
+
+/** The most recent last-audit date of any engagement, or null when none has one. */
+function latestAudit(client: Client): string | null {
+  const dates = client.engagements.map((e) => e.lastAuditDate).filter((d) => d !== null);
+  return dates.length ? dates.sort().at(-1)! : null;
+}
+
+const unique = <T,>(values: T[]) => [...new Set(values)];
 
 export function ClientsView() {
-  const {
-    clients,
-    addClient,
-    updateClient,
-    deleteClient,
-    addClientActivityNote,
-    openDraftModal,
-    activeUser,
-  } = useCrm();
+  const { addClient } = useCrm();
+  const clients = useActiveClients();
+  const ownerName = useOwnerName();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [serviceFilter, setServiceFilter] = useState<string>('ALL');
   const [ownerFilter, setOwnerFilter] = useState<string>('ALL');
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
-  const [newNoteText, setNewNoteText] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
 
-  // Edit form state
-  const [editCompany, setEditCompany] = useState('');
-  const [editContact, setEditContact] = useState('');
-  const [editEmail, setEditEmail] = useState('');
-  const [editPhone, setEditPhone] = useState('');
-  const [editService, setEditService] = useState<ServiceKind>('ISO');
-  const [editLevel, setEditLevel] = useState('');
-  const [editValue, setEditValue] = useState(0);
-  const [editAppraisalDate, setEditAppraisalDate] = useState('');
-  const [editOwner, setEditOwner] = useState('');
-  const [editNotes, setEditNotes] = useState('');
+  // Filter options come from the rows, not from a fixed list.
+  const allEngagements = clients.flatMap((c) => c.engagements);
+  const certificationTypes = unique(
+    allEngagements.map((e) => e.certificationType).filter((t) => t !== null),
+  ).sort();
+  const ownerIds = unique(allEngagements.map((e) => e.ownerId).filter((id) => id !== null));
 
-  const now = new Date();
+  const ownerNames = (client: Client) =>
+    unique(client.engagements.map((e) => ownerName(e.ownerId)).filter((n) => n !== null));
 
   // Filter clients
+  const term = searchTerm.toLowerCase();
   const filteredClients = clients.filter((c) => {
     const matchesSearch =
-      c.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.contactName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (c.level || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (c.notes || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesService = serviceFilter === 'ALL' || c.service === serviceFilter;
+      c.name.toLowerCase().includes(term) ||
+      (c.contactPerson ?? '').toLowerCase().includes(term) ||
+      (c.city ?? '').toLowerCase().includes(term) ||
+      c.engagements.some((e) => (e.certificationType ?? '').toLowerCase().includes(term));
+    const matchesService =
+      serviceFilter === 'ALL' || c.engagements.some((e) => e.certificationType === serviceFilter);
     const matchesOwner =
-      ownerFilter === 'ALL' || c.owner.toLowerCase() === ownerFilter.toLowerCase();
+      ownerFilter === 'ALL' || c.engagements.some((e) => e.ownerId === ownerFilter);
     return matchesSearch && matchesService && matchesOwner;
   });
 
-  const handleOpenClient = (client: Client) => {
-    setSelectedClient(client);
-    setIsEditing(false);
-    setEditCompany(client.company);
-    setEditContact(client.contactName);
-    setEditEmail(client.email);
-    setEditPhone(client.phone);
-    setEditService(client.service);
-    setEditLevel(client.level || '');
-    setEditValue(client.contractValue);
-    setEditAppraisalDate(client.lastAppraisalDate);
-    setEditOwner(client.owner);
-    setEditNotes(client.notes || '');
-  };
-
-  const handleSaveEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedClient) return;
-
-    updateClient(selectedClient.id, {
-      company: editCompany.trim(),
-      contactName: editContact.trim(),
-      email: editEmail.trim(),
-      phone: editPhone.trim(),
-      service: editService,
-      level: editLevel.trim() || undefined,
-      contractValue: Number(editValue) || 500000,
-      lastAppraisalDate: editAppraisalDate,
-      owner: editOwner,
-      notes: editNotes.trim(),
-    });
-
-    setIsEditing(false);
-    const refreshed = clients.find((c) => c.id === selectedClient.id);
-    if (refreshed) setSelectedClient(refreshed);
-  };
-
-  const handleAddNote = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedClient || !newNoteText.trim()) return;
-    addClientActivityNote(selectedClient.id, newNoteText);
-    setNewNoteText('');
-    const refreshed = clients.find((c) => c.id === selectedClient.id);
-    if (refreshed) setSelectedClient(refreshed);
-  };
-
-  // Sync selectedClient with global state
-  const currentSelectedClient = selectedClient
-    ? clients.find((c) => c.id === selectedClient.id) || selectedClient
-    : null;
+  const selected = selectedId ? (clients.find((c) => c.id === selectedId) ?? null) : null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-12 space-y-6">
@@ -144,13 +81,15 @@ export function ClientsView() {
           </p>
         </div>
 
-        <button
-          onClick={() => setIsAddClientOpen(true)}
-          className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-primary to-teal hover:from-primary-soft hover:to-info text-on-primary font-bold text-xs shadow-md transition-all flex items-center gap-1.5 self-start sm:self-auto"
-        >
-          <Plus size={15} />
-          <span>Add Client</span>
-        </button>
+        {showAddClient && (
+          <button
+            onClick={() => setIsAddClientOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-primary to-teal hover:from-primary-soft hover:to-info text-on-primary font-bold text-xs shadow-md transition-all flex items-center gap-1.5 self-start sm:self-auto"
+          >
+            <Plus size={15} />
+            <span>Add Client</span>
+          </button>
+        )}
       </div>
 
       {/* Filter & Search Bar */}
@@ -161,7 +100,7 @@ export function ClientsView() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search clients by name, contact, level, or audit notes..."
+            placeholder="Search clients by name, contact, city, or certification..."
             className="w-full pl-9 pr-4 py-2 rounded-xl bg-bg border border-line/14 text-sm text-text placeholder-muted focus:outline-none focus:border-primary"
           />
         </div>
@@ -173,9 +112,11 @@ export function ClientsView() {
             className="px-3 py-2 rounded-xl bg-bg border border-line/14 text-xs text-text focus:outline-none focus:border-primary"
           >
             <option value="ALL">All Standards</option>
-            <option value="CMMI">CMMI (3 Years)</option>
-            <option value="ISO">ISO (1 Year)</option>
-            <option value="IPA">IPA (1 Year)</option>
+            {certificationTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
           </select>
 
           <select
@@ -184,10 +125,11 @@ export function ClientsView() {
             className="px-3 py-2 rounded-xl bg-bg border border-line/14 text-xs text-text focus:outline-none focus:border-primary"
           >
             <option value="ALL">All Owners</option>
-            <option value="Ramesh">Ramesh</option>
-            <option value="Pramila">Pramila</option>
-            <option value="Mahesh">Mahesh</option>
-            <option value="Sunita">Sunita</option>
+            {ownerIds.map((id) => (
+              <option key={id} value={id}>
+                {ownerName(id) ?? 'Unknown owner'}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -201,73 +143,72 @@ export function ClientsView() {
                 <th className="px-4 py-3">Client Company</th>
                 <th className="px-4 py-3">Standard / Level</th>
                 <th className="px-4 py-3">Contact Person</th>
-                <th className="px-4 py-3">Last Appraisal</th>
-                <th className="px-4 py-3">Renewal Status</th>
+                <th className="px-4 py-3">Last Audit</th>
+                <th className="px-4 py-3">Status / Valid To</th>
                 <th className="px-4 py-3">Contract Value</th>
                 <th className="px-4 py-3">Owner</th>
-                {showEmailDraft && <th className="px-4 py-3 text-right">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-line/8 text-text">
               {filteredClients.map((client) => {
-                const days = getDaysUntilRenewal(client, now);
-                const renewalDate = getRenewalDate(client);
+                const total = sumValues(client.engagements);
+                const owners = ownerNames(client);
 
                 return (
                   <tr
                     key={client.id}
-                    onClick={() => handleOpenClient(client)}
+                    onClick={() => setSelectedId(client.id)}
                     className="hover:bg-raised/60 cursor-pointer transition-colors"
                   >
                     <td className="px-4 py-3">
-                      <div className="font-semibold text-sm text-text">{client.company}</div>
-                      <div className="text-[11px] text-muted truncate max-w-xs">{client.notes}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded text-[11px] font-bold font-mono bg-raised text-primary border border-primary/20">
-                        {client.service} {client.level || ''}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-text-secondary">
-                      <div>{client.contactName}</div>
-                      <div className="text-[10px] text-muted">{client.email}</div>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-text-secondary">
-                      {formatStandardDate(client.lastAppraisalDate)}
-                    </td>
-                    <td className="px-4 py-3">
-                      {days < 0 ? (
-                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-danger/15 text-danger border border-danger/30">
-                          {Math.abs(days)}d Overdue
-                        </span>
-                      ) : days <= 90 ? (
-                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-warning/15 text-warning border border-warning/30">
-                          Due in {days}d
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-success-strong/10 text-success">
-                          Valid ({days}d)
-                        </span>
+                      <div className="font-semibold text-sm text-text">{client.name}</div>
+                      {client.city && (
+                        <div className="text-[11px] text-muted truncate max-w-xs">
+                          {client.city}
+                        </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 font-mono font-bold text-text tabular-nums">
-                      {formatINR(client.contractValue)}
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col items-start gap-1">
+                        {client.engagements.map((e) => (
+                          <span
+                            key={e.id}
+                            className="px-2 py-0.5 rounded text-[11px] font-bold font-mono bg-raised text-primary border border-primary/20"
+                          >
+                            {[e.certificationType, e.standardFramework].filter(Boolean).join(' ')}
+                          </span>
+                        ))}
+                      </div>
                     </td>
-                    <td className="px-4 py-3 text-text-secondary">{client.owner}</td>
-                    {showEmailDraft && (
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDraftModal({ type: 'client', entity: client });
-                          }}
-                          className="px-2.5 py-1 rounded bg-raised hover:bg-primary-tint/20 text-primary font-semibold text-[11px] border border-line/15 inline-flex items-center gap-1"
-                        >
-                          <Mail size={12} />
-                          <span>Draft</span>
-                        </button>
-                      </td>
-                    )}
+                    <td className="px-4 py-3 text-text-secondary">
+                      <div>{client.contactPerson ?? '—'}</div>
+                      {client.email && <div className="text-[10px] text-muted">{client.email}</div>}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-text-secondary">
+                      {dateOrDash(latestAudit(client))}
+                    </td>
+                    <td className="px-4 py-3">
+                      {/* No renewal countdown here: the renewal date rule lives in the database
+                          (step 15), so the browser never estimates one. */}
+                      <div className="flex flex-col items-start gap-1">
+                        {client.engagements.map((e) => (
+                          <span key={e.id} className="flex items-center gap-1.5">
+                            <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-raised text-text-secondary">
+                              {e.status}
+                            </span>
+                            <span className="font-mono text-[11px] text-muted">
+                              {dateOrDash(e.validTo)}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-mono font-bold text-text tabular-nums">
+                      {total !== null ? formatINR(total) : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-text-secondary">
+                      {owners.length ? owners.join(', ') : 'No owner'}
+                    </td>
                   </tr>
                 );
               })}
@@ -276,313 +217,76 @@ export function ClientsView() {
         </div>
       </div>
 
-      {/* CLIENT DETAILS DRAWER / MODAL */}
-      {currentSelectedClient && (
+      {/* CLIENT DETAILS DIALOG: client details only; its engagements come in 2-d */}
+      {selected && (
         <div
           className="fixed inset-0 z-50 bg-backdrop/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => setSelectedClient(null)}
+          onClick={() => setSelectedId(null)}
         >
           <div
             className="bg-surface border border-line/22 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Drawer Header */}
+            {/* Dialog Header */}
             <div className="p-5 border-b border-line/14 bg-raised/60 flex items-start justify-between">
               <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-lg font-bold text-text">{currentSelectedClient.company}</h3>
-                  <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-raised text-primary border border-primary/20">
-                    {currentSelectedClient.service} {currentSelectedClient.level || ''}
-                  </span>
-                </div>
+                <h3 className="text-lg font-bold text-text">{selected.name}</h3>
                 <p className="text-xs text-text-secondary mt-0.5">
-                  Owner: {currentSelectedClient.owner} · Contact:{' '}
-                  {currentSelectedClient.contactName}
+                  Client ID: {selected.code ?? '—'} · Contact: {selected.contactPerson ?? '—'}
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsEditing(!isEditing)}
-                  className="px-3 py-1.5 rounded-xl bg-raised hover:bg-primary-tint/20 text-primary font-bold text-xs border border-line/15 flex items-center gap-1.5"
-                >
-                  <Edit2 size={13} />
-                  <span>{isEditing ? 'Cancel Edit' : 'Edit'}</span>
-                </button>
-                {showEmailDraft && (
-                  <button
-                    onClick={() =>
-                      openDraftModal({ type: 'client', entity: currentSelectedClient })
-                    }
-                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-primary to-teal text-on-primary font-bold text-xs flex items-center gap-1.5 shadow-sm"
-                  >
-                    <Mail size={13} />
-                    <span>Draft Renewal</span>
-                  </button>
-                )}
-                <button
-                  onClick={() => setSelectedClient(null)}
-                  className="p-1.5 rounded-lg text-muted hover:text-text-strong bg-raised"
-                >
-                  <X size={18} />
-                </button>
-              </div>
+              <button
+                onClick={() => setSelectedId(null)}
+                className="p-1.5 rounded-lg text-muted hover:text-text-strong bg-raised"
+              >
+                <X size={18} />
+              </button>
             </div>
 
             {/* Content Body */}
             <div className="p-5 overflow-y-auto space-y-5 flex-1 text-xs">
-              {isEditing ? (
-                /* EDIT FORM */
-                <form onSubmit={handleSaveEdit} className="space-y-3.5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-muted uppercase font-semibold text-[10px] mb-1">
-                        Company Name
-                      </label>
-                      <input
-                        type="text"
-                        value={editCompany}
-                        onChange={(e) => setEditCompany(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-bg border border-line/18 text-text"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-muted uppercase font-semibold text-[10px] mb-1">
-                        Contact Person
-                      </label>
-                      <input
-                        type="text"
-                        value={editContact}
-                        onChange={(e) => setEditContact(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-bg border border-line/18 text-text"
-                      />
-                    </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-bg p-3.5 rounded-xl border border-line/10">
+                {(
+                  [
+                    ['Contact Person', selected.contactPerson],
+                    ['Designation', selected.designation],
+                    ['Email', selected.email],
+                    ['Phone', selected.phone],
+                    ['City', selected.city],
+                    ['Industry', selected.industry],
+                    ['Priority', selected.priority],
+                    ['Website', selected.website],
+                  ] as const
+                ).map(([label, value]) => (
+                  <div key={label} className="min-w-0">
+                    <span className="text-muted block text-[10px] uppercase font-semibold">
+                      {label}
+                    </span>
+                    <span className="text-text font-medium text-xs break-words">
+                      {value ?? '—'}
+                    </span>
                   </div>
+                ))}
+              </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-muted uppercase font-semibold text-[10px] mb-1">
-                        Standard
-                      </label>
-                      <select
-                        value={editService}
-                        onChange={(e) => setEditService(e.target.value as ServiceKind)}
-                        className="w-full px-3 py-2 rounded-xl bg-bg border border-line/18 text-text"
-                      >
-                        <option value="CMMI">CMMI (3-Year Cycle)</option>
-                        <option value="ISO">ISO (1-Year Cycle)</option>
-                        <option value="IPA">IPA (1-Year Cycle)</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-muted uppercase font-semibold text-[10px] mb-1">
-                        Level / Detail
-                      </label>
-                      <input
-                        type="text"
-                        value={editLevel}
-                        onChange={(e) => setEditLevel(e.target.value)}
-                        placeholder="e.g. DEV ML5"
-                        className="w-full px-3 py-2 rounded-xl bg-bg border border-line/18 text-text"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-muted uppercase font-semibold text-[10px] mb-1">
-                        Contract Value (₹)
-                      </label>
-                      <input
-                        type="number"
-                        value={editValue}
-                        onChange={(e) => setEditValue(Number(e.target.value))}
-                        className="w-full px-3 py-2 rounded-xl bg-bg border border-line/18 text-text font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-muted uppercase font-semibold text-[10px] mb-1">
-                        Last Appraisal Date (YYYY-MM-DD)
-                      </label>
-                      <input
-                        type="date"
-                        value={editAppraisalDate}
-                        onChange={(e) => setEditAppraisalDate(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-bg border border-line/18 text-text font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-muted uppercase font-semibold text-[10px] mb-1">
-                        Assigned Owner
-                      </label>
-                      <select
-                        value={editOwner}
-                        onChange={(e) => setEditOwner(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-bg border border-line/18 text-text"
-                      >
-                        <option value="Ramesh">Ramesh</option>
-                        <option value="Pramila">Pramila</option>
-                        <option value="Mahesh">Mahesh</option>
-                        <option value="Sunita">Sunita</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-muted uppercase font-semibold text-[10px] mb-1">
-                      Auditor Notes
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={editNotes}
-                      onChange={(e) => setEditNotes(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-bg border border-line/18 text-text"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-end gap-2 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsEditing(false)}
-                      className="px-4 py-2 rounded-xl text-text-secondary"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-5 py-2 rounded-xl bg-teal text-on-primary font-bold text-xs"
-                    >
-                      Save Changes
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                /* READ ONLY DISPLAY */
-                <>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-bg p-3.5 rounded-xl border border-line/10">
-                    <div>
-                      <span className="text-muted block text-[10px] uppercase font-semibold">
-                        Contract Value
-                      </span>
-                      <span className="text-text font-bold font-mono text-xs">
-                        {formatINR(currentSelectedClient.contractValue)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-muted block text-[10px] uppercase font-semibold">
-                        Last Appraisal
-                      </span>
-                      <span className="text-text font-mono text-xs">
-                        {formatStandardDate(currentSelectedClient.lastAppraisalDate)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-muted block text-[10px] uppercase font-semibold">
-                        Renewal Due
-                      </span>
-                      <span className="text-teal font-mono font-bold text-xs">
-                        {formatStandardDate(getRenewalDate(currentSelectedClient))}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-muted block text-[10px] uppercase font-semibold">
-                        Cycle Length
-                      </span>
-                      <span className="text-primary font-semibold text-xs">
-                        {getRenewalCycleYears(currentSelectedClient.service)} Years
-                      </span>
-                    </div>
-                  </div>
-
-                  {currentSelectedClient.notes && (
-                    <div className="p-3.5 rounded-xl bg-raised/50 border border-line/12">
-                      <span className="text-[10px] font-bold text-muted uppercase block mb-1">
-                        Auditor Notes & Observations:
-                      </span>
-                      <p className="text-text leading-relaxed">{currentSelectedClient.notes}</p>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Activity Trail */}
-              <div className="space-y-3 pt-2">
-                <h4 className="text-xs font-bold text-text uppercase tracking-wider">
-                  Audit Activity Trail ({currentSelectedClient.activity?.length || 0})
-                </h4>
-
-                <form onSubmit={handleAddNote} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={newNoteText}
-                    onChange={(e) => setNewNoteText(e.target.value)}
-                    placeholder="Log audit review note, client call, or certificate status..."
-                    className="flex-1 px-3.5 py-2 rounded-xl bg-bg border border-line/15 text-xs text-text focus:outline-none focus:border-primary"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!newNoteText.trim()}
-                    className="px-3.5 py-2 rounded-xl bg-raised hover:bg-primary-tint/20 text-primary font-bold text-xs border border-line/15 disabled:opacity-40"
-                  >
-                    Add Note
-                  </button>
-                </form>
-
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {currentSelectedClient.activity && currentSelectedClient.activity.length > 0 ? (
-                    currentSelectedClient.activity.map((act, i) => (
-                      <div
-                        key={i}
-                        className="p-2.5 rounded-lg bg-bg border border-line/8 space-y-1"
-                      >
-                        <div className="flex items-center justify-between text-[10px] text-muted">
-                          <span className="font-semibold text-primary">
-                            {act.author || 'Auditor'}
-                          </span>
-                          <span>{formatStandardDate(act.at)}</span>
-                        </div>
-                        <p className="text-xs text-text-secondary">{act.note}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-3 text-muted text-xs italic">
-                      No notes recorded yet.
-                    </div>
-                  )}
+              {selected.address && (
+                <div className="p-3.5 rounded-xl bg-raised/50 border border-line/12">
+                  <span className="text-[10px] font-bold text-muted uppercase block mb-1">
+                    Address
+                  </span>
+                  <p className="text-text leading-relaxed">
+                    {[selected.address, selected.stateCountry].filter(Boolean).join(', ')}
+                  </p>
                 </div>
-              </div>
-
-              {/* Danger Zone: Delete Client */}
-              <div className="pt-4 border-t border-line/10 flex items-center justify-between">
-                <span className="text-[11px] text-muted">
-                  Remove this organization from active roster
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        `Are you sure you want to delete ${currentSelectedClient.company}?`,
-                      )
-                    ) {
-                      deleteClient(currentSelectedClient.id);
-                      setSelectedClient(null);
-                    }
-                  }}
-                  className="px-3 py-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 text-danger font-semibold text-xs border border-danger/20 flex items-center gap-1.5"
-                >
-                  <Trash2 size={13} />
-                  <span>Delete Client</span>
-                </button>
-              </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* ADD CLIENT MODAL */}
-      {isAddClientOpen && (
+      {/* ADD CLIENT MODAL (hidden: still the MVP form on the old browser store) */}
+      {showAddClient && isAddClientOpen && (
         <AddClientModal
           onClose={() => setIsAddClientOpen(false)}
           onAdd={(c) => {
@@ -600,13 +304,13 @@ function AddClientModal({
   onAdd,
 }: {
   onClose: () => void;
-  onAdd: (client: Omit<Client, 'id'>) => void;
+  onAdd: (client: Omit<MvpClient, 'id'>) => void;
 }) {
   const { activeUser } = useCrm();
   const [company, setCompany] = useState('');
   const [contactName, setContactName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [email] = useState('');
+  const [phone] = useState('');
   const [service, setService] = useState<ServiceKind>('CMMI');
   const [level, setLevel] = useState('DEV ML3');
   const [contractValue, setContractValue] = useState(1200000);

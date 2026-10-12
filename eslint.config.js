@@ -43,8 +43,6 @@ export default defineConfig([
   // including all new code, keeps these rules as errors.
   {
     files: [
-      'src/components/ClientsView.tsx',
-      'src/components/PipelineView.tsx',
       'src/components/SettingsView.tsx',
       'src/components/DrishtiView.tsx',
       'src/components/Navbar.tsx',
