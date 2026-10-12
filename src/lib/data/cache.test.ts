@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { DrishtiClient } from '../supabase/client';
 import { clearQueryCache, shouldClearCache, userIdOf } from './cache';
-import { pipelineQuery } from './queries';
+import { activeClientsQuery, pipelineQuery } from './queries';
 import { createQueryClient } from './queryClient';
 
 const A = 'aaaaaaaa-0000-4000-8000-000000000001';
@@ -107,6 +107,54 @@ describe('the Pipeline board when the user changes (step 2-c)', () => {
     await expect(inFlight).resolves.toBe('stopped');
     expect(reads.signals[0]?.aborted).toBe(true);
     expect(queryClient.getQueryData(['pipeline', A])).toBeUndefined();
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+  });
+});
+
+describe('the Clients list when the user changes (step 2-d)', () => {
+  it("user B never gets user A's cached clients, and A's rows are gone after the clear", async () => {
+    const queryClient = createQueryClient();
+    let rows: unknown[] = [{ id: 'seen-by-A' }];
+    const { client, reads } = fakeReads(() => rows);
+
+    await queryClient.fetchQuery(activeClientsQuery(client, A));
+    expect(queryClient.getQueryData(['active_clients', A])).toEqual([{ id: 'seen-by-A' }]);
+
+    await clearQueryCache(queryClient); // what QueryCacheGuard does on A → B
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+
+    rows = [{ id: 'seen-by-B' }];
+    await expect(queryClient.fetchQuery(activeClientsQuery(client, B))).resolves.toEqual([
+      { id: 'seen-by-B' },
+    ]);
+    expect(reads.count).toBe(2); // B read the database; nothing came from A's entry
+    expect(queryClient.getQueryData(['active_clients', A])).toBeUndefined();
+  });
+
+  it("a read still in flight is stopped by the clear and doesn't refill A's entry", async () => {
+    const queryClient = createQueryClient();
+    const { client, reads } = fakeReads(() => [], { hang: true });
+
+    const inFlight = queryClient.fetchQuery(activeClientsQuery(client, A)).catch(() => 'stopped');
+    await clearQueryCache(queryClient);
+
+    await expect(inFlight).resolves.toBe('stopped');
+    expect(reads.signals[0]?.aborted).toBe(true);
+    expect(queryClient.getQueryData(['active_clients', A])).toBeUndefined();
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+  });
+
+  it('one clear removes the Pipeline and the Clients entries together', async () => {
+    const queryClient = createQueryClient();
+    const { client } = fakeReads(() => [{ id: 'seen-by-A' }]);
+    await queryClient.fetchQuery(pipelineQuery(client, A));
+    await queryClient.fetchQuery(activeClientsQuery(client, A));
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(2);
+
+    await clearQueryCache(queryClient);
+
+    expect(queryClient.getQueryData(['pipeline', A])).toBeUndefined();
+    expect(queryClient.getQueryData(['active_clients', A])).toBeUndefined();
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
   });
 });

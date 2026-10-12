@@ -1,15 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
 import { QueryObserver } from '@tanstack/react-query';
+import { SAMPLE_ACTIVE_CLIENT_ROWS } from '../../../tests/support/activeClientRows';
 import { SAMPLE_PIPELINE_ROWS } from '../../../tests/support/pipelineRows';
 import type { DrishtiClient } from '../supabase/client';
 import { DataError } from './errors';
 import { queryKeys } from './keys';
-import { toEngagements } from './mappers';
+import { toClients, toEngagements } from './mappers';
 import { createQueryClient } from './queryClient';
 import {
   FINANCIALS_COLUMNS,
   STATUS_VIEW_COLUMNS,
   TEAM_MEMBER_COLUMNS,
+  activeClientsQuery,
   fetchActiveClients,
   fetchEngagementFinancials,
   fetchPipeline,
@@ -167,6 +169,38 @@ describe('query keys and options', () => {
         toEngagements(SAMPLE_PIPELINE_ROWS).map((e) => e.client.name),
       );
       expect(observer.getCurrentResult().data).toHaveLength(7);
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  it('activeClientsQuery uses the key and reads the active_clients view (step 2-d)', async () => {
+    const { client, calls } = fakeClient(ok([]));
+    const options = activeClientsQuery(client, USER);
+    expect(options.queryKey).toEqual(['active_clients', USER]);
+    const queryFn = options.queryFn as (context: { signal: AbortSignal }) => Promise<unknown>;
+    await queryFn({ signal: new AbortController().signal });
+    expect(calls[0]).toEqual(['from', 'active_clients']);
+  });
+
+  it('the Clients list (activeClientsQuery + toClients, as useActiveClients) caches the raw rows and groups them', async () => {
+    const queryClient = createQueryClient();
+    const { client } = fakeClient(ok(SAMPLE_ACTIVE_CLIENT_ROWS));
+    const observer = new QueryObserver(queryClient, {
+      ...activeClientsQuery(client, USER),
+      select: toClients,
+    });
+    const unsubscribe = observer.subscribe(() => {});
+    try {
+      await vi.waitFor(() => expect(observer.getCurrentResult().data).toBeDefined());
+      // 7 engagement rows from the view, grouped into 5 clients in name order.
+      expect(queryClient.getQueryData(['active_clients', USER])).toHaveLength(7);
+      const clients = observer.getCurrentResult().data;
+      expect(clients).toHaveLength(5);
+      expect(clients?.map((c) => c.name)).toEqual(
+        toClients(SAMPLE_ACTIVE_CLIENT_ROWS).map((c) => c.name),
+      );
+      expect(clients?.map((c) => c.engagements.length)).toEqual([1, 2, 1, 2, 1]);
     } finally {
       unsubscribe();
     }

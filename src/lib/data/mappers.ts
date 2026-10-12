@@ -79,6 +79,10 @@ export function groupClients(engagements: readonly Engagement[]): Client[] {
   return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, 'en-IN'));
 }
 
+/** `active_clients` rows → clients with their engagements (archived left out). Step 2-d. */
+export const toClients = (rows: readonly StatusViewRow[]): Client[] =>
+  groupClients(toEngagements(rows));
+
 export function isPipelineStatus(status: string): status is PipelineStatus {
   return (PIPELINE_COLUMNS as readonly string[]).includes(status);
 }

@@ -1,7 +1,7 @@
-// What Pipeline, Clients and the nav badges read (Phase 2, steps 2-b and 2-c). Pipeline reads
-// the `pipeline` view since 2-c. Clients and owner names still use the sample rows in
-// sampleRows.ts through the same mapping code as live rows, until 2-d switches
-// useActiveClients to `activeClientsQuery` and 2-e useOwnerName to `teamMembersQuery`.
+// What Pipeline, Clients and the nav badges read (Phase 2, steps 2-b to 2-d). Pipeline reads
+// the `pipeline` view since 2-c, Clients the `active_clients` view since 2-d. Owner names
+// still use the sample team in sampleRows.ts until 2-e switches useOwnerName to
+// `teamMembersQuery`.
 import { useCallback, useMemo } from 'react';
 import {
   useMutation,
@@ -10,14 +10,13 @@ import {
   useQueryClient,
   type Mutation,
 } from '@tanstack/react-query';
-import type { Client } from '../../types/crm';
 import { useSignedInUser } from '../auth/context';
 import { supabase, type DrishtiClient } from '../supabase/client';
 import type { DataError } from './errors';
-import { groupClients, toEngagements } from './mappers';
+import { toClients, toEngagements } from './mappers';
 import { STATUS_CHANGE_KEY, statusChangeMutation, type StatusChange } from './mutations';
-import { pipelineQuery } from './queries';
-import { SAMPLE_ACTIVE_CLIENT_ROWS, SAMPLE_TEAM } from './sampleRows';
+import { activeClientsQuery, pipelineQuery } from './queries';
+import { SAMPLE_TEAM } from './sampleRows';
 
 /** The browser client; only for components behind the sign-in gate, where it always exists. */
 function useDataClient(): DrishtiClient {
@@ -61,8 +60,16 @@ export function usePendingStatusChanges(): StatusChange[] {
   );
 }
 
-export function useActiveClients(): Client[] {
-  return useMemo(() => groupClients(toEngagements(SAMPLE_ACTIVE_CLIENT_ROWS)), []);
+/**
+ * The Clients list for the signed-in user, from the `active_clients` view (step 2-d). Same
+ * pattern as usePipelineEngagements: `data` is undefined while loading and when the first read
+ * fails; the cache holds the raw rows and `select` groups them into clients. Marketing gets an
+ * empty list (row-level security), not an error.
+ */
+export function useActiveClients() {
+  const client = useDataClient();
+  const { id: userId } = useSignedInUser();
+  return useQuery({ ...activeClientsQuery(client, userId), select: toClients });
 }
 
 /** Owner id → name; null when there's no owner or the id isn't on the team. */

@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { Search, Plus, X } from 'lucide-react';
 import { useCrm } from '../context/CrmContext';
 import { Client as MvpClient, ServiceKind } from '../types';
-import type { Client } from '../types/crm';
+import type { Client, Engagement } from '../types/crm';
 import { sumValues } from '../lib/data/mappers';
 import { useActiveClients, useOwnerName } from '../lib/data/hooks';
+import { dataErrorMessage } from '../lib/data/errors';
+import { useSignedInUser } from '../lib/auth/context';
 import { formatINR } from '../utils/currency';
 import { isFeatureEnabled } from '../lib/screens';
 import { formatStandardDate } from '../utils/dateUtils';
@@ -12,10 +14,16 @@ import { formatStandardDate } from '../utils/dateUtils';
 // Hidden until wired (src/lib/screens.ts). Removed in 2-b: the email-draft buttons (the MVP
 // draft dialog takes the old types; drafts come back in Phase 5), the MVP edit form and
 // activity trail (rebuilt on the database later), and Delete Client (nobody can
-// hard-delete; archive comes later). The client's engagements list comes in 2-d.
+// hard-delete; archive comes later).
 const showAddClient = isFeatureEnabled('addClient');
 
 const dateOrDash = (date: string | null) => (date ? formatStandardDate(date) : '—');
+
+const NO_CLIENTS: Client[] = [];
+
+/** "CMMI DEV ML3": type and framework, whichever are present; empty when neither is. */
+const certificationOf = (e: Engagement) =>
+  [e.certificationType, e.standardFramework].filter(Boolean).join(' ');
 
 /** The most recent last-audit date of any engagement, or null when none has one. */
 function latestAudit(client: Client): string | null {
@@ -27,7 +35,11 @@ const unique = <T,>(values: T[]) => [...new Set(values)];
 
 export function ClientsView() {
   const { addClient } = useCrm();
-  const clients = useActiveClients();
+  // The `active_clients` view (step 2-d). Minimal loading, error and empty lines; full states
+  // are 2-g. Marketing reads no rows here (row-level security), so it gets a plain message.
+  const { data: loaded, error: loadError, refetch } = useActiveClients();
+  const clients = loaded ?? NO_CLIENTS;
+  const { role } = useSignedInUser();
   const ownerName = useOwnerName();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -72,9 +84,11 @@ export function ClientsView() {
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
               Certified Clients
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-raised text-primary border border-line/18">
-              {clients.length} Active Accounts
-            </span>
+            {loaded && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-raised text-primary border border-line/18">
+                {clients.length} Active Accounts
+              </span>
+            )}
           </div>
           <p className="text-xs sm:text-sm text-text-secondary mt-0.5">
             Master record of certified organizations, appraisal dates, and contract values.
@@ -134,90 +148,122 @@ export function ClientsView() {
         </div>
       </div>
 
+      {/* Not read yet, or the first read failed (step 2-d; full states in 2-g) */}
+      {!loaded &&
+        (loadError ? (
+          <div className="flex items-center gap-3 text-xs">
+            <p role="alert" className="text-danger">
+              {dataErrorMessage(loadError)}
+            </p>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="px-3 py-1.5 rounded-lg bg-surface border border-line/16 text-text-secondary hover:text-text"
+            >
+              Try again
+            </button>
+          </div>
+        ) : (
+          <p className="text-xs text-muted">Loading clients…</p>
+        ))}
+
+      {/* Read, but no clients. Marketing never reads this view's rows (row-level security). */}
+      {loaded && clients.length === 0 && (
+        <p className="text-xs text-muted">
+          {role === 'marketing'
+            ? 'Certified clients are shown to Owners and Consultants.'
+            : 'No certified clients yet.'}
+        </p>
+      )}
+
       {/* Clients Table */}
-      <div className="bg-surface border border-line/16 rounded-2xl overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-raised text-text-secondary uppercase text-[10px] tracking-wider border-b border-line/12">
-              <tr>
-                <th className="px-4 py-3">Client Company</th>
-                <th className="px-4 py-3">Standard / Level</th>
-                <th className="px-4 py-3">Contact Person</th>
-                <th className="px-4 py-3">Last Audit</th>
-                <th className="px-4 py-3">Status / Valid To</th>
-                <th className="px-4 py-3">Contract Value</th>
-                <th className="px-4 py-3">Owner</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line/8 text-text">
-              {filteredClients.map((client) => {
-                const total = sumValues(client.engagements);
-                const owners = ownerNames(client);
+      {loaded && clients.length > 0 && (
+        <div className="bg-surface border border-line/16 rounded-2xl overflow-hidden shadow-xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-raised text-text-secondary uppercase text-[10px] tracking-wider border-b border-line/12">
+                <tr>
+                  <th className="px-4 py-3">Client Company</th>
+                  <th className="px-4 py-3">Standard / Level</th>
+                  <th className="px-4 py-3">Contact Person</th>
+                  <th className="px-4 py-3">Last Audit</th>
+                  <th className="px-4 py-3">Status / Valid To</th>
+                  <th className="px-4 py-3">Contract Value</th>
+                  <th className="px-4 py-3">Owner</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line/8 text-text">
+                {filteredClients.map((client) => {
+                  const total = sumValues(client.engagements);
+                  const owners = ownerNames(client);
 
-                return (
-                  <tr
-                    key={client.id}
-                    onClick={() => setSelectedId(client.id)}
-                    className="hover:bg-raised/60 cursor-pointer transition-colors"
-                  >
-                    <td className="px-4 py-3">
-                      <div className="font-semibold text-sm text-text">{client.name}</div>
-                      {client.city && (
-                        <div className="text-[11px] text-muted truncate max-w-xs">
-                          {client.city}
+                  return (
+                    <tr
+                      key={client.id}
+                      onClick={() => setSelectedId(client.id)}
+                      className="hover:bg-raised/60 cursor-pointer transition-colors"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-sm text-text">{client.name}</div>
+                        {client.city && (
+                          <div className="text-[11px] text-muted truncate max-w-xs">
+                            {client.city}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col items-start gap-1">
+                          {client.engagements.map((e) => (
+                            <span
+                              key={e.id}
+                              className="px-2 py-0.5 rounded text-[11px] font-bold font-mono bg-raised text-primary border border-primary/20"
+                            >
+                              {certificationOf(e)}
+                            </span>
+                          ))}
                         </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col items-start gap-1">
-                        {client.engagements.map((e) => (
-                          <span
-                            key={e.id}
-                            className="px-2 py-0.5 rounded text-[11px] font-bold font-mono bg-raised text-primary border border-primary/20"
-                          >
-                            {[e.certificationType, e.standardFramework].filter(Boolean).join(' ')}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-text-secondary">
-                      <div>{client.contactPerson ?? '—'}</div>
-                      {client.email && <div className="text-[10px] text-muted">{client.email}</div>}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-text-secondary">
-                      {dateOrDash(latestAudit(client))}
-                    </td>
-                    <td className="px-4 py-3">
-                      {/* No renewal countdown here: the renewal date rule lives in the database
-                          (step 15), so the browser never estimates one. */}
-                      <div className="flex flex-col items-start gap-1">
-                        {client.engagements.map((e) => (
-                          <span key={e.id} className="flex items-center gap-1.5">
-                            <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-raised text-text-secondary">
-                              {e.status}
+                      </td>
+                      <td className="px-4 py-3 text-text-secondary">
+                        <div>{client.contactPerson ?? '—'}</div>
+                        {client.email && (
+                          <div className="text-[10px] text-muted">{client.email}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-text-secondary">
+                        {dateOrDash(latestAudit(client))}
+                      </td>
+                      <td className="px-4 py-3">
+                        {/* No renewal countdown here: the renewal date rule lives in the database
+                            (step 15), so the browser never estimates one. */}
+                        <div className="flex flex-col items-start gap-1">
+                          {client.engagements.map((e) => (
+                            <span key={e.id} className="flex items-center gap-1.5">
+                              <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-raised text-text-secondary">
+                                {e.status}
+                              </span>
+                              <span className="font-mono text-[11px] text-muted">
+                                {dateOrDash(e.validTo)}
+                              </span>
                             </span>
-                            <span className="font-mono text-[11px] text-muted">
-                              {dateOrDash(e.validTo)}
-                            </span>
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 font-mono font-bold text-text tabular-nums">
-                      {total !== null ? formatINR(total) : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-text-secondary">
-                      {owners.length ? owners.join(', ') : 'No owner'}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 font-mono font-bold text-text tabular-nums">
+                        {total !== null ? formatINR(total) : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-text-secondary">
+                        {owners.length ? owners.join(', ') : 'No owner'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* CLIENT DETAILS DIALOG: client details only; its engagements come in 2-d */}
+      {/* CLIENT DETAILS DIALOG: client details and its active engagements (2-d), read-only */}
       {selected && (
         <div
           className="fixed inset-0 z-50 bg-backdrop/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
@@ -280,6 +326,40 @@ export function ClientsView() {
                   </p>
                 </div>
               )}
+
+              {/* The client's engagements from `active_clients` (2-d). Read-only; empty shows
+                  "—", and Valid to is never estimated in the browser. */}
+              <div className="p-3.5 rounded-xl bg-bg border border-line/10">
+                <span className="text-[10px] font-bold text-muted uppercase block mb-2">
+                  Certifications
+                </span>
+                <table className="w-full text-left text-xs">
+                  <thead className="text-muted text-[10px] uppercase">
+                    <tr>
+                      <th className="pb-1.5 pr-3 font-semibold">Certification</th>
+                      <th className="pb-1.5 pr-3 font-semibold">Status</th>
+                      <th className="pb-1.5 font-semibold">Valid To</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line/8">
+                    {selected.engagements.map((e) => (
+                      <tr key={e.id}>
+                        <td className="py-1.5 pr-3 font-mono font-bold text-primary break-words">
+                          {certificationOf(e) || '—'}
+                        </td>
+                        <td className="py-1.5 pr-3">
+                          <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-raised text-text-secondary">
+                            {e.status}
+                          </span>
+                        </td>
+                        <td className="py-1.5 font-mono text-text-secondary">
+                          {dateOrDash(e.validTo)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>

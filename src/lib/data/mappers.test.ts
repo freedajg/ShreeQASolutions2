@@ -6,12 +6,13 @@ import {
   groupClients,
   isPipelineStatus,
   sumValues,
+  toClients,
   toEngagement,
   toEngagements,
 } from './mappers';
 import type { StatusViewRow } from './queries';
 import { SAMPLE_PIPELINE_ROWS } from '../../../tests/support/pipelineRows';
-import { SAMPLE_ACTIVE_CLIENT_ROWS } from './sampleRows';
+import { SAMPLE_ACTIVE_CLIENT_ROWS } from '../../../tests/support/activeClientRows';
 
 // A complete row with every column empty except what each test sets.
 const EMPTY = Object.fromEntries(
@@ -122,6 +123,35 @@ describe('groupClients', () => {
   });
 });
 
+describe('toClients (step 2-d)', () => {
+  it('groups rows into clients; archived engagements and clients are left out', () => {
+    const clients = toClients([
+      row({ id: 'e-1', client_id: 'c-1', client_name: 'Client01 Demo Ltd', status: 'Certified' }),
+      row({ id: 'e-2', client_id: 'c-1', client_name: 'Client01 Demo Ltd', status: 'Completed' }),
+      row({
+        id: 'e-3',
+        client_id: 'c-1',
+        client_name: 'Client01 Demo Ltd',
+        status: 'Renewal Due',
+        archived_at: '2026-09-01T10:00:00+05:30',
+      }),
+      row({
+        id: 'e-4',
+        client_id: 'c-2',
+        client_name: 'Client02 Demo Ltd',
+        status: 'Certified',
+        client_archived_at: '2026-09-01T10:00:00+05:30',
+      }),
+    ]);
+    expect(clients.map((c) => c.id)).toEqual(['c-1']);
+    expect(clients[0].engagements.map((e) => e.id)).toEqual(['e-1', 'e-2']);
+  });
+
+  it('returns nothing for no rows (e.g. Marketing, which reads no active clients)', () => {
+    expect(toClients([])).toEqual([]);
+  });
+});
+
 describe('pipeline columns', () => {
   it('are Lead, Proposal, On Hold, in that order', () => {
     expect(PIPELINE_COLUMNS).toEqual(['Lead', 'Proposal', 'On Hold']);
@@ -187,7 +217,7 @@ describe('sample rows through the mapping code', () => {
   });
 
   it('give 5 active clients, two of them with two engagements', () => {
-    const clients = groupClients(toEngagements(SAMPLE_ACTIVE_CLIENT_ROWS));
+    const clients = toClients(SAMPLE_ACTIVE_CLIENT_ROWS);
     expect(clients).toHaveLength(5);
     expect(clients.filter((c) => c.engagements.length === 2)).toHaveLength(2);
   });

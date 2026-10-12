@@ -86,10 +86,17 @@ const listOrNone = (lines: string[]) => (lines.length ? lines.join('\n  ') : '(n
 // The app appears only after the sign-in check (a deferred callback, then a profile request).
 // Fires timers that are already due, without moving the frozen clock, until `ready` shows, so
 // every screen then starts from the same frozen time as before step 12.
-async function waitUntilShown(page: Page, ready: Locator, watch: PageWatch) {
+// `attached`: wait until `ready` is in the page, even when hidden by CSS (e.g. the desktop nav
+// on a phone).
+async function waitUntilShown(
+  page: Page,
+  ready: Locator,
+  watch: PageWatch,
+  { attached = false } = {},
+) {
   const deadline = Date.now() + 30_000; // the test runner's clock, not the page's frozen one
   while (Date.now() < deadline) {
-    if (await ready.isVisible()) return;
+    if (attached ? (await ready.count()) > 0 : await ready.isVisible()) return;
     await page.clock.runFor(0);
     await page.waitForTimeout(25);
   }
@@ -116,13 +123,18 @@ async function openApp(page: Page, theme: Theme) {
   // phone and note for obviously fake values, then reload. Dates, amounts and stages are
   // untouched, so every screen still shows the same states and colours.
   // Pipeline and Clients don't read this store since step 2-b. Pipeline reads the fake
-  // `pipeline` view (tests/support/pipelineRows.ts, step 2-c); Clients shows the sample rows in
-  // src/lib/data/sampleRows.ts until 2-d. Both are already fake. This still covers the hidden
-  // screens.
+  // `pipeline` view (tests/support/pipelineRows.ts, step 2-c), Clients the fake
+  // `active_clients` view (tests/support/activeClientRows.ts, step 2-d). Both are already
+  // fake. This still covers the hidden screens.
   await page.evaluate(fakeIdentities);
   await page.reload();
   // Pipeline is the landing screen; its first card means the rows (and the nav badge) are in.
   await waitUntilShown(page, page.locator('#column-Lead').getByText('Client01 Demo Ltd'), watch);
+  // The Clients badge comes from its own request (`active_clients`, step 2-d). On a phone the
+  // desktop nav is hidden by CSS, so wait for the badge to be in the page, not to be visible.
+  await waitUntilShown(page, page.locator('#nav-tab-clients span.tabular-nums'), watch, {
+    attached: true,
+  });
   // Test-only: background blur renders a few different corner pixels on every frame.
   // It holds no colour, so removing it hides nothing the token conversion could change.
   await page.addStyleTag({ content: '*, ::before, ::after { backdrop-filter: none !important; }' });

@@ -3,7 +3,9 @@
 // a database even if one is running.
 // Step 2-c: also the `pipeline` view and change_engagement_status(), following the step 8 rules
 // (quoted from the migrations in the step 2-c review notes), with the rows in ./pipelineRows.ts.
+// Step 2-d: also the `active_clients` view (read-only), with the rows in ./activeClientRows.ts.
 import type { Page, Route } from '@playwright/test';
+import { SAMPLE_ACTIVE_CLIENT_ROWS } from './activeClientRows';
 import { SAMPLE_PIPELINE_ROWS } from './pipelineRows';
 
 export const STACK_URL = 'http://127.0.0.1:54321';
@@ -167,6 +169,9 @@ export type FakeStack = {
  * an account without values access. A status change that's allowed updates that copy, so the
  * board's refetch shows it. `pipelineFails` aborts every pipeline read; `statusChange:
  * 'refuse'` refuses every status change, whoever asks.
+ * The `active_clients` view answers SAMPLE_ACTIVE_CLIENT_ROWS to an Owner or Consultant
+ * (without values for an account without values access) and nothing to Marketing, as RLS
+ * does. `activeClientsFails` aborts every active_clients read.
  */
 export async function mockSupabase(
   page: Page,
@@ -177,6 +182,7 @@ export async function mockSupabase(
     profileFails?: boolean;
     pipelineFails?: boolean;
     statusChange?: 'refuse';
+    activeClientsFails?: boolean;
   } = {},
 ): Promise<FakeStack> {
   const stack: FakeStack = { calls: [], statusChanges: [] };
@@ -260,6 +266,21 @@ export async function mockSupabase(
       const rows = pipelineRows
         .filter((row) => isLead(row.status))
         .map((row) => (seesValues ? row : { ...row, contract_value: null, payment_status: null }));
+      return json(route, 200, rows);
+    }
+
+    if (method === 'GET' && url.pathname === '/rest/v1/active_clients') {
+      if (options.activeClientsFails) return route.abort('connectionrefused');
+      // RLS: a role-less or inactive user reads nothing; Marketing reads leads only, so no
+      // active engagement (20261006100000_clients_engagements_rls.sql lines 335–340;
+      // supabase/tests/status_views.test.sql lines 417–418).
+      if (!current?.role || !current.active || current.role === 'marketing') {
+        return json(route, 200, []);
+      }
+      const seesValues = current.can_see_values;
+      const rows = SAMPLE_ACTIVE_CLIENT_ROWS.map((row) =>
+        seesValues ? row : { ...row, contract_value: null, payment_status: null },
+      );
       return json(route, 200, rows);
     }
 
