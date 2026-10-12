@@ -1,7 +1,7 @@
-// Changes made from the screens (Phase 2, step 2-a; the Pipeline drag uses it in 2-c).
-import type { QueryClient } from '@tanstack/react-query';
+// Changes made from the screens (Phase 2, step 2-a; the Pipeline drag uses it from 2-c).
+import { mutationOptions, type QueryClient } from '@tanstack/react-query';
 import type { DrishtiClient } from '../supabase/client';
-import { toDataError } from './errors';
+import { toDataError, type DataError } from './errors';
 import { STATUS_VIEWS } from './keys';
 
 /**
@@ -29,3 +29,22 @@ export async function invalidateAfterStatusChange(queryClient: QueryClient): Pro
     STATUS_VIEWS.map((view) => queryClient.invalidateQueries({ queryKey: [view] })),
   );
 }
+
+export type StatusChange = { engagementId: string; newStatus: string };
+
+/** Finds the status changes still in progress (useMutationState). */
+export const STATUS_CHANGE_KEY = ['change_engagement_status'] as const;
+
+/**
+ * Options for useMutation. Never retried (the client default, see queryClient.ts). onSettled
+ * returns the refetch, so the change stays pending until the fresh rows are in the cache: the
+ * board shows a pending move in its new column until then (step 2-c), and a refused move
+ * goes back by itself. Nothing is written into the cache here.
+ */
+export const statusChangeMutation = (client: DrishtiClient, queryClient: QueryClient) =>
+  mutationOptions<void, DataError, StatusChange>({
+    mutationKey: STATUS_CHANGE_KEY,
+    mutationFn: ({ engagementId, newStatus }) =>
+      changeEngagementStatus(client, engagementId, newStatus),
+    onSettled: () => invalidateAfterStatusChange(queryClient),
+  });

@@ -1,9 +1,44 @@
 import { describe, expect, it } from 'vitest';
+import type { DrishtiClient } from '../supabase/client';
 import { clearQueryCache, shouldClearCache, userIdOf } from './cache';
+import { pipelineQuery } from './queries';
 import { createQueryClient } from './queryClient';
 
 const A = 'aaaaaaaa-0000-4000-8000-000000000001';
 const B = 'bbbbbbbb-0000-4000-8000-000000000002';
+
+/**
+ * A stand-in for supabase-js reads. Each read answers `rowsFor()` (asked at read time), or
+ * with `hang`, never answers until its abort signal fires. Counts the reads.
+ */
+function fakeReads(rowsFor: () => unknown[], { hang = false } = {}) {
+  const reads = { count: 0, signals: [] as AbortSignal[] };
+  const client = {
+    from: () => {
+      reads.count += 1;
+      let signal: AbortSignal | undefined;
+      const builder = {
+        select: () => builder,
+        order: () => builder,
+        retry: () => builder,
+        abortSignal: (s: AbortSignal) => {
+          signal = s;
+          reads.signals.push(s);
+          return builder;
+        },
+        then: (resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) =>
+          (hang
+            ? new Promise((_, fail) =>
+                signal?.addEventListener('abort', () => fail(new Error('aborted'))),
+              )
+            : Promise.resolve({ data: rowsFor(), error: null, status: 200 })
+          ).then(resolve, reject),
+      };
+      return builder;
+    },
+  };
+  return { client: client as unknown as DrishtiClient, reads };
+}
 
 describe('shouldClearCache', () => {
   it('does nothing on the first decision or when the user stays the same', () => {
@@ -39,5 +74,39 @@ describe('clearQueryCache', () => {
     await clearQueryCache(queryClient);
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
     expect(queryClient.getQueryData(['pipeline', A])).toBeUndefined();
+  });
+});
+
+describe('the Pipeline board when the user changes (step 2-c)', () => {
+  it("user B never gets user A's cached rows, and A's rows are gone after the clear", async () => {
+    const queryClient = createQueryClient();
+    let rows: unknown[] = [{ id: 'seen-by-A' }];
+    const { client, reads } = fakeReads(() => rows);
+
+    await queryClient.fetchQuery(pipelineQuery(client, A));
+    expect(queryClient.getQueryData(['pipeline', A])).toEqual([{ id: 'seen-by-A' }]);
+
+    await clearQueryCache(queryClient); // what QueryCacheGuard does on A → B
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+
+    rows = [{ id: 'seen-by-B' }];
+    await expect(queryClient.fetchQuery(pipelineQuery(client, B))).resolves.toEqual([
+      { id: 'seen-by-B' },
+    ]);
+    expect(reads.count).toBe(2); // B read the database; nothing came from A's entry
+    expect(queryClient.getQueryData(['pipeline', A])).toBeUndefined();
+  });
+
+  it("a read still in flight is stopped by the clear and doesn't refill A's entry", async () => {
+    const queryClient = createQueryClient();
+    const { client, reads } = fakeReads(() => [], { hang: true });
+
+    const inFlight = queryClient.fetchQuery(pipelineQuery(client, A)).catch(() => 'stopped');
+    await clearQueryCache(queryClient);
+
+    await expect(inFlight).resolves.toBe('stopped');
+    expect(reads.signals[0]?.aborted).toBe(true);
+    expect(queryClient.getQueryData(['pipeline', A])).toBeUndefined();
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
   });
 });

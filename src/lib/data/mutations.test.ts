@@ -1,8 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
+import { MutationObserver, type QueryClient } from '@tanstack/react-query';
 import type { DrishtiClient } from '../supabase/client';
-import { DataError } from './errors';
+import { DATA_MESSAGES, DataError } from './errors';
 import { STATUS_VIEWS } from './keys';
-import { changeEngagementStatus, invalidateAfterStatusChange } from './mutations';
+import {
+  STATUS_CHANGE_KEY,
+  changeEngagementStatus,
+  invalidateAfterStatusChange,
+  statusChangeMutation,
+} from './mutations';
 import { createQueryClient } from './queryClient';
 
 type Result = { data: unknown; error: unknown; status: number };
@@ -59,6 +65,85 @@ describe('changeEngagementStatus', () => {
       await expect(failure).rejects.toBeInstanceOf(DataError);
       await expect(failure).rejects.toMatchObject({ kind });
     }
+  });
+});
+
+// Runs the options the way useMutation does, without React (no React test tools installed).
+function statusChange(client: DrishtiClient, queryClient: QueryClient) {
+  const observer = new MutationObserver(queryClient, statusChangeMutation(client, queryClient));
+  return observer.mutate({ engagementId: 'eng-1', newStatus: 'Proposal' });
+}
+
+const rpcCalls = (calls: unknown[][]) => calls.filter((call) => call[0] === 'rpc');
+
+const pendingChanges = (queryClient: QueryClient) =>
+  queryClient.getMutationCache().findAll({ mutationKey: STATUS_CHANGE_KEY, status: 'pending' });
+
+describe('statusChangeMutation (the Pipeline drag, step 2-c)', () => {
+  it('calls change_engagement_status once and refetches all five views', async () => {
+    const queryClient = createQueryClient();
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    const { client, calls } = fakeRpcClient({ data: null, error: null, status: 204 });
+    await statusChange(client, queryClient);
+    expect(rpcCalls(calls)).toEqual([
+      ['rpc', 'change_engagement_status', { p_engagement_id: 'eng-1', p_new_status: 'Proposal' }],
+    ]);
+    expect(spy).toHaveBeenCalledTimes(STATUS_VIEWS.length);
+  });
+
+  it('a refusal is not retried, shows the plain message, and still refetches', async () => {
+    const queryClient = createQueryClient();
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    const { client, calls } = fakeRpcClient(
+      refused('42501', "Engagement not found, or you can't change its status"),
+    );
+    const failure = statusChange(client, queryClient);
+    await expect(failure).rejects.toMatchObject({
+      kind: 'not-allowed',
+      message: DATA_MESSAGES['not-allowed'],
+    });
+    expect(rpcCalls(calls)).toHaveLength(1);
+    expect(spy).toHaveBeenCalledTimes(STATUS_VIEWS.length);
+  });
+
+  it('a network failure is not retried either (queries would retry it; changes never do)', async () => {
+    const queryClient = createQueryClient();
+    const { client, calls } = fakeRpcClient({
+      data: null,
+      error: { code: '', message: 'TypeError: Failed to fetch', details: '', hint: '' },
+      status: 0,
+    });
+    await expect(statusChange(client, queryClient)).rejects.toMatchObject({ kind: 'network' });
+    expect(rpcCalls(calls)).toHaveLength(1);
+  });
+
+  it('stays pending until the refetch is done, so a moved card never flickers back', async () => {
+    const queryClient = createQueryClient();
+    let finishRefetch = () => {};
+    const refetch = new Promise<void>((resolve) => {
+      finishRefetch = resolve;
+    });
+    const spy = vi.spyOn(queryClient, 'invalidateQueries').mockReturnValue(refetch);
+    const { client } = fakeRpcClient({ data: null, error: null, status: 204 });
+
+    const done = statusChange(client, queryClient);
+    await vi.waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(pendingChanges(queryClient)).toHaveLength(1);
+    expect(pendingChanges(queryClient)[0].state.variables).toEqual({
+      engagementId: 'eng-1',
+      newStatus: 'Proposal',
+    });
+
+    finishRefetch();
+    await done;
+    expect(pendingChanges(queryClient)).toHaveLength(0);
+  });
+
+  it('writes nothing into the query cache', async () => {
+    const queryClient = createQueryClient();
+    const { client } = fakeRpcClient(refused('42501', 'new row violates row-level security'));
+    await expect(statusChange(client, queryClient)).rejects.toBeInstanceOf(DataError);
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
   });
 });
 

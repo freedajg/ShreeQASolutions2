@@ -10,7 +10,8 @@ import {
   toEngagements,
 } from './mappers';
 import type { StatusViewRow } from './queries';
-import { SAMPLE_ACTIVE_CLIENT_ROWS, SAMPLE_PIPELINE_ROWS } from './sampleRows';
+import { SAMPLE_PIPELINE_ROWS } from '../../../tests/support/pipelineRows';
+import { SAMPLE_ACTIVE_CLIENT_ROWS } from './sampleRows';
 
 // A complete row with every column empty except what each test sets.
 const EMPTY = Object.fromEntries(

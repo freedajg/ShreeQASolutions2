@@ -76,8 +76,10 @@ function ThemeChoice({
 
 export function Navbar() {
   const { activeTab, setActiveTab, activeUser, setActiveUser, clients, isAiLoading } = useCrm();
-  // Pipeline and Clients badges count the same rows as those screens (step 2-b).
-  const pipelineCount = countOnBoard(usePipelineEngagements());
+  // Pipeline and Clients badges count the same rows as those screens (step 2-b). No Pipeline
+  // badge while the board is loading or couldn't be read (step 2-c).
+  const { data: onBoard } = usePipelineEngagements();
+  const pipelineCount = onBoard ? countOnBoard(onBoard) : undefined;
   const activeClientCount = useActiveClients().length;
   const { preference, theme, setPreference, toggleTheme } = useTheme();
   const { signOut } = useAuth();

@@ -16,9 +16,15 @@ import { CSS } from '@dnd-kit/utilities';
 import { Plus, Kanban, Table as TableIcon, Search, AlertCircle, Clock, X } from 'lucide-react';
 import { useCrm } from '../context/CrmContext';
 import { Lead, Stage, ServiceKind } from '../types';
-import { PIPELINE_COLUMNS, type Engagement, type PipelineStatus } from '../types/crm';
+import { PIPELINE_COLUMNS, type Engagement } from '../types/crm';
 import { groupByPipelineStatus, isPipelineStatus, sumValues } from '../lib/data/mappers';
-import { useOwnerName, usePipelineEngagements } from '../lib/data/hooks';
+import {
+  useChangeEngagementStatus,
+  useOwnerName,
+  usePendingStatusChanges,
+  usePipelineEngagements,
+} from '../lib/data/hooks';
+import { dataErrorMessage } from '../lib/data/errors';
 import { formatINR } from '../utils/currency';
 import { formatStandardDate, getDaysAgo } from '../utils/dateUtils';
 import { isFeatureEnabled } from '../lib/screens';
@@ -41,16 +47,26 @@ const isQuiet = (engagement: Engagement) => (daysQuiet(engagement) ?? 0) >= QUIE
 
 type OwnerName = (ownerId: string | null) => string | null;
 
+const NO_ENGAGEMENTS: Engagement[] = [];
+
 interface SortableEngagementCardProps {
   engagement: Engagement;
   ownerName: OwnerName;
   onOpenDetails: (engagement: Engagement) => void;
+  /** A move is being saved: no second drag until it's done. */
+  isSaving: boolean;
 }
 
-function EngagementCardItem({ engagement, ownerName, onOpenDetails }: SortableEngagementCardProps) {
+function EngagementCardItem({
+  engagement,
+  ownerName,
+  onOpenDetails,
+  isSaving,
+}: SortableEngagementCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: engagement.id,
     data: { engagement },
+    disabled: isSaving,
   });
 
   const style = {
@@ -120,7 +136,8 @@ function EngagementCardItem({ engagement, ownerName, onOpenDetails }: SortableEn
 
 export function PipelineView() {
   const { addLead } = useCrm();
-  const loaded = usePipelineEngagements();
+  // The `pipeline` view (step 2-c). Minimal loading and error lines; full states are 2-g.
+  const { data: loaded, error: loadError, refetch } = usePipelineEngagements();
   const ownerName = useOwnerName();
 
   const [viewMode, setViewMode] = useState<'board' | 'table'>('board');
@@ -128,14 +145,22 @@ export function PipelineView() {
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
-  // Moves made by dragging, kept in memory only until 2-c saves them with
-  // change_engagement_status(). A reload starts again from the loaded rows.
-  const [movedTo, setMovedTo] = useState<Record<string, PipelineStatus>>({});
+  // Why the database refused the last move; shown above the board until closed or the next drag.
+  const [moveNotice, setMoveNotice] = useState<string | null>(null);
 
-  const engagements = useMemo(
-    () => loaded.map((e) => (movedTo[e.id] ? { ...e, status: movedTo[e.id] } : e)),
-    [loaded, movedTo],
-  );
+  const changeStatus = useChangeEngagementStatus((error) => setMoveNotice(dataErrorMessage(error)));
+  // A move shows in its new column while it's saved and the board is read again; a refused
+  // move stops being pending, so its card goes back by itself. Nothing is written to the cache.
+  const pendingChanges = usePendingStatusChanges();
+
+  const engagements = useMemo(() => {
+    const movedTo = new Map(pendingChanges.map((c) => [c.engagementId, c.newStatus]));
+    return (loaded ?? NO_ENGAGEMENTS).map((e) => {
+      const status = movedTo.get(e.id);
+      return status ? { ...e, status } : e;
+    });
+  }, [loaded, pendingChanges]);
+  const savingIds = new Set(pendingChanges.map((c) => c.engagementId));
 
   // Sensors for dnd-kit
   const pointerSensor = useSensor(PointerSensor, {
@@ -181,7 +206,8 @@ export function PipelineView() {
 
     const dragged = engagements.find((e) => e.id === engagementId);
     if (target && isPipelineStatus(target) && dragged && dragged.status !== target) {
-      setMovedTo((prev) => ({ ...prev, [engagementId]: target }));
+      setMoveNotice(null);
+      changeStatus.mutate({ engagementId, newStatus: target });
     }
   };
 
@@ -197,9 +223,11 @@ export function PipelineView() {
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
               Sales Pipeline
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary-tint/20 text-primary border border-primary-tint/30">
-              {engagements.length} Open Deals
-            </span>
+            {loaded && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary-tint/20 text-primary border border-primary-tint/30">
+                {engagements.length} Open Deals
+              </span>
+            )}
           </div>
           <p className="text-xs sm:text-sm text-text-secondary mt-0.5">
             Stage progression and follow-up rhythm for process certification prospects.
@@ -280,8 +308,45 @@ export function PipelineView() {
         />
       </div>
 
+      {/* Not read yet, or the first read failed (step 2-c; full states in 2-g) */}
+      {!loaded &&
+        (loadError ? (
+          <div className="flex items-center gap-3 text-xs">
+            <p role="alert" className="text-danger">
+              {dataErrorMessage(loadError)}
+            </p>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="px-3 py-1.5 rounded-lg bg-surface border border-line/16 text-text-secondary hover:text-text"
+            >
+              Try again
+            </button>
+          </div>
+        ) : (
+          <p className="text-xs text-muted">Loading pipeline…</p>
+        ))}
+
+      {/* Why the database refused the last move */}
+      {moveNotice && (
+        <div
+          role="alert"
+          className="flex items-start justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-danger/10 border border-danger/30 text-xs text-danger"
+        >
+          <span>{moveNotice}</span>
+          <button
+            type="button"
+            onClick={() => setMoveNotice(null)}
+            aria-label="Close message"
+            className="shrink-0 text-danger hover:text-text-strong"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       {/* VIEW 1: KANBAN BOARD */}
-      {viewMode === 'board' && (
+      {loaded && viewMode === 'board' && (
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -335,6 +400,7 @@ export function PipelineView() {
                               engagement={engagement}
                               ownerName={ownerName}
                               onOpenDetails={(e) => setSelectedId(e.id)}
+                              isSaving={savingIds.has(engagement.id)}
                             />
                           ))
                         )}
@@ -364,7 +430,7 @@ export function PipelineView() {
       )}
 
       {/* VIEW 2: TABLE VIEW FOR EXCEL USERS */}
-      {viewMode === 'table' && (
+      {loaded && viewMode === 'table' && (
         <div className="bg-surface border border-line/16 rounded-2xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -490,7 +556,8 @@ export function PipelineView() {
                   <span className="text-muted block text-[10px] uppercase font-semibold">
                     Current Stage
                   </span>
-                  {/* Plain text until 2-c, which changes it with change_engagement_status(). */}
+                  {/* Plain text until 2-c2 (after the demo) adds a status list that calls
+                      change_engagement_status(), including In Progress and Closed. */}
                   <span className="text-text font-semibold text-xs">{selected.status}</span>
                 </div>
                 <div>

@@ -1,7 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { QueryObserver } from '@tanstack/react-query';
+import { SAMPLE_PIPELINE_ROWS } from '../../../tests/support/pipelineRows';
 import type { DrishtiClient } from '../supabase/client';
 import { DataError } from './errors';
 import { queryKeys } from './keys';
+import { toEngagements } from './mappers';
+import { createQueryClient } from './queryClient';
 import {
   FINANCIALS_COLUMNS,
   STATUS_VIEW_COLUMNS,
@@ -145,5 +149,26 @@ describe('query keys and options', () => {
     const queryFn = options.queryFn as (context: { signal: AbortSignal }) => Promise<unknown>;
     await queryFn({ signal: new AbortController().signal });
     expect(calls[0]).toEqual(['from', 'pipeline']);
+  });
+
+  it('the board (pipelineQuery + toEngagements, as usePipelineEngagements) caches the raw rows and maps them', async () => {
+    const queryClient = createQueryClient();
+    const { client } = fakeClient(ok(SAMPLE_PIPELINE_ROWS));
+    const observer = new QueryObserver(queryClient, {
+      ...pipelineQuery(client, USER),
+      select: toEngagements,
+    });
+    const unsubscribe = observer.subscribe(() => {});
+    try {
+      await vi.waitFor(() => expect(observer.getCurrentResult().data).toBeDefined());
+      // 8 rows from the view; the archived one is left out on screen, so 7 on the board.
+      expect(queryClient.getQueryData(['pipeline', USER])).toHaveLength(8);
+      expect(observer.getCurrentResult().data?.map((e) => e.client.name)).toEqual(
+        toEngagements(SAMPLE_PIPELINE_ROWS).map((e) => e.client.name),
+      );
+      expect(observer.getCurrentResult().data).toHaveLength(7);
+    } finally {
+      unsubscribe();
+    }
   });
 });

@@ -1,12 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { ACCOUNTS } from '../../../tests/support/auth';
+import { SAMPLE_PIPELINE_ROWS } from '../../../tests/support/pipelineRows';
 import { STATUS_VIEW_COLUMNS } from './queries';
-import {
-  SAMPLE_ACTIVE_CLIENT_ROWS,
-  SAMPLE_OWNER_IDS,
-  SAMPLE_PIPELINE_ROWS,
-  SAMPLE_TEAM,
-} from './sampleRows';
+import { SAMPLE_ACTIVE_CLIENT_ROWS, SAMPLE_OWNER_IDS, SAMPLE_TEAM } from './sampleRows';
 
 const ALL_ROWS = [...SAMPLE_PIPELINE_ROWS, ...SAMPLE_ACTIVE_CLIENT_ROWS];
 

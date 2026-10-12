@@ -1,7 +1,8 @@
-// Sample rows for Pipeline and Clients in step 2-b, before the screens read the database
-// (2-c: `pipeline`, 2-d: `active_clients`). They have the views' own 43-column shape and go
-// through the same mapping code as live rows, so in 2-c the fake Supabase in the browser tests
-// can answer with these same rows and the screenshots don't change again.
+// Sample data the app still ships until the screens read the database: the Clients rows (until
+// 2-d reads `active_clients`) and the owner names (until 2-e reads `team_members`). They have
+// the views' own 43-column shape and go through the same mapping code as live rows.
+// The Pipeline rows moved to tests/support/pipelineRows.ts in 2-c (the board reads `pipeline`);
+// they reuse the builders below. 2-d moves the rest to tests/support/; 2-e deletes this file.
 // Dummy data only (CLAUDE.md rule 9): fake companies, contacts, @example.com emails,
 // +91 00000 phones, made-up amounts. Nothing here is a real client.
 import type { StatusViewRow } from './queries';
@@ -85,7 +86,7 @@ const GROUP: Record<string, StatusViewRow['status_group']> = {
 };
 
 // Client NN: "ClientNN Demo Ltd", contact "Contact NN", clientNN@example.com, +91 00000 000NN.
-function client(nn: string, city: string, industry: string): Partial<StatusViewRow> {
+export function sampleClient(nn: string, city: string, industry: string): Partial<StatusViewRow> {
   return {
     client_id: `5a3d1e00-0000-4000-8000-0000000000${nn}`,
     client_code: `C0${nn}`,
@@ -102,7 +103,8 @@ function client(nn: string, city: string, industry: string): Partial<StatusViewR
   };
 }
 
-function row(
+/** One status-view row: engagement NN of the given client, every other column empty. */
+export function sampleRow(
   n: string,
   status: string,
   clientFields: Partial<StatusViewRow>,
@@ -119,88 +121,16 @@ function row(
   };
 }
 
-const C01 = client('01', 'Pune', 'IT Services');
-const C02 = client('02', 'Bengaluru', 'Fintech');
-const C03 = client('03', 'Chennai', 'Manufacturing');
-const C04 = client('04', 'Hyderabad', 'SaaS');
-const C05 = client('05', 'Mumbai', 'AI Products');
-const C06 = client('06', 'Noida', 'IT Services');
-const C07 = client('07', 'Kochi', 'Telecom');
-const C08 = client('08', 'Indore', 'Logistics');
-const C09 = client('09', 'Pune', 'IT Services');
-const C10 = client('10', 'Ahmedabad', 'Medical Devices');
-const C11 = client('11', 'Gurugram', 'BPO');
-const C12 = client('12', 'Kolkata', 'Healthcare');
+/** Client01 is both a client here and a lead in tests/support/pipelineRows.ts. */
+export const SAMPLE_CLIENT_01 = sampleClient('01', 'Pune', 'IT Services');
+const C09 = sampleClient('09', 'Pune', 'IT Services');
+const C10 = sampleClient('10', 'Ahmedabad', 'Medical Devices');
+const C11 = sampleClient('11', 'Gurugram', 'BPO');
+const C12 = sampleClient('12', 'Kolkata', 'Healthcare');
 
-/** `pipeline` view: Lead, Proposal, On Hold, in the view's order (sort order, client name). */
-export const SAMPLE_PIPELINE_ROWS: readonly StatusViewRow[] = [
-  row('01', 'Lead', C01, {
-    certification_type: 'CMMI',
-    standard_framework: 'DEV ML3',
-    owner_id: SAMPLE_OWNER_IDS.owner,
-    lead_source: 'Referral',
-    contract_value: 1200000,
-    last_contacted_on: '2026-09-28',
-    next_follow_up_on: '2026-10-05',
-    remarks: 'Demo remark.',
-  }),
-  row('02', 'Lead', C02, {
-    certification_type: 'ISO 27001',
-    owner_id: SAMPLE_OWNER_IDS.consultant,
-    lead_source: 'LinkedIn',
-    contract_value: 450000,
-    last_contacted_on: '2026-09-15',
-    remarks: 'Demo remark.',
-  }),
-  // No value yet: shows no amount, and adds nothing to the column total.
-  row('03', 'Lead', C03, {
-    certification_type: 'ISO 9001',
-    owner_id: SAMPLE_OWNER_IDS.marketing,
-    lead_source: 'Website',
-  }),
-  row('07', 'Lead', C07, {
-    certification_type: 'ISO 20000-1',
-    owner_id: SAMPLE_OWNER_IDS.consultant,
-    lead_source: 'Event',
-    contract_value: 350000,
-    last_contacted_on: '2026-09-24',
-  }),
-  row('04', 'Proposal', C04, {
-    certification_type: 'SOC 2',
-    owner_id: SAMPLE_OWNER_IDS.owner,
-    lead_source: 'Partner',
-    contract_value: 800000,
-    last_contacted_on: '2026-09-30',
-    next_follow_up_on: '2026-10-07',
-    remarks: 'Demo remark.',
-  }),
-  // No owner: every lead must have one (PRD FR-5); the screen says "No owner".
-  row('05', 'Proposal', C05, {
-    certification_type: 'ISO 42001',
-    lead_source: 'Website',
-    contract_value: 600000,
-    last_contacted_on: '2026-09-10',
-  }),
-  // Archived: left out by the mapping code, so it never shows.
-  row('08', 'Proposal', C08, {
-    certification_type: 'ISO 22301',
-    owner_id: SAMPLE_OWNER_IDS.owner,
-    contract_value: 300000,
-    archived_at: '2026-09-01T10:00:00+05:30',
-  }),
-  row('06', 'On Hold', C06, {
-    certification_type: 'VAPT',
-    owner_id: SAMPLE_OWNER_IDS.consultant,
-    lead_source: 'Existing Client',
-    contract_value: 250000,
-    last_contacted_on: '2026-08-20',
-    remarks: 'Demo remark.',
-  }),
-];
-
-/** `active_clients` view: Certified, Renewal Due, Completed; Client01 is also a lead above. */
+/** `active_clients` view: Certified, Renewal Due, Completed. */
 export const SAMPLE_ACTIVE_CLIENT_ROWS: readonly StatusViewRow[] = [
-  row('21', 'Certified', C01, {
+  sampleRow('21', 'Certified', SAMPLE_CLIENT_01, {
     certification_type: 'ISO 27001',
     owner_id: SAMPLE_OWNER_IDS.owner,
     completion_date: '2024-03-15',
@@ -210,7 +140,7 @@ export const SAMPLE_ACTIVE_CLIENT_ROWS: readonly StatusViewRow[] = [
     contract_value: 650000,
     payment_status: 'Paid',
   }),
-  row('22', 'Certified', C09, {
+  sampleRow('22', 'Certified', C09, {
     certification_type: 'CMMI',
     standard_framework: 'DEV ML3',
     owner_id: SAMPLE_OWNER_IDS.consultant,
@@ -220,7 +150,7 @@ export const SAMPLE_ACTIVE_CLIENT_ROWS: readonly StatusViewRow[] = [
     contract_value: 1500000,
     payment_status: 'Partially Paid',
   }),
-  row('23', 'Renewal Due', C09, {
+  sampleRow('23', 'Renewal Due', C09, {
     certification_type: 'ISO 9001',
     owner_id: SAMPLE_OWNER_IDS.consultant,
     completion_date: '2023-11-21',
@@ -230,12 +160,12 @@ export const SAMPLE_ACTIVE_CLIENT_ROWS: readonly StatusViewRow[] = [
     payment_status: 'Paid',
   }),
   // Completed with no certificate dates: shown empty, never estimated in the browser.
-  row('24', 'Completed', C10, {
+  sampleRow('24', 'Completed', C10, {
     certification_type: 'ISO 13485',
     owner_id: SAMPLE_OWNER_IDS.owner,
     completion_date: '2025-02-10',
   }),
-  row('25', 'Certified', C11, {
+  sampleRow('25', 'Certified', C11, {
     certification_type: 'SOC 1',
     owner_id: SAMPLE_OWNER_IDS.owner,
     completion_date: '2026-01-31',
@@ -244,7 +174,7 @@ export const SAMPLE_ACTIVE_CLIENT_ROWS: readonly StatusViewRow[] = [
     contract_value: 700000,
     payment_status: 'Not Invoiced',
   }),
-  row('26', 'Renewal Due', C11, {
+  sampleRow('26', 'Renewal Due', C11, {
     certification_type: 'ISO 27701',
     owner_id: SAMPLE_OWNER_IDS.consultant,
     completion_date: '2023-10-30',
@@ -253,7 +183,7 @@ export const SAMPLE_ACTIVE_CLIENT_ROWS: readonly StatusViewRow[] = [
     contract_value: 400000,
     payment_status: 'Overdue',
   }),
-  row('27', 'Certified', C12, {
+  sampleRow('27', 'Certified', C12, {
     certification_type: 'ISO 27001',
     owner_id: SAMPLE_OWNER_IDS.consultant,
     completion_date: '2025-08-12',

@@ -115,11 +115,14 @@ async function openApp(page: Page, theme: Theme) {
   // The app has now saved its demo data under the frozen clock. Swap every name, email,
   // phone and note for obviously fake values, then reload. Dates, amounts and stages are
   // untouched, so every screen still shows the same states and colours.
-  // Pipeline and Clients don't read this store since step 2-b: they show the sample rows in
-  // src/lib/data/sampleRows.ts, which are already fake. This still covers the hidden screens.
+  // Pipeline and Clients don't read this store since step 2-b. Pipeline reads the fake
+  // `pipeline` view (tests/support/pipelineRows.ts, step 2-c); Clients shows the sample rows in
+  // src/lib/data/sampleRows.ts until 2-d. Both are already fake. This still covers the hidden
+  // screens.
   await page.evaluate(fakeIdentities);
   await page.reload();
-  await waitUntilShown(page, page.locator('header'), watch);
+  // Pipeline is the landing screen; its first card means the rows (and the nav badge) are in.
+  await waitUntilShown(page, page.locator('#column-Lead').getByText('Client01 Demo Ltd'), watch);
   // Test-only: background blur renders a few different corner pixels on every frame.
   // It holds no colour, so removing it hides nothing the token conversion could change.
   await page.addStyleTag({ content: '*, ::before, ::after { backdrop-filter: none !important; }' });

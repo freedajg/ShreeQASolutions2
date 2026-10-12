@@ -1,7 +1,10 @@
 // Fake Supabase for the browser tests (Phase 1, step 12): no local stack, no real users, no real
 // passwords. Every request to the stack is answered here or aborted, so a test can never reach
 // a database even if one is running.
+// Step 2-c: also the `pipeline` view and change_engagement_status(), following the step 8 rules
+// (quoted from the migrations in the step 2-c review notes), with the rows in ./pipelineRows.ts.
 import type { Page, Route } from '@playwright/test';
+import { SAMPLE_PIPELINE_ROWS } from './pipelineRows';
 
 export const STACK_URL = 'http://127.0.0.1:54321';
 const STACK_PATTERN = /^http:\/\/(127\.0\.0\.1|localhost):54321\//;
@@ -95,9 +98,63 @@ function json(route: Route, status: number, body: unknown) {
   });
 }
 
+// The 10 statuses (20261003180745_lookups.sql) and the pipeline view's sort order for its three.
+const STATUSES = new Set([
+  'Lead',
+  'Proposal',
+  'On Hold',
+  'In Progress',
+  'Implemented',
+  'Audit Completed',
+  'Certified',
+  'Renewal Due',
+  'Completed',
+  'Closed',
+]);
+const PIPELINE_ORDER: Record<string, number> = { Lead: 1, Proposal: 2, 'On Hold': 9 };
+const isLead = (status: string | null) => status !== null && status in PIPELINE_ORDER;
+
+type StatusRow = (typeof SAMPLE_PIPELINE_ROWS)[number];
+
+/** PostgREST's error body; the app only shows its own text for these (src/lib/data/errors.ts). */
+const pgError = (code: string, message: string) => ({ code, message, details: null, hint: null });
+
+/**
+ * change_engagement_status() for one caller: null when allowed, otherwise the database's error.
+ * Owner: any row. Consultant: rows they own. Marketing: rows it created, and only to a lead
+ * status. A row the caller may not change gets the same answer as a missing one.
+ */
+function statusChangeRefusal(
+  user: FakeAccount | undefined,
+  row: StatusRow | undefined,
+  newStatus: string,
+) {
+  if (!user?.role || !user.active) {
+    return pgError('42501', "You don't have access to change statuses");
+  }
+  if (!STATUSES.has(newStatus)) return pgError('22023', 'Unknown status');
+  const mayChange =
+    row !== undefined &&
+    (user.role === 'owner' ||
+      (user.role === 'consultant' && row.owner_id === user.id) ||
+      (user.role === 'marketing' && row.created_by === user.id && isLead(row.status)));
+  if (!row || !mayChange) {
+    return pgError('42501', "Engagement not found, or you can't change its status");
+  }
+  if (row.status === newStatus) {
+    return pgError('22023', 'The engagement already has that status');
+  }
+  if (user.role === 'marketing' && !isLead(newStatus)) {
+    return pgError('42501', 'new row violates row-level security policy for table "engagements"');
+  }
+  return null;
+}
+
 export type FakeStack = {
   /** "METHOD /path" of every request the app made to the stack, in order. */
   calls: string[];
+  /** Every change_engagement_status() call, allowed or not, in order. */
+  statusChanges: { engagementId: string; newStatus: string }[];
 };
 
 /**
@@ -106,6 +163,10 @@ export type FakeStack = {
  * accounts in ACCOUNTS with TEST_PASSWORD. `userMetadata` goes into every session and user the
  * fake Auth hands out (e.g. a self-set `role`, which the app must ignore). `profileFails`
  * aborts every profile request, as if the database were unreachable.
+ * The `pipeline` view answers SAMPLE_PIPELINE_ROWS (a fresh copy per test), without values for
+ * an account without values access. A status change that's allowed updates that copy, so the
+ * board's refetch shows it. `pipelineFails` aborts every pipeline read; `statusChange:
+ * 'refuse'` refuses every status change, whoever asks.
  */
 export async function mockSupabase(
   page: Page,
@@ -114,12 +175,16 @@ export async function mockSupabase(
     rateLimited?: boolean;
     userMetadata?: Record<string, unknown>;
     profileFails?: boolean;
+    pipelineFails?: boolean;
+    statusChange?: 'refuse';
   } = {},
 ): Promise<FakeStack> {
-  const stack: FakeStack = { calls: [] };
+  const stack: FakeStack = { calls: [], statusChanges: [] };
   const accounts: FakeAccount[] = Object.values(ACCOUNTS);
   let current = options.signedInAs;
   const sessionFor = (user: FakeAccount) => fakeSession(user, options.userMetadata);
+  // This test's own copy: a status change here never leaks into another test.
+  const pipelineRows: StatusRow[] = SAMPLE_PIPELINE_ROWS.map((row) => ({ ...row }));
 
   if (options.signedInAs) {
     await page.addInitScript(
@@ -184,6 +249,39 @@ export async function mockSupabase(
           ]
         : [];
       return json(route, 200, rows);
+    }
+
+    if (method === 'GET' && url.pathname === '/rest/v1/pipeline') {
+      if (options.pipelineFails) return route.abort('connectionrefused');
+      // RLS: a role-less or inactive user reads nothing.
+      if (!current?.role || !current.active) return json(route, 200, []);
+      const seesValues = current.can_see_values;
+      // Array order, not re-sorted: before any change this is exactly SAMPLE_PIPELINE_ROWS.
+      const rows = pipelineRows
+        .filter((row) => isLead(row.status))
+        .map((row) => (seesValues ? row : { ...row, contract_value: null, payment_status: null }));
+      return json(route, 200, rows);
+    }
+
+    if (method === 'POST' && url.pathname === '/rest/v1/rpc/change_engagement_status') {
+      const body = (request.postDataJSON() ?? {}) as {
+        p_engagement_id?: string;
+        p_new_status?: string;
+      };
+      const engagementId = body.p_engagement_id ?? '';
+      const newStatus = body.p_new_status ?? '';
+      stack.statusChanges.push({ engagementId, newStatus });
+      const row = pipelineRows.find((r) => r.id === engagementId);
+      const refusal =
+        options.statusChange === 'refuse'
+          ? pgError('42501', "Engagement not found, or you can't change its status")
+          : statusChangeRefusal(current, row, newStatus);
+      if (refusal) return json(route, refusal.code === '22023' ? 400 : 403, refusal);
+      if (!row) return json(route, 500, pgError('XX000', 'fake stack: allowed change, no row'));
+      // Allowed: the next pipeline read shows the new status.
+      row.status = newStatus;
+      row.status_sort_order = PIPELINE_ORDER[newStatus] ?? null;
+      return route.fulfill({ status: 204, headers: CORS });
     }
 
     return route.abort();
