@@ -89,7 +89,7 @@ Nobody can hard-delete.
 
 **Note for step 14 (11-Oct-2026):** notes on engagements are **not** part of step 14; they move to after the demo. Until then, "Consultants can add notes on any engagement" (Goal 2 and the step 8 table) isn't built. The comment at `20261006100000_clients_engagements_rls.sql:31` that puts notes in step 14 is out of date and stays as it is (applied migration).
 
-**Demo note (11-Oct-2026):** seeded leads have no creator (`created_by` is empty, DECISIONS 07-Oct-2026), so Demo Marketing 1 can't drag any seeded lead. To show Marketing moving a lead, add one live as Demo Marketing 1 first, then drag that one (between Lead, Proposal and On Hold only).
+**Demo note (11-Oct-2026):** seeded leads have no creator (`created_by` is empty, DECISIONS 07-Oct-2026), so Demo Marketing 1 can't drag any seeded lead. The demo shows Marketing being refused when dragging a seeded lead; that refusal is the role rule at work. Add Lead stays hidden until Questionnaire Q4 is answered (DECISIONS 12-Oct-2026, decision A).
 
 **Totals:**
 - Phase 1 demo-critical (steps 1–14): **≈ 23.25 h**
@@ -102,7 +102,7 @@ Nobody can hard-delete.
 |---|---|---|---|
 | 2-a | supabase-js data layer + TanStack Query (approval); generated database types | 1.5 | ✓ aa0d805. `@tanstack/react-query` 5.104.0 (exact; lockfile adds only it and `query-core` 5.104.0; `bun pm untrusted` 0). `src/types/database.ts` from `bun run db:types`, no keys in it. typecheck PASS; lint 0 errors; test 129 PASS (30 new in `src/lib/data/`); format:check PASS. Manual login check passed 11-Oct-2026: Owner sign-in, sign-out, Marketing sign-in all work; Console shows no errors (only the React DevTools tip). No screen reads the new layer yet |
 | 2-a2 | Hide every screen not yet connected to the database, for every role (`src/lib/screens.ts`); Pipeline is the landing screen | 2.75 | ✓ b8733d5. Shown: Pipeline, Clients. Hidden (no nav item, never mounted, address lands on Pipeline): Drishti, Dashboard, Renewal Radar, Import, Settings; email drafts off; saved AI keys blanked on load. typecheck PASS; lint 0 errors; test 137 PASS (8 new); format:check PASS; check:colors PASS. Playwright: smoke, login, theme 21 PASS; visual 26 baselines re-made by name (SHA-256: 26 match their actual, 24 byte-identical), then `test:e2e` twice: 0 failed, 20 skipped |
-| 2-b | Types become `Client` + `Engagement`; adapt Pipeline and Clients | 4 | |
+| 2-b | Types become `Client` + `Engagement`; adapt Pipeline and Clients | 4 | ✓ d416b69. New types in `src/types/crm.ts` (MVP types unchanged); Pipeline and Clients show view-shaped sample rows through the new mapping code; board columns Lead / Proposal / On Hold. typecheck PASS; lint 0 errors (PipelineView and ClientsView off the legacy-warnings list, 0 warnings); test 160 PASS (23 new); format:check PASS; check:colors PASS. Visual: 22 baselines re-made by name (SHA-256: 22 match their actual, 28 byte-identical); `test:e2e` twice: 47 passed, 0 failed, 24 skipped |
 | 2-c | Pipeline board reads `pipeline`; drag calls `change_engagement_status()` | 2.5 | |
 | 2-d | Clients list reads `active_clients`; client detail with its engagements | 2.5 | |
 | 2-e | Hard-coded team replaced with `profiles` | 2 | |
