@@ -146,6 +146,13 @@ Locked decisions from before the build are in `PLAN.md` §3.
 | 12-Oct-2026 | Owner names show "?" / "No owner" in the live app until 2-e | Seeded user ids (`5eed0001-…`) differ from the sample team's (`e2e00000-…`) that `useOwnerName` still reads; 2-e reads `team_members` |
 | 12-Oct-2026 | Live check: the Owner's move was saved (stays after reload) and logged in `activity_log`. Consultant and Marketing were refused, nothing was logged, and no ₹ showed. Gap: a Consultant moving their own lead was not tested live, because no consultant owns an open lead in the seed data | Test it live when such data exists |
 | 12-Oct-2026 | Demo data: `activity_log` keeps the live-check rows. One card was left in Proposal by Demo Owner 2; drag it back before the demo | The log is insert-only; reset by dragging back, no database reset |
+| 12-Oct-2026 | Step 2-d: Clients reads the `active_clients` view through `useQuery` and `toClients`. The Navbar badge uses the same hook (one read). Minimal loading/error/empty states | Same pattern as Pipeline in 2-c; full states are 2-g |
+| 12-Oct-2026 | Marketing keeps the Clients tab. RLS returns no active clients, so the screen says "Certified clients are shown to Owners and Consultants." | An empty table would look broken; the database still decides. Hiding the tab can be decided later |
+| 12-Oct-2026 | The client dialog lists Certifications from `active_clients` only (Certification · Status · Valid To; "—" when empty, never estimated). Later list, after the demo: all of a client's engagements in the dialog (PLAN.md line 161) | 2-d reads one view; the other engagements need the other four views |
+| 12-Oct-2026 | The active-client rows and row builders moved to `tests/support/`. Build proof: `Gurugram`, `Ahmedabad`, `Medical Devices`, `Quality Head` and `5a3d1e00` are absent from `src/` and `dist`; the control id is present. `src/lib/data/sampleRows.ts` keeps only the sample team and owner ids until 2-e | The app no longer ships the Clients rows; the fake stack answers with the same rows |
+| 12-Oct-2026 | Visual: 2 baselines re-made by name (`desktop-client-detail`, dark and light) | The dialog is taller and centred, so it moved up 60 px; nothing outside the dialog and its shadow changed |
+| 12-Oct-2026 | Later list: the client dialog has no `role="dialog"` / `aria-labelledby` (2-g); the phone-width dialog was not checked by eye (2-g); the live Owners filter lists "Unknown owner" 4 times (2-e) | Found during 2-d; out of its scope |
+| 12-Oct-2026 | Demo data, still open: Arjun FinTech is still in Proposal (`activity_log`: Demo Owner 2, Lead → Proposal). Drag it back to Lead before the demo | Not yet reset after the 2-c live check |
 
 ## Colour token mapping
 
