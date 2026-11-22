@@ -6,17 +6,9 @@ import React, {
   useCallback,
   ReactNode,
 } from 'react';
-import {
-  Client,
-  Lead,
-  ChatMessage,
-  AppSettings,
-  ToolProposal,
-  UserProfile,
-  Stage,
-  TabKey,
-} from '../types';
-import { getInitialClients, getInitialLeads, TEAM_MEMBERS } from '../utils/seedData';
+import { Client, Lead, ChatMessage, AppSettings, ToolProposal, Stage, TabKey } from '../types';
+import { getInitialClients, getInitialLeads } from '../utils/seedData';
+import { useSignedInUser } from '../lib/auth/context';
 import {
   askDrishti,
   isModelDenylisted,
@@ -36,8 +28,6 @@ interface CrmContextType {
   hydrated: boolean;
   activeTab: TabKey;
   setActiveTab: (tab: TabKey) => void;
-  activeUser: UserProfile;
-  setActiveUser: (user: UserProfile) => void;
   clients: Client[];
   leads: Lead[];
   chatHistory: ChatMessage[];
@@ -77,7 +67,6 @@ const defaultSettings: AppSettings = {
   groqApiKey: '',
   openRouterModels: [...TESTED_DEFAULT_MODELS],
   groqModel: 'llama-3.3-70b-versatile',
-  activeUserId: 'pramila',
 };
 
 const CrmContext = createContext<CrmContextType | undefined>(undefined);
@@ -85,7 +74,9 @@ const CrmContext = createContext<CrmContextType | undefined>(undefined);
 export function CrmProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [activeTab, setActiveTabState] = useState<TabKey>(LANDING_SCREEN);
-  const [activeUser, setActiveUserState] = useState<UserProfile>(TEAM_MEMBERS[0]);
+  // Who did it, for the old browser store's notes: the signed-in person, from their profiles
+  // row (step 2-e). This provider renders only behind the sign-in gate (App.tsx).
+  const { fullName } = useSignedInUser();
   const [clients, setClients] = useState<Client[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
@@ -116,6 +107,10 @@ export function CrmProvider({ children }: { children: ReactNode }) {
         }
 
         if (parsed.settings) {
+          // The MVP team switcher is gone (step 2-e): a saved `activeUserId` is dropped here,
+          // so it's never written back.
+          const savedSettings = { ...parsed.settings };
+          delete savedSettings.activeUserId;
           // Migrate any stored denylisted models
           let fixedModels = parsed.settings.openRouterModels || [...TESTED_DEFAULT_MODELS];
           if (fixedModels.some((m: string) => isModelDenylisted(m))) {
@@ -124,17 +119,12 @@ export function CrmProvider({ children }: { children: ReactNode }) {
           }
           setSettings({
             ...defaultSettings,
-            ...parsed.settings,
+            ...savedSettings,
             openRouterModels: fixedModels,
             // AI provider keys are never kept in the browser (DECISIONS 11-Oct-2026): any key
             // saved earlier is dropped here, and the next save removes it from storage.
             ...(isFeatureEnabled('aiProviders') ? {} : { openRouterApiKey: '', groqApiKey: '' }),
           });
-
-          if (parsed.settings.activeUserId) {
-            const found = TEAM_MEMBERS.find((t) => t.id === parsed.settings.activeUserId);
-            if (found) setActiveUserState(found);
-          }
         }
       } else {
         // First time initialization
@@ -158,16 +148,13 @@ export function CrmProvider({ children }: { children: ReactNode }) {
         clients,
         leads,
         chatHistory,
-        settings: {
-          ...settings,
-          activeUserId: activeUser.id,
-        },
+        settings,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch {
       // Ignore quota exceeded
     }
-  }, [hydrated, clients, leads, chatHistory, settings, activeUser]);
+  }, [hydrated, clients, leads, chatHistory, settings]);
 
   // 3. Listen for in-flight completions
   useEffect(() => {
@@ -181,11 +168,6 @@ export function CrmProvider({ children }: { children: ReactNode }) {
   // A hidden screen (src/lib/screens.ts) can never become the active one, whoever asks.
   const setActiveTab = useCallback((tab: TabKey) => {
     setActiveTabState(resolveScreen(tab));
-  }, []);
-
-  const setActiveUser = useCallback((user: UserProfile) => {
-    setActiveUserState(user);
-    setSettings((prev) => ({ ...prev, activeUserId: user.id }));
   }, []);
 
   const openDraftModal = useCallback((target: DraftModalTarget) => {
@@ -205,15 +187,15 @@ export function CrmProvider({ children }: { children: ReactNode }) {
         activity: [
           {
             at: new Date().toISOString(),
-            note: `Client added to register by ${activeUser.name}.`,
-            author: activeUser.name,
+            note: `Client added to register by ${fullName}.`,
+            author: fullName,
           },
           ...(clientData.activity || []),
         ],
       };
       setClients((prev) => [newClient, ...prev]);
     },
-    [activeUser.name],
+    [fullName],
   );
 
   const updateClient = useCallback(
@@ -249,7 +231,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
             activityNotes.push({
               at: new Date().toISOString(),
               note,
-              author: activeUser.name,
+              author: fullName,
             });
           }
 
@@ -257,7 +239,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
             activityNotes.push({
               at: new Date().toISOString(),
               note: log,
-              author: activeUser.name,
+              author: fullName,
             });
           });
 
@@ -269,7 +251,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
         }),
       );
     },
-    [activeUser.name],
+    [fullName],
   );
 
   const deleteClient = useCallback((id: string) => {
@@ -284,15 +266,15 @@ export function CrmProvider({ children }: { children: ReactNode }) {
         activity: [
           {
             at: new Date().toISOString(),
-            note: `Lead created at stage ${leadData.stage} by ${activeUser.name}.`,
-            author: activeUser.name,
+            note: `Lead created at stage ${leadData.stage} by ${fullName}.`,
+            author: fullName,
           },
           ...(leadData.activity || []),
         ],
       };
       setLeads((prev) => [newLead, ...prev]);
     },
-    [activeUser.name],
+    [fullName],
   );
 
   const updateLead = useCallback(
@@ -306,7 +288,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
             activityNotes.push({
               at: new Date().toISOString(),
               note: `Stage moved from ${l.stage} to ${updates.stage}${updates.lostReason ? ` (Reason: ${updates.lostReason})` : ''}`,
-              author: activeUser.name,
+              author: fullName,
             });
           }
 
@@ -314,7 +296,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
             activityNotes.push({
               at: new Date().toISOString(),
               note,
-              author: activeUser.name,
+              author: fullName,
             });
           }
 
@@ -326,7 +308,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
         }),
       );
     },
-    [activeUser.name],
+    [fullName],
   );
 
   const setLeadStage = useCallback(
@@ -353,14 +335,14 @@ export function CrmProvider({ children }: { children: ReactNode }) {
               {
                 at: new Date().toISOString(),
                 note: note.trim(),
-                author: activeUser.name,
+                author: fullName,
               },
             ],
           };
         }),
       );
     },
-    [activeUser.name],
+    [fullName],
   );
 
   const addLeadActivityNote = useCallback(
@@ -376,14 +358,14 @@ export function CrmProvider({ children }: { children: ReactNode }) {
               {
                 at: new Date().toISOString(),
                 note: note.trim(),
-                author: activeUser.name,
+                author: fullName,
               },
             ],
           };
         }),
       );
     },
-    [activeUser.name],
+    [fullName],
   );
 
   const logEmailSent = useCallback(
@@ -403,7 +385,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
                 {
                   at: nowIso,
                   note: `Dispatched email to ${recipientEmail} ("${subject}") via email app.`,
-                  author: activeUser.name,
+                  author: fullName,
                 },
               ],
             };
@@ -421,7 +403,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
                 {
                   at: nowIso,
                   note: `Dispatched renewal email to ${recipientEmail} ("${subject}") via email app.`,
-                  author: activeUser.name,
+                  author: fullName,
                 },
               ],
             };
@@ -429,7 +411,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
         );
       }
     },
-    [activeUser.name],
+    [fullName],
   );
 
   // Chat & AI interactions
@@ -441,21 +423,21 @@ export function CrmProvider({ children }: { children: ReactNode }) {
         sender: 'user',
         text: text.trim(),
         timestamp: new Date().toISOString(),
-        providerStamped: activeUser.name,
+        providerStamped: fullName,
       };
 
       setChatHistory((prev) => [...prev, userMsg]);
       setIsAiLoading(true);
 
       try {
-        await askDrishti(text, clients, leads, settings, activeUser.name);
+        await askDrishti(text, clients, leads, settings, fullName);
       } catch {
         // Handled by in-flight listener and fallback
       } finally {
         setIsAiLoading(false);
       }
     },
-    [clients, leads, settings, activeUser.name],
+    [clients, leads, settings, fullName],
   );
 
   const clearChat = useCallback(() => {
@@ -537,7 +519,6 @@ export function CrmProvider({ children }: { children: ReactNode }) {
     setLeads(getInitialLeads());
     setChatHistory([]);
     setSettings(defaultSettings);
-    setActiveUserState(TEAM_MEMBERS[0]);
   }, []);
 
   const importRecords = useCallback(
@@ -563,8 +544,6 @@ export function CrmProvider({ children }: { children: ReactNode }) {
         hydrated,
         activeTab,
         setActiveTab,
-        activeUser,
-        setActiveUser,
         clients,
         leads,
         chatHistory,

@@ -5,7 +5,7 @@ import { SAMPLE_PIPELINE_ROWS } from '../../../tests/support/pipelineRows';
 import type { DrishtiClient } from '../supabase/client';
 import { DataError } from './errors';
 import { queryKeys } from './keys';
-import { toClients, toEngagements } from './mappers';
+import { toClients, toEngagements, toTeamNames } from './mappers';
 import { createQueryClient } from './queryClient';
 import {
   FINANCIALS_COLUMNS,
@@ -17,6 +17,7 @@ import {
   fetchPipeline,
   fetchTeamMembers,
   pipelineQuery,
+  teamMembersQuery,
 } from './queries';
 
 type Result = { data: unknown; error: unknown; status: number };
@@ -201,6 +202,29 @@ describe('query keys and options', () => {
         toClients(SAMPLE_ACTIVE_CLIENT_ROWS).map((c) => c.name),
       );
       expect(clients?.map((c) => c.engagements.length)).toEqual([1, 2, 1, 2, 1]);
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  it('owner names (teamMembersQuery + toTeamNames, as useOwnerName) cache the raw rows and map them (step 2-e)', async () => {
+    const row = { email: null, role: 'owner', booking_link: null, active: true };
+    const rows = [
+      { ...row, id: 'u1', full_name: 'Demo Owner 1' },
+      { ...row, id: 'u2', full_name: 'Demo Owner 2' },
+    ];
+    const queryClient = createQueryClient();
+    const { client, calls } = fakeClient(ok(rows));
+    const observer = new QueryObserver(queryClient, {
+      ...teamMembersQuery(client, USER),
+      select: toTeamNames,
+    });
+    const unsubscribe = observer.subscribe(() => {});
+    try {
+      await vi.waitFor(() => expect(observer.getCurrentResult().data).toBeDefined());
+      expect(calls[0]).toEqual(['from', 'team_members']);
+      expect(queryClient.getQueryData(['team_members', USER])).toEqual(rows);
+      expect(observer.getCurrentResult().data?.get('u2')).toBe('Demo Owner 2');
     } finally {
       unsubscribe();
     }

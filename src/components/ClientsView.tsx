@@ -3,7 +3,7 @@ import { Search, Plus, X } from 'lucide-react';
 import { useCrm } from '../context/CrmContext';
 import { Client as MvpClient, ServiceKind } from '../types';
 import type { Client, Engagement } from '../types/crm';
-import { sumValues } from '../lib/data/mappers';
+import { NO_OWNER, ownerText, sumValues } from '../lib/data/mappers';
 import { useActiveClients, useOwnerName } from '../lib/data/hooks';
 import { dataErrorMessage } from '../lib/data/errors';
 import { useSignedInUser } from '../lib/auth/context';
@@ -55,8 +55,24 @@ export function ClientsView() {
   ).sort();
   const ownerIds = unique(allEngagements.map((e) => e.ownerId).filter((id) => id !== null));
 
+  // One option per owner id (step 2-e: names from team_members), sorted by name; none until
+  // the names have arrived. Two different unknown ids stay two options (they filter
+  // different rows).
+  const ownerOptions = ownerIds
+    .map((id) => ({ id, shown: ownerName(id) }))
+    .filter((option) => option.shown.state !== 'loading')
+    .map(({ id, shown }) => ({ id, label: ownerText(shown) }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'en-IN'));
+
+  // The Owner cell: each name once; "No owner" only when no engagement has an owner.
   const ownerNames = (client: Client) =>
-    unique(client.engagements.map((e) => ownerName(e.ownerId)).filter((n) => n !== null));
+    unique(
+      client.engagements
+        .filter((e) => e.ownerId !== null)
+        .map((e) => ownerText(ownerName(e.ownerId)))
+        .filter((label) => label !== ''),
+    );
+  const hasOwner = (client: Client) => client.engagements.some((e) => e.ownerId !== null);
 
   // Filter clients
   const term = searchTerm.toLowerCase();
@@ -139,9 +155,9 @@ export function ClientsView() {
             className="px-3 py-2 rounded-xl bg-bg border border-line/14 text-xs text-text focus:outline-none focus:border-primary"
           >
             <option value="ALL">All Owners</option>
-            {ownerIds.map((id) => (
-              <option key={id} value={id}>
-                {ownerName(id) ?? 'Unknown owner'}
+            {ownerOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
               </option>
             ))}
           </select>
@@ -252,7 +268,8 @@ export function ClientsView() {
                         {total !== null ? formatINR(total) : '—'}
                       </td>
                       <td className="px-4 py-3 text-text-secondary">
-                        {owners.length ? owners.join(', ') : 'No owner'}
+                        {/* Nothing while the names load; "No owner" only when none has one */}
+                        {owners.length ? owners.join(', ') : hasOwner(client) ? '' : NO_OWNER}
                       </td>
                     </tr>
                   );
@@ -386,7 +403,9 @@ function AddClientModal({
   onClose: () => void;
   onAdd: (client: Omit<MvpClient, 'id'>) => void;
 }) {
-  const { activeUser } = useCrm();
+  // Hidden (feature addClient off); rebuilt on team_members later. Default owner: the
+  // signed-in person, from their profile (step 2-e).
+  const { fullName } = useSignedInUser();
   const [company, setCompany] = useState('');
   const [contactName, setContactName] = useState('');
   const [email] = useState('');
@@ -397,7 +416,7 @@ function AddClientModal({
   const [lastAppraisalDate, setLastAppraisalDate] = useState(
     new Date().toISOString().split('T')[0],
   );
-  const [owner, setOwner] = useState(activeUser.name);
+  const [owner, setOwner] = useState(fullName);
   const [notes, setNotes] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {

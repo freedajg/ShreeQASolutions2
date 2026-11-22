@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
+// The test rows and the sample team live in tests/support/ (the team since step 2-e, when
+// src/lib/data/sampleRows.ts was deleted); this file stays here because Vitest runs src/ only.
 import { SAMPLE_ACTIVE_CLIENT_ROWS } from '../../../tests/support/activeClientRows';
-import { ACCOUNTS } from '../../../tests/support/auth';
+import { ACCOUNTS, teamMemberRows } from '../../../tests/support/auth';
 import { SAMPLE_PIPELINE_ROWS } from '../../../tests/support/pipelineRows';
-import { STATUS_VIEW_COLUMNS } from './queries';
-import { SAMPLE_OWNER_IDS, SAMPLE_TEAM } from './sampleRows';
+import { SAMPLE_OWNER_IDS, SAMPLE_TEAM } from '../../../tests/support/team';
+import { toTeamNames } from './mappers';
+import { STATUS_VIEW_COLUMNS, TEAM_MEMBER_COLUMNS } from './queries';
 
 const ALL_ROWS = [...SAMPLE_PIPELINE_ROWS, ...SAMPLE_ACTIVE_CLIENT_ROWS];
 
@@ -54,5 +57,14 @@ describe('sample rows', () => {
       { id: ACCOUNTS.consultant.id, fullName: ACCOUNTS.consultant.full_name },
       { id: ACCOUNTS.marketing.id, fullName: ACCOUNTS.marketing.full_name },
     ]);
+  });
+
+  it("the fake team_members answer names every sample-team owner, with the view's columns (step 2-e)", () => {
+    const rows = teamMemberRows(Object.values(ACCOUNTS));
+    for (const row of rows) {
+      expect(Object.keys(row).sort()).toEqual(TEAM_MEMBER_COLUMNS.split(', ').sort());
+    }
+    const names = toTeamNames(rows);
+    for (const member of SAMPLE_TEAM) expect(names.get(member.id)).toBe(member.fullName);
   });
 });

@@ -22,7 +22,7 @@ async function expectTheme(page: Page, theme: 'light' | 'dark') {
 }
 
 async function chooseInUserMenu(page: Page, option: 'Light' | 'Dark' | 'System') {
-  await page.getByRole('button', { name: 'Switch active user' }).click();
+  await page.getByRole('button', { name: 'Account menu' }).click();
   await page.getByRole('radio', { name: option }).click();
 }
 

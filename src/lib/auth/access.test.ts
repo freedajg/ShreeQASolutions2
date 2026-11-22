@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MESSAGES, decideAccess, loginErrorMessage, type ProfileRow } from './access';
+import { MESSAGES, decideAccess, loginErrorMessage, roleLabel, type ProfileRow } from './access';
 
 const row = (overrides: Partial<ProfileRow> = {}): ProfileRow => ({
   id: '5eed0001-0000-4000-8000-000000000001',
@@ -44,6 +44,14 @@ describe('decideAccess', () => {
   it('falls back to a neutral name when the profile has none', () => {
     const access = decideAccess(row({ full_name: '  ' }));
     expect(access.ok && access.user.fullName).toBe('Signed-in user');
+  });
+});
+
+describe('roleLabel (step 2-e)', () => {
+  it('names each role for the header', () => {
+    expect(roleLabel('owner')).toBe('Owner');
+    expect(roleLabel('consultant')).toBe('Consultant');
+    expect(roleLabel('marketing')).toBe('Marketing');
   });
 });
 

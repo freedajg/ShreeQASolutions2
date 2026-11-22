@@ -4,6 +4,9 @@
 // Step 2-c: also the `pipeline` view and change_engagement_status(), following the step 8 rules
 // (quoted from the migrations in the step 2-c review notes), with the rows in ./pipelineRows.ts.
 // Step 2-d: also the `active_clients` view (read-only), with the rows in ./activeClientRows.ts.
+// Step 2-e: also the `team_members` view (read-only): every profile in ACCOUNTS for a caller
+// with a role, nothing otherwise (20261003161427_profiles_roles.sql lines 230–235). The own
+// profile read (`profiles?id=eq.<own id>`) is unchanged.
 import type { Page, Route } from '@playwright/test';
 import { SAMPLE_ACTIVE_CLIENT_ROWS } from './activeClientRows';
 import { SAMPLE_PIPELINE_ROWS } from './pipelineRows';
@@ -84,6 +87,26 @@ function fakeSession(user: FakeAccount, userMetadata: Record<string, unknown> = 
       created_at: '2026-10-01T00:00:00Z',
     },
   };
+}
+
+/**
+ * The `team_members` view as a role-holder reads it: every profile, active or not (the view has
+ * no active filter), with its six columns, ordered by name as the app's query asks
+ * (20261003161427_profiles_roles.sql lines 230–235). `without`: ids to leave out, so a test
+ * can show an owner who isn't on the team.
+ */
+export function teamMemberRows(accounts: readonly FakeAccount[], without: readonly string[] = []) {
+  return accounts
+    .filter((a) => !without.includes(a.id))
+    .map(({ id, full_name, email, role, active }) => ({
+      id,
+      full_name,
+      email,
+      role,
+      booking_link: null,
+      active,
+    }))
+    .sort((a, b) => a.full_name.localeCompare(b.full_name));
 }
 
 const CORS = {
@@ -172,6 +195,9 @@ export type FakeStack = {
  * The `active_clients` view answers SAMPLE_ACTIVE_CLIENT_ROWS to an Owner or Consultant
  * (without values for an account without values access) and nothing to Marketing, as RLS
  * does. `activeClientsFails` aborts every active_clients read.
+ * The `team_members` view answers every account in ACCOUNTS to a caller with a role and
+ * nothing to a role-less or inactive one (the view's gate). `teamWithout` leaves those ids
+ * out (an "Unknown owner"); `teamMembersFails` aborts every team_members read.
  */
 export async function mockSupabase(
   page: Page,
@@ -183,6 +209,8 @@ export async function mockSupabase(
     pipelineFails?: boolean;
     statusChange?: 'refuse';
     activeClientsFails?: boolean;
+    teamMembersFails?: boolean;
+    teamWithout?: string[];
   } = {},
 ): Promise<FakeStack> {
   const stack: FakeStack = { calls: [], statusChanges: [] };
@@ -282,6 +310,13 @@ export async function mockSupabase(
         seesValues ? row : { ...row, contract_value: null, payment_status: null },
       );
       return json(route, 200, rows);
+    }
+
+    if (method === 'GET' && url.pathname === '/rest/v1/team_members') {
+      if (options.teamMembersFails) return route.abort('connectionrefused');
+      // Gate: app.current_app_role() is not null (20261003161427_profiles_roles.sql line 235).
+      if (!current?.role || !current.active) return json(route, 200, []);
+      return json(route, 200, teamMemberRows(accounts, options.teamWithout));
     }
 
     if (method === 'POST' && url.pathname === '/rest/v1/rpc/change_engagement_status') {

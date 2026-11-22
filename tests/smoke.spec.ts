@@ -90,7 +90,8 @@ test.describe('phone (375px)', () => {
     await mockSupabase(page, { signedInAs: ACCOUNTS.owner });
     await page.goto('/');
 
-    const bar = page.locator('div.fixed.bottom-0');
+    // The phone bar is a labelled navigation landmark since step 2-e.
+    const bar = page.getByRole('navigation', { name: 'Main navigation' });
     for (const key of SHOWN) {
       await expect(
         bar.getByRole('button', { name: new RegExp(`^${SCREENS[key].label}`) }),

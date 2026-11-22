@@ -1,11 +1,8 @@
-import { Client, Lead, UserProfile } from '../types';
+import { Client, Lead } from '../types';
 
-export const TEAM_MEMBERS: UserProfile[] = [
-  { id: 'pramila', name: 'Pramila', role: 'Founder' },
-  { id: 'ramesh', name: 'Ramesh', role: 'Founder' },
-  { id: 'mahesh', name: 'Mahesh', role: 'Auditor' },
-  { id: 'sunita', name: 'Sunita', role: 'Auditor' },
-];
+// The MVP team list (TEAM_MEMBERS) was removed in step 2-e: the header shows the signed-in
+// profile and owner names come from `team_members`. The MVP names still in the sample rows
+// below must be gone from the build before go-live (open item, 2–7 Dec security review).
 
 // Helper to compute dates relative to today so overdue & 90-day counts are always mathematically exact
 function daysOffset(days: number): string {

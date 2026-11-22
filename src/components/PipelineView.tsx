@@ -15,9 +15,16 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import { Plus, Kanban, Table as TableIcon, Search, AlertCircle, Clock, X } from 'lucide-react';
 import { useCrm } from '../context/CrmContext';
+import { useSignedInUser } from '../lib/auth/context';
 import { Lead, Stage, ServiceKind } from '../types';
 import { PIPELINE_COLUMNS, type Engagement } from '../types/crm';
-import { groupByPipelineStatus, isPipelineStatus, sumValues } from '../lib/data/mappers';
+import {
+  groupByPipelineStatus,
+  isPipelineStatus,
+  ownerText,
+  sumValues,
+  type OwnerDisplay,
+} from '../lib/data/mappers';
 import {
   useChangeEngagementStatus,
   useOwnerName,
@@ -45,7 +52,7 @@ const daysQuiet = (engagement: Engagement) =>
 
 const isQuiet = (engagement: Engagement) => (daysQuiet(engagement) ?? 0) >= QUIET_AFTER_DAYS;
 
-type OwnerName = (ownerId: string | null) => string | null;
+type OwnerName = (ownerId: string | null) => OwnerDisplay;
 
 const NO_ENGAGEMENTS: Engagement[] = [];
 
@@ -112,11 +119,15 @@ function EngagementCardItem({
       {/* Bottom row: Owner avatar, contact name, status pill ONLY when in trouble */}
       <div className="pt-2 border-t border-line/10 flex items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-1.5 min-w-0">
+          {/* Owner names from team_members (step 2-e): nothing while loading, "—" for no or
+              an unknown owner, never "?" */}
           <div
-            title={owner ?? 'No owner'}
-            className="w-5 h-5 rounded-full bg-surface border border-line/25 flex items-center justify-center text-[10px] font-bold text-text shrink-0"
+            title={owner.state === 'loading' ? undefined : owner.label}
+            className={`w-5 h-5 rounded-full bg-surface border border-line/25 flex items-center justify-center text-[10px] font-bold shrink-0 ${
+              owner.state === 'known' ? 'text-text' : 'text-muted'
+            }`}
           >
-            {owner ? owner[0] : '?'}
+            {owner.state === 'known' ? owner.label[0] : owner.state === 'loading' ? '' : '—'}
           </div>
           <span className="text-text-secondary text-[11px] truncate">
             {engagement.client.contactPerson ?? '—'}
@@ -172,13 +183,17 @@ export function PipelineView() {
   const keyboardSensor = useSensor(KeyboardSensor);
   const sensors = useSensors(pointerSensor, touchSensor, keyboardSensor);
 
-  // Filter by company, contact or owner
+  // Filter by company, contact or owner (only a known owner's name matches)
   const term = searchTerm.toLowerCase();
+  const knownOwner = (ownerId: string | null) => {
+    const shown = ownerName(ownerId);
+    return shown.state === 'known' ? shown.label : '';
+  };
   const filtered = engagements.filter(
     (e) =>
       e.client.name.toLowerCase().includes(term) ||
       (e.client.contactPerson ?? '').toLowerCase().includes(term) ||
-      (ownerName(e.ownerId) ?? '').toLowerCase().includes(term),
+      knownOwner(e.ownerId).toLowerCase().includes(term),
   );
   const columns = groupByPipelineStatus(filtered);
 
@@ -479,7 +494,7 @@ export function PipelineView() {
                           : '—'}
                       </td>
                       <td className="px-4 py-3 text-text-secondary">
-                        {ownerName(engagement.ownerId) ?? 'No owner'}
+                        {ownerText(ownerName(engagement.ownerId))}
                       </td>
                       <td className="px-4 py-3 text-muted">
                         {quietDays === null
@@ -518,7 +533,7 @@ export function PipelineView() {
                 </div>
                 <p className="text-xs text-text-secondary mt-0.5">
                   Source: {selected.leadSource ?? '—'} · Owner:{' '}
-                  {ownerName(selected.ownerId) ?? 'No owner'}
+                  {ownerText(ownerName(selected.ownerId))}
                 </p>
               </div>
 
@@ -603,7 +618,9 @@ function AddLeadModal({
   onClose: () => void;
   onAdd: (lead: Omit<Lead, 'id'>) => void;
 }) {
-  const { activeUser } = useCrm();
+  // Hidden (feature addLead off); rebuilt on team_members later. Default owner: the signed-in
+  // person, from their profile (step 2-e).
+  const { fullName } = useSignedInUser();
   const [company, setCompany] = useState('');
   const [contactName, setContactName] = useState('');
   const [email] = useState('');
@@ -611,7 +628,7 @@ function AddLeadModal({
   const [source] = useState('External Marketing');
   const [stage] = useState<Stage>('New');
   const [value, setValue] = useState(500000);
-  const [owner, setOwner] = useState(activeUser.name);
+  const [owner, setOwner] = useState(fullName);
   const [serviceInterest, setServiceInterest] = useState<ServiceKind>('ISO');
   const [meetingContext, setMeetingContext] = useState('');
 

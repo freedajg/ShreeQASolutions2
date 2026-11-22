@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { DrishtiClient } from '../supabase/client';
 import { clearQueryCache, shouldClearCache, userIdOf } from './cache';
-import { activeClientsQuery, pipelineQuery } from './queries';
+import { activeClientsQuery, pipelineQuery, teamMembersQuery } from './queries';
 import { createQueryClient } from './queryClient';
 
 const A = 'aaaaaaaa-0000-4000-8000-000000000001';
@@ -155,6 +155,56 @@ describe('the Clients list when the user changes (step 2-d)', () => {
 
     expect(queryClient.getQueryData(['pipeline', A])).toBeUndefined();
     expect(queryClient.getQueryData(['active_clients', A])).toBeUndefined();
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+  });
+});
+
+describe('owner names when the user changes (step 2-e)', () => {
+  it("user B never gets user A's cached team list, and A's entry is gone after the clear", async () => {
+    const queryClient = createQueryClient();
+    let rows: unknown[] = [{ id: 'seen-by-A' }];
+    const { client, reads } = fakeReads(() => rows);
+
+    await queryClient.fetchQuery(teamMembersQuery(client, A));
+    expect(queryClient.getQueryData(['team_members', A])).toEqual([{ id: 'seen-by-A' }]);
+
+    await clearQueryCache(queryClient); // what QueryCacheGuard does on A → B
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+
+    rows = [{ id: 'seen-by-B' }];
+    await expect(queryClient.fetchQuery(teamMembersQuery(client, B))).resolves.toEqual([
+      { id: 'seen-by-B' },
+    ]);
+    expect(reads.count).toBe(2); // B read the database; nothing came from A's entry
+    expect(queryClient.getQueryData(['team_members', A])).toBeUndefined();
+  });
+
+  it("a team read still in flight is stopped by the clear and doesn't refill A's entry", async () => {
+    const queryClient = createQueryClient();
+    const { client, reads } = fakeReads(() => [], { hang: true });
+
+    const inFlight = queryClient.fetchQuery(teamMembersQuery(client, A)).catch(() => 'stopped');
+    await clearQueryCache(queryClient);
+
+    await expect(inFlight).resolves.toBe('stopped');
+    expect(reads.signals[0]?.aborted).toBe(true);
+    expect(queryClient.getQueryData(['team_members', A])).toBeUndefined();
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+  });
+
+  it('one clear removes the Pipeline, Clients and owner-name entries together', async () => {
+    const queryClient = createQueryClient();
+    const { client } = fakeReads(() => [{ id: 'seen-by-A' }]);
+    await queryClient.fetchQuery(pipelineQuery(client, A));
+    await queryClient.fetchQuery(activeClientsQuery(client, A));
+    await queryClient.fetchQuery(teamMembersQuery(client, A));
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(3);
+
+    await clearQueryCache(queryClient);
+
+    expect(queryClient.getQueryData(['pipeline', A])).toBeUndefined();
+    expect(queryClient.getQueryData(['active_clients', A])).toBeUndefined();
+    expect(queryClient.getQueryData(['team_members', A])).toBeUndefined();
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
   });
 });

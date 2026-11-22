@@ -9,7 +9,7 @@ import {
   type Engagement,
   type PipelineStatus,
 } from '../../types/crm';
-import type { StatusViewRow } from './queries';
+import type { StatusViewRow, TeamMemberRow } from './queries';
 
 export function toEngagement(row: StatusViewRow): Engagement | null {
   if (!row.id || !row.client_id || !row.client_name || !row.status) return null;
@@ -112,4 +112,61 @@ export function sumValues(engagements: readonly Engagement[]): number | null {
 /** Nav badge: engagements on the board. */
 export function countOnBoard(engagements: readonly Engagement[]): number {
   return engagements.filter((e) => isPipelineStatus(e.status)).length;
+}
+
+// Owner names (step 2-e) come from the `team_members` view: every profile, for any active
+// user with a role (20261003161427_profiles_roles.sql lines 222–239).
+
+/** `team_members` rows → id → full name. A row without an id is dropped; a blank name stays blank. */
+export const toTeamNames = (rows: readonly TeamMemberRow[]): ReadonlyMap<string, string> => {
+  const names = new Map<string, string>();
+  for (const row of rows) {
+    if (row.id) names.set(row.id, row.full_name?.trim() ?? '');
+  }
+  return names;
+};
+
+export const NO_OWNER = 'No owner';
+export const UNKNOWN_OWNER = 'Unknown owner';
+export const UNNAMED_MEMBER = 'Unnamed team member';
+
+export type OwnerDisplay =
+  /** The team list isn't here yet, or couldn't be read: show nothing. */
+  | { state: 'loading' }
+  | { state: 'none'; label: typeof NO_OWNER }
+  | { state: 'unknown'; label: typeof UNKNOWN_OWNER }
+  | { state: 'known'; label: string };
+
+/**
+ * What to show for an engagement's owner. No owner is known without the team list; an id
+ * that isn't on the team says so (never "?"); a blank name is never filled in from elsewhere.
+ */
+export function ownerDisplay(
+  team: ReadonlyMap<string, string> | undefined,
+  ownerId: string | null,
+): OwnerDisplay {
+  if (ownerId === null) return { state: 'none', label: NO_OWNER };
+  if (!team) return { state: 'loading' };
+  const name = team.get(ownerId);
+  if (name === undefined) return { state: 'unknown', label: UNKNOWN_OWNER };
+  return { state: 'known', label: name || UNNAMED_MEMBER };
+}
+
+/** The text for an owner: empty while loading, otherwise the label. */
+export const ownerText = (shown: OwnerDisplay): string =>
+  shown.state === 'loading' ? '' : shown.label;
+
+/**
+ * Reports each unknown owner id once per page load (the id only: no name, no client).
+ * Returns the function the hook calls; `log` is injectable for the unit tests.
+ */
+export function createUnknownOwnerReporter(
+  log: (message: string, id: string) => void = (message, id) => console.warn(message, id),
+): (id: string) => void {
+  const reported = new Set<string>();
+  return (id) => {
+    if (reported.has(id)) return;
+    reported.add(id);
+    log('Owner id is not on the team:', id);
+  };
 }

@@ -14,6 +14,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useCrm } from '../context/CrmContext';
+import { useSignedInUser } from '../lib/auth/context';
 import { computeBriefing } from '../utils/briefing';
 import { formatINR } from '../utils/currency';
 import { DrishtiFace } from './DrishtiFace';
@@ -26,12 +27,13 @@ export function DrishtiView() {
     chatHistory,
     sendUserMessage,
     isAiLoading,
-    activeUser,
     clearChat,
     applyProposal,
     discardProposal,
     openDraftModal,
   } = useCrm();
+  // The signed-in person, from their profiles row (step 2-e; the MVP team switcher is gone).
+  const { fullName } = useSignedInUser();
 
   const [inputVal, setInputVal] = useState('');
   const [briefingStage, setBriefingStage] = useState(0); // 0: greeting, 1: summary (~260ms), 2: cards (~900ms), 3: chips (~1500ms)
@@ -39,7 +41,7 @@ export function DrishtiView() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Compute deterministic briefing
-  const briefing = computeBriefing(clients, leads, activeUser.name);
+  const briefing = computeBriefing(clients, leads, fullName);
 
   // Staged reveal on mount without scrolling the entire page
   useEffect(() => {
@@ -222,7 +224,7 @@ export function DrishtiView() {
                   {/* Avatar */}
                   {isUser ? (
                     <div className="w-8 h-8 rounded-xl bg-raised border border-line/20 flex items-center justify-center font-bold text-xs text-primary shrink-0">
-                      {activeUser.name[0]}
+                      {fullName[0]}
                     </div>
                   ) : (
                     <DrishtiFace
@@ -245,7 +247,7 @@ export function DrishtiView() {
                     {/* Header Stamp */}
                     <div className="flex items-center justify-between gap-3 text-[11px] text-muted pb-2 mb-2 border-b border-line/10">
                       <span className="font-semibold text-primary">
-                        {isUser ? activeUser.name : 'Drishti'}
+                        {isUser ? fullName : 'Drishti'}
                       </span>
                       <span
                         className={`px-2 py-0.5 rounded text-[10px] font-mono ${

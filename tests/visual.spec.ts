@@ -84,8 +84,12 @@ function watchPage(page: Page, stack: FakeStack): PageWatch {
 const listOrNone = (lines: string[]) => (lines.length ? lines.join('\n  ') : '(none)');
 
 // The app appears only after the sign-in check (a deferred callback, then a profile request).
-// Fires timers that are already due, without moving the frozen clock, until `ready` shows, so
-// every screen then starts from the same frozen time as before step 12.
+// Moves the paused clock 1 ms per poll until `ready` shows. Not 0 ms: Playwright's clock gives
+// a 0 ms timer that is created while it is firing another timer a due time of now + 1 ms, so
+// `runFor(0)` on a paused clock never fires it. TanStack Query sends every result to the screen
+// with such a timer, so a stranded one left the board on "Loading pipeline…" (step 2-e,
+// step2e-flake-diagnosis.md). The drift is 1 ms per 25 ms poll: no screen shows time that
+// fine (dates are whole days; the face first blinks 5 s after it mounts; settle() is 1.6 s).
 // `attached`: wait until `ready` is in the page, even when hidden by CSS (e.g. the desktop nav
 // on a phone).
 async function waitUntilShown(
@@ -97,12 +101,12 @@ async function waitUntilShown(
   const deadline = Date.now() + 30_000; // the test runner's clock, not the page's frozen one
   while (Date.now() < deadline) {
     if (attached ? (await ready.count()) > 0 : await ready.isVisible()) return;
-    await page.clock.runFor(0);
+    await page.clock.runFor(1);
     await page.waitForTimeout(25);
   }
   throw new Error(
     [
-      'The page never got past the sign-in check',
+      'The expected element never showed (sign-in check, or data not on screen)',
       `Calls to the fake stack (all, with navigations):\n  ${listOrNone(watch.calls)}`,
       `Console since the latest load:\n  ${listOrNone(watch.console)}`,
       `Failed requests since the latest load:\n  ${listOrNone(watch.failed)}`,
@@ -124,8 +128,9 @@ async function openApp(page: Page, theme: Theme) {
   // untouched, so every screen still shows the same states and colours.
   // Pipeline and Clients don't read this store since step 2-b. Pipeline reads the fake
   // `pipeline` view (tests/support/pipelineRows.ts, step 2-c), Clients the fake
-  // `active_clients` view (tests/support/activeClientRows.ts, step 2-d). Both are already
-  // fake. This still covers the hidden screens.
+  // `active_clients` view (tests/support/activeClientRows.ts, step 2-d), owner names the fake
+  // `team_members` view (tests/support/auth.ts, step 2-e). All are already fake. This still
+  // covers the hidden screens.
   await page.evaluate(fakeIdentities);
   await page.reload();
   // Pipeline is the landing screen; its first card means the rows (and the nav badge) are in.
@@ -133,6 +138,11 @@ async function openApp(page: Page, theme: Theme) {
   // The Clients badge comes from its own request (`active_clients`, step 2-d). On a phone the
   // desktop nav is hidden by CSS, so wait for the badge to be in the page, not to be visible.
   await waitUntilShown(page, page.locator('#nav-tab-clients span.tabular-nums'), watch, {
+    attached: true,
+  });
+  // Owner names come from a third request (`team_members`, step 2-e): wait until the first
+  // Lead card's avatar carries its owner's name (Client01 → Demo Owner 1, pipelineRows.ts).
+  await waitUntilShown(page, page.locator('#column-Lead [title="Demo Owner 1"]'), watch, {
     attached: true,
   });
   // Test-only: background blur renders a few different corner pixels on every frame.
@@ -238,9 +248,9 @@ for (const theme of THEMES) {
         await snap(page, theme, 'desktop-pipeline-table');
       });
 
-      test('user switcher dropdown', async ({ page }) => {
+      test('account menu dropdown', async ({ page }) => {
         await openApp(page, theme);
-        await page.getByRole('button', { name: 'Switch active user' }).click();
+        await page.getByRole('button', { name: 'Account menu' }).click();
         await settle(page);
         await snap(page, theme, 'desktop-user-dropdown');
       });

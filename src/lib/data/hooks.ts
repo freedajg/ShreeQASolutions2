@@ -1,7 +1,6 @@
-// What Pipeline, Clients and the nav badges read (Phase 2, steps 2-b to 2-d). Pipeline reads
-// the `pipeline` view since 2-c, Clients the `active_clients` view since 2-d. Owner names
-// still use the sample team in sampleRows.ts until 2-e switches useOwnerName to
-// `teamMembersQuery`.
+// What Pipeline, Clients and the nav badges read (Phase 2, steps 2-b to 2-e). Pipeline reads
+// the `pipeline` view since 2-c, Clients the `active_clients` view since 2-d, owner names the
+// `team_members` view since 2-e.
 import { useCallback, useMemo } from 'react';
 import {
   useMutation,
@@ -13,10 +12,19 @@ import {
 import { useSignedInUser } from '../auth/context';
 import { supabase, type DrishtiClient } from '../supabase/client';
 import type { DataError } from './errors';
-import { toClients, toEngagements } from './mappers';
+import {
+  createUnknownOwnerReporter,
+  ownerDisplay,
+  toClients,
+  toEngagements,
+  toTeamNames,
+  type OwnerDisplay,
+} from './mappers';
 import { STATUS_CHANGE_KEY, statusChangeMutation, type StatusChange } from './mutations';
-import { activeClientsQuery, pipelineQuery } from './queries';
-import { SAMPLE_TEAM } from './sampleRows';
+import { activeClientsQuery, pipelineQuery, teamMembersQuery } from './queries';
+
+// One per page load: each unknown owner id is logged once, however often it is shown.
+const reportUnknownOwner = createUnknownOwnerReporter();
 
 /** The browser client; only for components behind the sign-in gate, where it always exists. */
 function useDataClient(): DrishtiClient {
@@ -72,10 +80,22 @@ export function useActiveClients() {
   return useQuery({ ...activeClientsQuery(client, userId), select: toClients });
 }
 
-/** Owner id → name; null when there's no owner or the id isn't on the team. */
-export function useOwnerName(): (ownerId: string | null) => string | null {
+/**
+ * Owner id → what to show (step 2-e), from the `team_members` view. One cached read per user
+ * (the key holds the user id), shared by every screen. While loading, or if the read fails,
+ * owners show nothing (`state: 'loading'`); an id not on the team shows "Unknown owner" and is
+ * logged once.
+ */
+export function useOwnerName(): (ownerId: string | null) => OwnerDisplay {
+  const client = useDataClient();
+  const { id: userId } = useSignedInUser();
+  const { data: team } = useQuery({ ...teamMembersQuery(client, userId), select: toTeamNames });
   return useCallback(
-    (ownerId) => SAMPLE_TEAM.find((member) => member.id === ownerId)?.fullName ?? null,
-    [],
+    (ownerId) => {
+      const shown = ownerDisplay(team, ownerId);
+      if (shown.state === 'unknown' && ownerId !== null) reportUnknownOwner(ownerId);
+      return shown;
+    },
+    [team],
   );
 }

@@ -15,10 +15,10 @@ import {
   Moon,
   LogOut,
 } from 'lucide-react';
-import { TabKey, UserProfile } from '../types';
-import { TEAM_MEMBERS } from '../utils/seedData';
+import { TabKey } from '../types';
 import { useCrm } from '../context/CrmContext';
 import { useAuth, useSignedInUser } from '../lib/auth/context';
+import { roleLabel } from '../lib/auth/access';
 import { useTheme } from '../lib/useTheme';
 import { LANDING_SCREEN, isScreenEnabled } from '../lib/screens';
 import { countOnBoard } from '../lib/data/mappers';
@@ -75,7 +75,7 @@ function ThemeChoice({
 }
 
 export function Navbar() {
-  const { activeTab, setActiveTab, activeUser, setActiveUser, clients, isAiLoading } = useCrm();
+  const { activeTab, setActiveTab, clients, isAiLoading } = useCrm();
   // Pipeline and Clients badges count the same rows as those screens (step 2-b). No Pipeline
   // badge while the board is loading or couldn't be read (step 2-c); the same for Clients (2-d).
   const { data: onBoard } = usePipelineEngagements();
@@ -231,52 +231,30 @@ export function Navbar() {
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>
 
-            {/* Active User Switcher */}
+            {/* Account menu: the signed-in person's own name and role, from their profiles
+                row (step 2-e; never from user metadata). The MVP team switcher is gone. */}
             <div className="relative">
               <button
                 onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-line/14 hover:border-line/30 transition-colors text-xs text-text"
-                aria-label="Switch active user"
+                aria-label="Account menu"
               >
                 <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-primary to-info flex items-center justify-center text-[11px] font-bold text-on-primary">
-                  {activeUser.name[0]}
+                  {signedInUser.fullName[0]}
                 </div>
                 <div className="text-left hidden sm:block">
-                  <span className="font-semibold">{activeUser.name}</span>
-                  <span className="text-[10px] text-muted ml-1.5">({activeUser.role})</span>
+                  <span className="font-semibold">{signedInUser.fullName}</span>
+                  <span className="text-[10px] text-muted ml-1.5">
+                    {roleLabel(signedInUser.role)}
+                  </span>
                 </div>
                 <ChevronDown size={13} className="text-muted" />
               </button>
 
               {isUserDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-raised border border-line/20 rounded-xl shadow-2xl z-50 p-1 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
-                    Active Team Member
-                  </div>
-                  {TEAM_MEMBERS.map((member) => (
-                    <button
-                      key={member.id}
-                      onClick={() => {
-                        setActiveUser(member);
-                        setIsUserDropdownOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-colors ${
-                        activeUser.id === member.id
-                          ? 'bg-primary-tint/20 text-text font-semibold'
-                          : 'text-text-secondary hover:bg-surface hover:text-text'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-full bg-surface border border-line/20 flex items-center justify-center text-[10px]">
-                          {member.name[0]}
-                        </div>
-                        <span>{member.name}</span>
-                      </div>
-                      <span className="text-[10px] text-muted">{member.role}</span>
-                    </button>
-                  ))}
-
-                  <div className="mt-1 pt-1 border-t border-line/14">
+                  {/* Theme is the first section now, so no divider above it */}
+                  <div>
                     <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
                       Theme
                     </div>
@@ -316,8 +294,12 @@ export function Navbar() {
         </div>
       </header>
 
-      {/* Mobile Fixed Bottom Navigation Bar (<768px) */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-bg/95 backdrop-blur-lg border-t border-line/14 pb-[env(safe-area-inset-bottom)]">
+      {/* Mobile Fixed Bottom Navigation Bar (<768px). A labelled landmark (step 2-e); the
+          desktop <nav> is hidden at this width, so only one is ever exposed. */}
+      <nav
+        aria-label="Main navigation"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-bg/95 backdrop-blur-lg border-t border-line/14 pb-[env(safe-area-inset-bottom)]"
+      >
         <div className="flex items-center justify-around px-2 py-1">
           {mobilePrimaryItems.map((item) => {
             const isActive = activeTab === item.key;
@@ -357,7 +339,7 @@ export function Navbar() {
             <span className="mt-0.5">More</span>
           </button>
         </div>
-      </div>
+      </nav>
 
       {/* Mobile More Sheet Drawer */}
       {isMoreOpen && (
@@ -379,59 +361,39 @@ export function Navbar() {
               </button>
             </div>
 
-            <div className="mt-4 space-y-1.5">
-              {mobileMoreItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.key;
-                return (
-                  <button
-                    key={item.key}
-                    onClick={() => {
-                      setActiveTab(item.key);
-                      setIsMoreOpen(false);
-                    }}
-                    className={`w-full min-h-[52px] flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-primary-tint/20 text-primary font-bold'
-                        : 'text-text-secondary hover:bg-raised hover:text-text'
-                    }`}
-                  >
-                    <Icon size={18} className={isActive ? 'text-primary' : 'text-muted'} />
-                    <span>{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Active User in Mobile Sheet */}
-            <div className="mt-6 pt-4 border-t border-line/14">
-              <div className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
-                Viewing as
+            {/* Only when there is something to list: an empty list left a gap and a second
+                divider under the title (step 2-e). */}
+            {mobileMoreItems.length > 0 && (
+              <div className="mt-4 space-y-1.5">
+                {mobileMoreItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.key;
+                  return (
+                    <button
+                      key={item.key}
+                      onClick={() => {
+                        setActiveTab(item.key);
+                        setIsMoreOpen(false);
+                      }}
+                      className={`w-full min-h-[52px] flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-primary-tint/20 text-primary font-bold'
+                          : 'text-text-secondary hover:bg-raised hover:text-text'
+                      }`}
+                    >
+                      <Icon size={18} className={isActive ? 'text-primary' : 'text-muted'} />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                {TEAM_MEMBERS.map((member) => (
-                  <button
-                    key={member.id}
-                    onClick={() => {
-                      setActiveUser(member);
-                    }}
-                    className={`min-h-[44px] flex items-center gap-2 p-2.5 rounded-xl text-xs transition-colors border ${
-                      activeUser.id === member.id
-                        ? 'bg-primary-tint/20 text-text border-primary-tint/40 font-bold'
-                        : 'bg-raised text-text-secondary border-transparent'
-                    }`}
-                  >
-                    <div className="w-5 h-5 rounded-full bg-avatar flex items-center justify-center font-bold text-[10px]">
-                      {member.name[0]}
-                    </div>
-                    <span>{member.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            )}
 
-            {/* Theme in Mobile Sheet */}
-            <div className="mt-6 pt-4 border-t border-line/14">
+            {/* Theme in Mobile Sheet. First section when the list is empty: the title's own
+                line is then the only divider above it. */}
+            <div
+              className={mobileMoreItems.length > 0 ? 'mt-6 pt-4 border-t border-line/14' : 'mt-4'}
+            >
               <div className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
                 Theme
               </div>

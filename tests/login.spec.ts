@@ -103,8 +103,13 @@ test('every role lands on Pipeline', async ({ page }) => {
     await signIn(page, account.email, TEST_PASSWORD);
     await expect(page.locator('#nav-tab-pipeline')).toHaveAttribute('aria-current', 'page');
 
-    await page.getByRole('button', { name: 'Switch active user' }).click();
-    await expect(page.getByText(account.full_name, { exact: true })).toBeVisible();
+    // The header shows the signed-in person's own name (step 2-e). The name is in the header
+    // and in the menu, so each check is scoped to one of them.
+    const accountMenu = page.getByRole('button', { name: 'Account menu' });
+    await expect(accountMenu).toContainText(account.full_name);
+    await accountMenu.click();
+    const signedInAs = page.getByText('Signed in as', { exact: true }).locator('..');
+    await expect(signedInAs.getByText(account.full_name, { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Sign out' }).click();
     await expectLoginPage(page);
     await page.unrouteAll({ behavior: 'ignoreErrors' });
@@ -131,7 +136,7 @@ test('a saved session opens the app; sign-out ends it and returns to the login p
   await page.goto('/');
   await expect(page.locator('#nav-tab-pipeline')).toHaveAttribute('aria-current', 'page');
 
-  await page.getByRole('button', { name: 'Switch active user' }).click();
+  await page.getByRole('button', { name: 'Account menu' }).click();
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expectLoginPage(page);
   expect(await savedSession(page)).toBeNull();
@@ -148,7 +153,11 @@ test.describe('phone (375px)', () => {
     await mockSupabase(page, { signedInAs: ACCOUNTS.consultant });
     await page.goto('/');
     await page.getByRole('button', { name: 'More', exact: true }).click();
-    await expect(page.getByText('Demo Consultant 1', { exact: true })).toBeVisible();
+    // Scoped to the More sheet: the header also holds the name (hidden by CSS at this width,
+    // but still matched by getByText).
+    await expect(
+      page.locator('div.fixed.inset-0').getByText('Demo Consultant 1', { exact: true }),
+    ).toBeVisible();
     await page.getByRole('button', { name: 'Sign out' }).click();
     await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
     expect(await savedSession(page)).toBeNull();

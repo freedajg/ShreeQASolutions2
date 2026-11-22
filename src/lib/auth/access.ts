@@ -23,6 +23,15 @@ export type SignedInUser = {
 
 export type Access = { ok: true; user: SignedInUser } | { ok: false };
 
+const ROLE_LABELS: Record<AppRole, string> = {
+  owner: 'Owner',
+  consultant: 'Consultant',
+  marketing: 'Marketing',
+};
+
+/** The role as the header shows it (step 2-e); the role itself comes from the profiles row. */
+export const roleLabel = (role: AppRole): string => ROLE_LABELS[role];
+
 export const PROFILE_COLUMNS = 'id, full_name, role, can_see_values, active';
 
 const ROLES: readonly string[] = ['owner', 'consultant', 'marketing'] satisfies AppRole[];

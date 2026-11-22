@@ -1,16 +1,20 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PIPELINE_COLUMNS, type Engagement } from '../../types/crm';
 import {
   countOnBoard,
+  createUnknownOwnerReporter,
   groupByPipelineStatus,
   groupClients,
   isPipelineStatus,
+  ownerDisplay,
+  ownerText,
   sumValues,
   toClients,
   toEngagement,
   toEngagements,
+  toTeamNames,
 } from './mappers';
-import type { StatusViewRow } from './queries';
+import type { StatusViewRow, TeamMemberRow } from './queries';
 import { SAMPLE_PIPELINE_ROWS } from '../../../tests/support/pipelineRows';
 import { SAMPLE_ACTIVE_CLIENT_ROWS } from '../../../tests/support/activeClientRows';
 
@@ -220,5 +224,85 @@ describe('sample rows through the mapping code', () => {
     const clients = toClients(SAMPLE_ACTIVE_CLIENT_ROWS);
     expect(clients).toHaveLength(5);
     expect(clients.filter((c) => c.engagements.length === 2)).toHaveLength(2);
+  });
+});
+
+// Step 2-e: owner names from the team_members view.
+const OWNER = 'aaaaaaaa-0000-4000-8000-000000000001';
+const OTHER = 'bbbbbbbb-0000-4000-8000-000000000002';
+
+const member = (overrides: Partial<TeamMemberRow> = {}): TeamMemberRow => ({
+  id: OWNER,
+  full_name: 'Demo Owner 1',
+  email: 'demo.owner1@example.com',
+  role: 'owner',
+  booking_link: null,
+  active: true,
+  ...overrides,
+});
+
+describe('toTeamNames (step 2-e)', () => {
+  it('maps ids to full names and drops rows without an id', () => {
+    const names = toTeamNames([
+      member(),
+      member({ id: OTHER, full_name: '  Demo Owner 2 ' }),
+      member({ id: null, full_name: 'No id' }),
+    ]);
+    expect([...names.entries()]).toEqual([
+      [OWNER, 'Demo Owner 1'],
+      [OTHER, 'Demo Owner 2'],
+    ]);
+  });
+
+  it('keeps a blank or missing name blank, and gives an empty map for no rows', () => {
+    expect(toTeamNames([member({ full_name: null })]).get(OWNER)).toBe('');
+    expect(toTeamNames([]).size).toBe(0);
+  });
+});
+
+describe('ownerDisplay (step 2-e)', () => {
+  const team = toTeamNames([member(), member({ id: OTHER, full_name: '' })]);
+
+  it('shows nothing while the team list is loading (or could not be read)', () => {
+    expect(ownerDisplay(undefined, OWNER)).toEqual({ state: 'loading' });
+    expect(ownerText(ownerDisplay(undefined, OWNER))).toBe('');
+  });
+
+  it('says "No owner" for an empty owner, even while loading', () => {
+    expect(ownerDisplay(team, null)).toEqual({ state: 'none', label: 'No owner' });
+    expect(ownerDisplay(undefined, null)).toEqual({ state: 'none', label: 'No owner' });
+  });
+
+  it('says "Unknown owner" for an id not on the team, never "?"', () => {
+    const shown = ownerDisplay(team, 'cccccccc-0000-4000-8000-000000000003');
+    expect(shown).toEqual({ state: 'unknown', label: 'Unknown owner' });
+    expect(ownerText(shown)).not.toContain('?');
+  });
+
+  it("shows a known owner's full name, and a neutral label for a blank one", () => {
+    expect(ownerDisplay(team, OWNER)).toEqual({ state: 'known', label: 'Demo Owner 1' });
+    expect(ownerDisplay(team, OTHER)).toEqual({ state: 'known', label: 'Unnamed team member' });
+  });
+});
+
+describe('createUnknownOwnerReporter (step 2-e)', () => {
+  it('logs each unknown id once, with the id only', () => {
+    const log = vi.fn();
+    const report = createUnknownOwnerReporter(log);
+    report(OWNER);
+    report(OWNER);
+    report(OTHER);
+    expect(log).toHaveBeenCalledTimes(2);
+    expect(log).toHaveBeenNthCalledWith(1, 'Owner id is not on the team:', OWNER);
+    expect(log).toHaveBeenNthCalledWith(2, 'Owner id is not on the team:', OTHER);
+  });
+
+  it('keeps a separate memory per reporter', () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    createUnknownOwnerReporter(first)(OWNER);
+    createUnknownOwnerReporter(second)(OWNER);
+    expect(first).toHaveBeenCalledTimes(1);
+    expect(second).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,13 +1,13 @@
 // Sample rows the fake Supabase (./auth.ts) answers for the `pipeline` view. Moved here from
 // src/lib/data/sampleRows.ts in step 2-c, when the board started reading the database, so the
 // app no longer ships them. Same rows and order as since 2-b, so the screenshots don't change.
-// Built with ./rowBuilders.ts (moved out of the app in 2-d).
+// Built with ./rowBuilders.ts (moved out of the app in 2-d); owner ids from ./team.ts (2-e).
 // Must not import ./auth.ts: unit tests import this file, and Vitest must not load Playwright.
 // Dummy data only (CLAUDE.md rule 9): fake companies, contacts, @example.com emails,
 // +91 00000 phones, made-up amounts. Nothing here is a real client.
 import type { StatusViewRow } from '../../src/lib/data/queries';
-import { SAMPLE_OWNER_IDS } from '../../src/lib/data/sampleRows';
 import { SAMPLE_CLIENT_01, sampleClient, sampleRow } from './rowBuilders';
+import { SAMPLE_OWNER_IDS } from './team';
 
 const C01 = SAMPLE_CLIENT_01;
 const C02 = sampleClient('02', 'Bengaluru', 'Fintech');

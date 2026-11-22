@@ -43,12 +43,6 @@ export interface Lead {
   lostReason?: string;
 }
 
-export interface UserProfile {
-  id: string;
-  name: string;
-  role: 'Founder' | 'Auditor';
-}
-
 export interface ToolProposal {
   action: 'update_lead' | 'update_client' | 'create_lead' | 'create_client';
   id?: string;
@@ -81,7 +75,6 @@ export interface AppSettings {
   groqApiKey: string;
   openRouterModels: string[]; // up to 3 models
   groqModel: string;
-  activeUserId: string;
 }
 
 export interface BriefingCard {
