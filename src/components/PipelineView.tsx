@@ -33,6 +33,8 @@ import {
   usePipelineEngagements,
 } from '../lib/data/hooks';
 import { dataErrorMessage } from '../lib/data/errors';
+import { LIST_MESSAGES, listState } from '../lib/data/listState';
+import { useDialog } from '../lib/useDialog';
 import { formatINR } from '../utils/currency';
 import { formatStandardDate, getDaysAgo } from '../utils/dateUtils';
 import { isFeatureEnabled } from '../lib/screens';
@@ -158,7 +160,7 @@ function EngagementCardItem({
 
 export function PipelineView() {
   const { addLead } = useCrm();
-  // The `pipeline` view (step 2-c). Minimal loading and error lines; full states are 2-g.
+  // The `pipeline` view (step 2-c); loading, error, empty and no-match states (step 2-g).
   const { data: loaded, error: loadError, refetch } = usePipelineEngagements();
   const ownerName = useOwnerName();
   // Values only from engagement_financials, and only for users with values access (step 2-f).
@@ -209,6 +211,12 @@ export function PipelineView() {
       knownOwner(e.ownerId).toLowerCase().includes(term),
   );
   const columns = groupByPipelineStatus(filtered);
+  // Board and table show only for 'rows'; every other state shows one line instead (step 2-g).
+  const state = listState(
+    { hasData: loaded !== undefined, error: loadError },
+    filtered.length,
+    engagements.length,
+  );
 
   // Needs-attention: quiet for 7 days or more (no contact recorded = not counted)
   const quiet = engagements
@@ -242,6 +250,8 @@ export function PipelineView() {
   const selected = selectedId ? (engagements.find((e) => e.id === selectedId) ?? null) : null;
   const activeDragging = activeDragId ? engagements.find((e) => e.id === activeDragId) : null;
   const draggingValue = activeDragging ? valueOf(activeDragging.id) : null;
+  // Focus, Esc and Tab for the details dialog (step 2-g).
+  const detailsDialog = useDialog(selected !== null, () => setSelectedId(null));
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-12 space-y-6">
@@ -337,24 +347,40 @@ export function PipelineView() {
         />
       </div>
 
-      {/* Not read yet, or the first read failed (step 2-c; full states in 2-g) */}
-      {!loaded &&
-        (loadError ? (
-          <div className="flex items-center gap-3 text-xs">
-            <p role="alert" className="text-danger">
-              {dataErrorMessage(loadError)}
-            </p>
-            <button
-              type="button"
-              onClick={() => void refetch()}
-              className="px-3 py-1.5 rounded-lg bg-surface border border-line/16 text-text-secondary hover:text-text"
-            >
-              Try again
-            </button>
-          </div>
-        ) : (
-          <p className="text-xs text-muted">Loading pipeline…</p>
-        ))}
+      {/* Not read yet, the first read failed, nothing to show, or nothing matches (step 2-g).
+          Try again puts the query back to loading, so the loading line shows again. */}
+      {state === 'loading' && (
+        <p role="status" className="text-xs text-muted">
+          {LIST_MESSAGES.pipelineLoading}
+        </p>
+      )}
+      {state === 'error' && (
+        <div className="flex items-center gap-3 text-xs">
+          <p role="alert" className="text-danger">
+            {dataErrorMessage(loadError)}
+          </p>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="px-3 py-1.5 rounded-lg bg-surface border border-line/16 text-text-secondary hover:text-text"
+          >
+            {LIST_MESSAGES.tryAgain}
+          </button>
+        </div>
+      )}
+      {state === 'empty' && <p className="text-xs text-muted">{LIST_MESSAGES.pipelineEmpty}</p>}
+      {state === 'no-match' && (
+        <div className="flex items-center gap-3 text-xs">
+          <p className="text-muted">{LIST_MESSAGES.pipelineNoMatch}</p>
+          <button
+            type="button"
+            onClick={() => setSearchTerm('')}
+            className="px-3 py-1.5 rounded-lg bg-surface border border-line/16 text-text-secondary hover:text-text"
+          >
+            {LIST_MESSAGES.clearSearch}
+          </button>
+        </div>
+      )}
 
       {/* Why the database refused the last move */}
       {moveNotice && (
@@ -375,7 +401,7 @@ export function PipelineView() {
       )}
 
       {/* VIEW 1: KANBAN BOARD */}
-      {loaded && viewMode === 'board' && (
+      {state === 'rows' && viewMode === 'board' && (
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -461,7 +487,7 @@ export function PipelineView() {
       )}
 
       {/* VIEW 2: TABLE VIEW FOR EXCEL USERS */}
-      {loaded && viewMode === 'table' && (
+      {state === 'rows' && viewMode === 'table' && (
         <div className="bg-surface border border-line/16 rounded-2xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -534,14 +560,17 @@ export function PipelineView() {
           onClick={() => setSelectedId(null)}
         >
           <div
-            className="bg-surface border border-line/22 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+            {...detailsDialog.panelProps}
+            className="bg-surface border border-line/22 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col outline-none"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Dialog Header */}
             <div className="p-5 border-b border-line/14 bg-raised/60 flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-lg font-bold text-text">{selected.client.name}</h3>
+                  <h3 id={detailsDialog.titleId} className="text-lg font-bold text-text">
+                    {selected.client.name}
+                  </h3>
                   {selected.certificationType && (
                     <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-raised text-primary border border-primary/20">
                       {selected.certificationType}
@@ -556,7 +585,9 @@ export function PipelineView() {
 
               <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={() => setSelectedId(null)}
+                  aria-label="Close"
                   className="p-1.5 rounded-lg text-muted hover:text-text-strong bg-raised"
                 >
                   <X size={18} />

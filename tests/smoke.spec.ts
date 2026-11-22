@@ -43,6 +43,22 @@ test('app loads with its title and main navigation', async ({ page }) => {
   expect(pageErrors, 'uncaught errors in the page').toEqual([]);
 });
 
+test('the page declares an icon and loads with no 404 (no favicon.ico request)', async ({
+  page,
+}) => {
+  const notFound: string[] = [];
+  page.on('response', (response) => {
+    if (response.status() === 404) notFound.push(response.url());
+  });
+  await mockSupabase(page, { signedInAs: ACCOUNTS.owner });
+  await page.goto('/');
+  await expect(page.locator('#nav-tab-pipeline')).toHaveAttribute('aria-current', 'page');
+
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', 'data:,');
+  await page.waitForLoadState('networkidle');
+  expect(notFound).toEqual([]);
+});
+
 test('signed out, only the login page loads', async ({ page }) => {
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));

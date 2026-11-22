@@ -1,8 +1,11 @@
 // The Pipeline board against a fake Supabase (step 2-c): it reads the `pipeline` view, a drag
 // calls change_engagement_status() once, and a refusal snaps the card back with a plain message.
 // Step 2-f: values come only from engagement_financials, and only for users with values access.
+// Step 2-g: loading, empty, no-match and Try again states; the details dialog is a named modal
+// dialog with focus, Tab and Esc handling.
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { DATA_MESSAGES } from '../src/lib/data/errors';
+import { LIST_MESSAGES } from '../src/lib/data/listState';
 import {
   ACCOUNTS,
   CONSULTANT_WITH_VALUES,
@@ -29,6 +32,8 @@ const card = (page: Page, column: string, name: string) =>
 const pipelineBadge = (page: Page) => page.locator('#nav-tab-pipeline span.tabular-nums');
 const tableRow = (page: Page, name: string) => page.locator('tbody tr', { hasText: name });
 const valueHeader = (page: Page) => page.getByRole('columnheader', { name: 'Value', exact: true });
+const searchBox = (page: Page) =>
+  page.getByPlaceholder('Filter pipeline by company, contact, or owner...');
 
 async function showTable(page: Page) {
   await page.getByRole('button', { name: 'Table', exact: true }).click();
@@ -109,6 +114,7 @@ test('when the board cannot be read, it says so and offers Try again', async ({ 
   // Network errors are retried twice (3 tries, about 3 s) before the message shows.
   await expect(page.getByRole('alert')).toHaveText(DATA_MESSAGES.network, { timeout: 15_000 });
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Try again' })).toBeEnabled();
   expect(count(stack, READ)).toBe(3);
   await expect(page.locator('#column-Lead')).toHaveCount(0);
   await expect(pipelineBadge(page)).toHaveCount(0);
@@ -189,4 +195,113 @@ test('when values cannot be read, the board still shows, with no value, total or
   await expect(tableRow(page, 'Client03 Demo Ltd').locator('td').nth(4)).toHaveText('');
   await expect(page.getByRole('alert')).toHaveCount(0);
   expect(pageErrors, 'uncaught errors in the page').toEqual([]);
+});
+
+test('while the board is being read, a loading line shows, with no board or badge', async ({
+  page,
+}) => {
+  const stack = await mockSupabase(page, { signedInAs: ACCOUNTS.owner, holdReads: ['pipeline'] });
+  try {
+    await page.goto('/');
+    const loading = page.getByText(LIST_MESSAGES.pipelineLoading, { exact: true });
+    await expect(loading).toBeVisible();
+    await expect(loading).toHaveAttribute('role', 'status');
+    await expect(page.locator('#column-Lead')).toHaveCount(0);
+    await expect(pipelineBadge(page)).toHaveCount(0);
+  } finally {
+    stack.releaseReads();
+  }
+  await expect(card(page, 'Lead', 'Client01 Demo Ltd')).toBeVisible();
+  await expect(page.getByText(LIST_MESSAGES.pipelineLoading, { exact: true })).toHaveCount(0);
+});
+
+test('with no open deals, it says so instead of the board and the table', async ({ page }) => {
+  await mockSupabase(page, { signedInAs: ACCOUNTS.owner, pipelineEmpty: true });
+  await page.goto('/');
+  const empty = page.getByText(LIST_MESSAGES.pipelineEmpty, { exact: true });
+  await expect(empty).toBeVisible();
+  await expect(page.getByText('0 Open Deals')).toBeVisible();
+  await expect(page.locator('#column-Lead')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Table', exact: true }).click();
+  await expect(empty).toBeVisible();
+  await expect(page.locator('table')).toHaveCount(0);
+});
+
+test('a search with no match says so on board and table; Clear search brings the deals back', async ({
+  page,
+}) => {
+  await mockSupabase(page, { signedInAs: ACCOUNTS.owner });
+  await page.goto('/');
+  await expect(card(page, 'Lead', 'Client01 Demo Ltd')).toBeVisible();
+
+  await searchBox(page).fill('zzz-no-such-deal');
+  const noMatch = page.getByText(LIST_MESSAGES.pipelineNoMatch, { exact: true });
+  await expect(noMatch).toBeVisible();
+  await expect(page.locator('#column-Lead')).toHaveCount(0); // no "Drag deals here" columns
+  await expect(page.getByText('7 Open Deals')).toBeVisible(); // the count is of all deals
+
+  await page.getByRole('button', { name: 'Table', exact: true }).click();
+  await expect(noMatch).toBeVisible();
+  await expect(page.locator('table')).toHaveCount(0);
+
+  await page.getByRole('button', { name: LIST_MESSAGES.clearSearch, exact: true }).click();
+  await expect(searchBox(page)).toHaveValue('');
+  await expect(page.locator('tbody tr')).toHaveCount(7);
+  await expect(noMatch).toHaveCount(0);
+});
+
+test('Try again after a failed read shows the loading line, then the board', async ({ page }) => {
+  const stack = await mockSupabase(page, {
+    signedInAs: ACCOUNTS.owner,
+    pipelineFailsFirst: 3,
+    holdReads: ['pipeline'],
+  });
+  try {
+    await page.goto('/');
+    // The 3 failures aren't held (they abort before the hold): the message shows after them.
+    await expect(page.getByRole('alert')).toHaveText(DATA_MESSAGES.network, { timeout: 15_000 });
+    expect(count(stack, READ)).toBe(3);
+
+    await page.getByRole('button', { name: LIST_MESSAGES.tryAgain, exact: true }).click();
+    // The 4th read is held: the error is gone and the loading line is back (TanStack v5).
+    await expect(page.getByText(LIST_MESSAGES.pipelineLoading, { exact: true })).toBeVisible();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  } finally {
+    stack.releaseReads();
+  }
+  await expect(card(page, 'Lead', 'Client01 Demo Ltd')).toBeVisible();
+  expect(count(stack, READ)).toBe(4);
+  await expect(pipelineBadge(page)).toHaveText('7');
+});
+
+test('the details dialog is a named modal dialog: focus inside, Tab stays inside, Esc closes and focus returns', async ({
+  page,
+}) => {
+  await mockSupabase(page, { signedInAs: ACCOUNTS.owner });
+  await page.goto('/');
+  await showTable(page);
+
+  // Rows can't take focus yet (keyboard opening is on the later list). Focus the search box,
+  // then open the row with a click event that doesn't move focus, to prove focus comes back.
+  await searchBox(page).focus();
+  await tableRow(page, 'Client01 Demo Ltd').dispatchEvent('click');
+
+  const dialog = page.getByRole('dialog', { name: 'Client01 Demo Ltd' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveAttribute('aria-modal', 'true');
+  await expect(dialog).toBeFocused();
+
+  // Close is the only control inside, so Tab and Shift+Tab both stay on it.
+  const close = dialog.getByRole('button', { name: 'Close', exact: true });
+  await page.keyboard.press('Tab');
+  await expect(close).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(close).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(close).toBeFocused();
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(searchBox(page)).toBeFocused();
 });

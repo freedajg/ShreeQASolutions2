@@ -13,6 +13,11 @@
 // 20261006100000_clients_engagements_rls.sql lines 400–402. Every fake account has
 // can_see_values false except CONSULTANT_WITH_VALUES, as the seed has (seed.sql line 362), so
 // an Owner sees values only if the app applies the role rule.
+// Step 2-g: narrowing options only, all off by default: `pipelineEmpty` / `activeClientsEmpty`
+// answer no rows; `pipelineFailsFirst` / `activeClientsFailsFirst` abort the first N reads and
+// then answer normally (Try again); `holdReads` makes those reads wait until
+// `stack.releaseReads()` (the loading line). A test using `holdReads` must call releaseReads()
+// in `finally`.
 import type { Page, Route } from '@playwright/test';
 import { SAMPLE_ACTIVE_CLIENT_ROWS } from './activeClientRows';
 import { SAMPLE_FINANCIALS_ROWS } from './financialsRows';
@@ -217,7 +222,12 @@ export type FakeStack = {
   calls: string[];
   /** Every change_engagement_status() call, allowed or not, in order. */
   statusChanges: { engagementId: string; newStatus: string }[];
+  /** Lets the reads held by `holdReads` answer. Safe to call more than once. */
+  releaseReads: () => void;
 };
+
+/** Reads a test can hold back with `holdReads` (step 2-g). */
+export type HeldRead = 'pipeline' | 'active_clients';
 
 /**
  * Answers the app's calls to Supabase. `signedInAs` starts the test with a saved session for
@@ -237,6 +247,9 @@ export type FakeStack = {
  * The `team_members` view answers every account in ACCOUNTS to a caller with a role and
  * nothing to a role-less or inactive one (the view's gate). `teamWithout` leaves those ids
  * out (an "Unknown owner"); `teamMembersFails` aborts every team_members read.
+ * Step 2-g: `pipelineEmpty` / `activeClientsEmpty` answer `[]`; `pipelineFailsFirst` /
+ * `activeClientsFailsFirst` abort only the first N reads; `holdReads` holds those reads until
+ * `releaseReads()`.
  */
 export async function mockSupabase(
   page: Page,
@@ -246,14 +259,27 @@ export async function mockSupabase(
     userMetadata?: Record<string, unknown>;
     profileFails?: boolean;
     pipelineFails?: boolean;
+    pipelineFailsFirst?: number;
+    pipelineEmpty?: boolean;
     statusChange?: 'refuse';
     activeClientsFails?: boolean;
+    activeClientsFailsFirst?: number;
+    activeClientsEmpty?: boolean;
+    holdReads?: HeldRead[];
     teamMembersFails?: boolean;
     teamWithout?: string[];
     financialsFails?: boolean;
   } = {},
 ): Promise<FakeStack> {
-  const stack: FakeStack = { calls: [], statusChanges: [] };
+  // Held reads wait on this promise (the test runner's clock, not the page's frozen one).
+  let releaseHeld: () => void = () => {};
+  const held = new Promise<void>((resolve) => {
+    releaseHeld = resolve;
+  });
+  const stack: FakeStack = { calls: [], statusChanges: [], releaseReads: () => releaseHeld() };
+  const isHeld = (read: HeldRead) => options.holdReads?.includes(read) ?? false;
+  let pipelineReads = 0;
+  let activeClientsReads = 0;
   const accounts: FakeAccount[] = [
     ...Object.values(ACCOUNTS),
     ...(options.signedInAs?.id === CONSULTANT_WITH_VALUES.id ? [CONSULTANT_WITH_VALUES] : []),
@@ -329,9 +355,15 @@ export async function mockSupabase(
     }
 
     if (method === 'GET' && url.pathname === '/rest/v1/pipeline') {
+      pipelineReads += 1;
       if (options.pipelineFails) return route.abort('connectionrefused');
+      if (pipelineReads <= (options.pipelineFailsFirst ?? 0)) {
+        return route.abort('connectionrefused');
+      }
+      if (isHeld('pipeline')) await held;
       // RLS: a role-less or inactive user reads nothing.
       if (!current?.role || !current.active) return json(route, 200, []);
+      if (options.pipelineEmpty) return json(route, 200, []);
       // Array order, not re-sorted: before any change this is exactly SAMPLE_PIPELINE_ROWS.
       const rows = pipelineRows
         .filter((row) => isLead(row.status))
@@ -340,13 +372,19 @@ export async function mockSupabase(
     }
 
     if (method === 'GET' && url.pathname === '/rest/v1/active_clients') {
+      activeClientsReads += 1;
       if (options.activeClientsFails) return route.abort('connectionrefused');
+      if (activeClientsReads <= (options.activeClientsFailsFirst ?? 0)) {
+        return route.abort('connectionrefused');
+      }
+      if (isHeld('active_clients')) await held;
       // RLS: a role-less or inactive user reads nothing; Marketing reads leads only, so no
       // active engagement (20261006100000_clients_engagements_rls.sql lines 335–340;
       // supabase/tests/status_views.test.sql lines 417–418).
       if (!current?.role || !current.active || current.role === 'marketing') {
         return json(route, 200, []);
       }
+      if (options.activeClientsEmpty) return json(route, 200, []);
       const rows = SAMPLE_ACTIVE_CLIENT_ROWS.map((row) => ({ ...row, ...viewValues(current) }));
       return json(route, 200, rows);
     }

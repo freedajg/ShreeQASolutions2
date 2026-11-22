@@ -3,8 +3,11 @@
 // dialog, never shows a value (or the Contract Value column) to a role without values access
 // (values come only from engagement_financials, step 2-f), and gives Marketing (which
 // reads no active clients) a plain message instead of an empty table.
+// Step 2-g: loading, empty, no-match and Try again states; the details dialog is a named modal
+// dialog with focus, Tab and Esc handling.
 import { expect, test, type Page } from '@playwright/test';
 import { DATA_MESSAGES } from '../src/lib/data/errors';
+import { LIST_MESSAGES } from '../src/lib/data/listState';
 import { ACCOUNTS, CONSULTANT_WITH_VALUES, mockSupabase, type FakeStack } from './support/auth';
 
 // The first page load waits for the dev server to compile the app.
@@ -23,10 +26,10 @@ const clientRows = (page: Page) => page.locator('table').first().locator('tbody 
 const clientHeaders = (page: Page) => page.locator('table').first().locator('thead th');
 const valueHeader = (page: Page) =>
   page.getByRole('columnheader', { name: 'Contract Value', exact: true });
-// The client detail dialog has no dialog role (ClientsView.tsx): it is the fixed overlay that
-// holds the client's name as its heading.
-const clientDialog = (page: Page, name: string) =>
-  page.locator('div.fixed.inset-0', { has: page.getByRole('heading', { name }) });
+// The client detail dialog, by its role and its name (the heading, via aria-labelledby; 2-g).
+const clientDialog = (page: Page, name: string) => page.getByRole('dialog', { name });
+const searchBox = (page: Page) =>
+  page.getByPlaceholder('Search clients by name, contact, city, or certification...');
 
 /** Opens the app (Pipeline is the landing screen), waits for the board, then opens Clients. */
 async function openClients(page: Page) {
@@ -123,8 +126,121 @@ test('when the clients cannot be read, Clients says so and offers Try again', as
   // Network errors are retried twice (3 tries, about 3 s) before the message shows.
   await expect(page.getByRole('alert')).toHaveText(DATA_MESSAGES.network, { timeout: 15_000 });
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Try again' })).toBeEnabled();
   expect(count(stack, READ)).toBe(3);
   await expect(page.locator('tbody tr')).toHaveCount(0);
   await expect(clientsBadge(page)).toHaveCount(0);
   expect(pageErrors, 'uncaught errors in the page').toEqual([]);
+});
+
+test('while the clients are being read, a loading line shows', async ({ page }) => {
+  const stack = await mockSupabase(page, {
+    signedInAs: ACCOUNTS.owner,
+    holdReads: ['active_clients'],
+  });
+  try {
+    await openClients(page); // the board isn't held; the nav badge's read of clients is
+    const loading = page.getByText(LIST_MESSAGES.clientsLoading, { exact: true });
+    await expect(loading).toBeVisible();
+    await expect(loading).toHaveAttribute('role', 'status');
+    await expect(page.locator('tbody tr')).toHaveCount(0);
+    await expect(clientsBadge(page)).toHaveCount(0);
+  } finally {
+    stack.releaseReads();
+  }
+  await expect(clientRows(page)).toHaveCount(5);
+});
+
+test('an Owner with no active clients gets a plain message, not an empty table', async ({
+  page,
+}) => {
+  await mockSupabase(page, { signedInAs: ACCOUNTS.owner, activeClientsEmpty: true });
+  await openClients(page);
+
+  await expect(page.getByText(LIST_MESSAGES.clientsEmpty, { exact: true })).toBeVisible();
+  await expect(page.getByText('0 Active Accounts')).toBeVisible();
+  await expect(page.locator('table')).toHaveCount(0);
+  await expect(page.getByText(MARKETING_MESSAGE)).toHaveCount(0);
+});
+
+test('a search or filters with no match say so; Clear search and filters brings all 5 back', async ({
+  page,
+}) => {
+  await mockSupabase(page, { signedInAs: ACCOUNTS.owner });
+  await openClients(page);
+  await expect(clientRows(page)).toHaveCount(5);
+  const noMatch = page.getByText(LIST_MESSAGES.clientsNoMatch, { exact: true });
+  const clear = page.getByRole('button', { name: LIST_MESSAGES.clearSearchAndFilters });
+
+  // Search alone
+  await searchBox(page).fill('zzz-no-such-client');
+  await expect(noMatch).toBeVisible();
+  await expect(page.locator('table')).toHaveCount(0);
+  await clear.click();
+  await expect(searchBox(page)).toHaveValue('');
+  await expect(clientRows(page)).toHaveCount(5);
+
+  // Filters alone: ISO 13485 is Client10's only engagement, owned by Demo Owner 1, so with
+  // owner Demo Consultant 1 nothing matches (tests/support/activeClientRows.ts).
+  const [standard, owner] = [page.locator('select').nth(0), page.locator('select').nth(1)];
+  await standard.selectOption('ISO 13485');
+  await owner.selectOption({ label: 'Demo Consultant 1' });
+  await expect(noMatch).toBeVisible();
+  await clear.click();
+  await expect(standard).toHaveValue('ALL');
+  await expect(owner).toHaveValue('ALL');
+  await expect(clientRows(page)).toHaveCount(5);
+  await expect(noMatch).toHaveCount(0);
+});
+
+test('Try again after a failed read shows the loading line, then the clients', async ({ page }) => {
+  const stack = await mockSupabase(page, {
+    signedInAs: ACCOUNTS.owner,
+    activeClientsFailsFirst: 3,
+    holdReads: ['active_clients'],
+  });
+  try {
+    await openClients(page);
+    await expect(page.getByRole('alert')).toHaveText(DATA_MESSAGES.network, { timeout: 15_000 });
+    expect(count(stack, READ)).toBe(3);
+
+    await page.getByRole('button', { name: LIST_MESSAGES.tryAgain, exact: true }).click();
+    await expect(page.getByText(LIST_MESSAGES.clientsLoading, { exact: true })).toBeVisible();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  } finally {
+    stack.releaseReads();
+  }
+  await expect(clientRows(page)).toHaveCount(5);
+  expect(count(stack, READ)).toBe(4);
+  await expect(clientsBadge(page)).toHaveText('5');
+});
+
+test('the client dialog is a named modal dialog: focus inside, Tab stays inside, Esc closes and focus returns', async ({
+  page,
+}) => {
+  await mockSupabase(page, { signedInAs: ACCOUNTS.owner });
+  await openClients(page);
+  await expect(clientRows(page)).toHaveCount(5);
+
+  // Rows can't take focus yet (later list): focus the search box, open the row with a click
+  // event that doesn't move focus, and check focus comes back to the search box.
+  await searchBox(page).focus();
+  await clientRows(page).filter({ hasText: 'Client01 Demo Ltd' }).dispatchEvent('click');
+
+  const dialog = clientDialog(page, 'Client01 Demo Ltd');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveAttribute('aria-modal', 'true');
+  await expect(dialog).toBeFocused();
+
+  const close = dialog.getByRole('button', { name: 'Close', exact: true });
+  await page.keyboard.press('Tab');
+  await expect(close).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(close).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(close).toBeFocused();
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(searchBox(page)).toBeFocused();
 });

@@ -6,6 +6,8 @@ import type { Client, Engagement } from '../types/crm';
 import { NO_OWNER, ownerText } from '../lib/data/mappers';
 import { useActiveClients, useEngagementValues, useOwnerName } from '../lib/data/hooks';
 import { dataErrorMessage } from '../lib/data/errors';
+import { LIST_MESSAGES, listState } from '../lib/data/listState';
+import { useDialog } from '../lib/useDialog';
 import { useSignedInUser } from '../lib/auth/context';
 import { formatINR } from '../utils/currency';
 import { isFeatureEnabled } from '../lib/screens';
@@ -35,8 +37,8 @@ const unique = <T,>(values: T[]) => [...new Set(values)];
 
 export function ClientsView() {
   const { addClient } = useCrm();
-  // The `active_clients` view (step 2-d). Minimal loading, error and empty lines; full states
-  // are 2-g. Marketing reads no rows here (row-level security), so it gets a plain message.
+  // The `active_clients` view (step 2-d); loading, error, empty and no-match states (step 2-g).
+  // Marketing reads no rows here (row-level security), so it gets a plain message.
   const { data: loaded, error: loadError, refetch } = useActiveClients();
   const clients = loaded ?? NO_CLIENTS;
   const { role } = useSignedInUser();
@@ -98,7 +100,21 @@ export function ClientsView() {
     return matchesSearch && matchesService && matchesOwner;
   });
 
+  // The table shows only for 'rows'; every other state shows one line instead (step 2-g).
+  const state = listState(
+    { hasData: loaded !== undefined, error: loadError },
+    filteredClients.length,
+    clients.length,
+  );
+  const clearSearchAndFilters = () => {
+    setSearchTerm('');
+    setServiceFilter('ALL');
+    setOwnerFilter('ALL');
+  };
+
   const selected = selectedId ? (clients.find((c) => c.id === selectedId) ?? null) : null;
+  // Focus, Esc and Tab for the details dialog (step 2-g).
+  const detailsDialog = useDialog(selected !== null, () => setSelectedId(null));
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-12 space-y-6">
@@ -173,39 +189,55 @@ export function ClientsView() {
         </div>
       </div>
 
-      {/* Not read yet, or the first read failed (step 2-d; full states in 2-g) */}
-      {!loaded &&
-        (loadError ? (
-          <div className="flex items-center gap-3 text-xs">
-            <p role="alert" className="text-danger">
-              {dataErrorMessage(loadError)}
-            </p>
-            <button
-              type="button"
-              onClick={() => void refetch()}
-              className="px-3 py-1.5 rounded-lg bg-surface border border-line/16 text-text-secondary hover:text-text"
-            >
-              Try again
-            </button>
-          </div>
-        ) : (
-          <p className="text-xs text-muted">Loading clients…</p>
-        ))}
+      {/* Not read yet, or the first read failed (step 2-g). Try again puts the query back to
+          loading, so the loading line shows again. */}
+      {state === 'loading' && (
+        <p role="status" className="text-xs text-muted">
+          {LIST_MESSAGES.clientsLoading}
+        </p>
+      )}
+      {state === 'error' && (
+        <div className="flex items-center gap-3 text-xs">
+          <p role="alert" className="text-danger">
+            {dataErrorMessage(loadError)}
+          </p>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="px-3 py-1.5 rounded-lg bg-surface border border-line/16 text-text-secondary hover:text-text"
+          >
+            {LIST_MESSAGES.tryAgain}
+          </button>
+        </div>
+      )}
 
       {/* Read, but no clients. Marketing never reads this view's rows (row-level security). */}
-      {loaded && clients.length === 0 && (
+      {state === 'empty' && (
         <p className="text-xs text-muted">
-          {role === 'marketing'
-            ? 'Certified clients are shown to Owners and Consultants.'
-            : 'No certified clients yet.'}
+          {role === 'marketing' ? LIST_MESSAGES.clientsEmptyMarketing : LIST_MESSAGES.clientsEmpty}
         </p>
       )}
 
-      {/* Clients Table */}
-      {loaded && clients.length > 0 && (
+      {/* Clients exist, but the search and filters leave none */}
+      {state === 'no-match' && (
+        <div className="flex items-center gap-3 text-xs">
+          <p className="text-muted">{LIST_MESSAGES.clientsNoMatch}</p>
+          <button
+            type="button"
+            onClick={clearSearchAndFilters}
+            className="px-3 py-1.5 rounded-lg bg-surface border border-line/16 text-text-secondary hover:text-text"
+          >
+            {LIST_MESSAGES.clearSearchAndFilters}
+          </button>
+        </div>
+      )}
+
+      {/* Clients Table. No wrapping inside it (step 2-g): on a phone it scrolls sideways instead
+          of breaking names, chips and dates over several lines. */}
+      {state === 'rows' && (
         <div className="bg-surface border border-line/16 rounded-2xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs whitespace-nowrap">
               <thead className="bg-raised text-text-secondary uppercase text-[10px] tracking-wider border-b border-line/12">
                 <tr>
                   <th className="px-4 py-3">Client Company</th>
@@ -298,20 +330,25 @@ export function ClientsView() {
           onClick={() => setSelectedId(null)}
         >
           <div
-            className="bg-surface border border-line/22 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+            {...detailsDialog.panelProps}
+            className="bg-surface border border-line/22 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col outline-none"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Dialog Header */}
             <div className="p-5 border-b border-line/14 bg-raised/60 flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-bold text-text">{selected.name}</h3>
+                <h3 id={detailsDialog.titleId} className="text-lg font-bold text-text">
+                  {selected.name}
+                </h3>
                 <p className="text-xs text-text-secondary mt-0.5">
                   Client ID: {selected.code ?? '—'} · Contact: {selected.contactPerson ?? '—'}
                 </p>
               </div>
 
               <button
+                type="button"
                 onClick={() => setSelectedId(null)}
+                aria-label="Close"
                 className="p-1.5 rounded-lg text-muted hover:text-text-strong bg-raised"
               >
                 <X size={18} />
