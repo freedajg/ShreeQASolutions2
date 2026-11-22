@@ -1,6 +1,6 @@
-// What Pipeline, Clients and the nav badges read (Phase 2, steps 2-b to 2-e). Pipeline reads
+// What Pipeline, Clients and the nav badges read (Phase 2, steps 2-b to 2-f). Pipeline reads
 // the `pipeline` view since 2-c, Clients the `active_clients` view since 2-d, owner names the
-// `team_members` view since 2-e.
+// `team_members` view since 2-e, contract values `engagement_financials` since 2-f.
 import { useCallback, useMemo } from 'react';
 import {
   useMutation,
@@ -12,16 +12,26 @@ import {
 import { useSignedInUser } from '../auth/context';
 import { supabase, type DrishtiClient } from '../supabase/client';
 import type { DataError } from './errors';
+import type { Engagement } from '../../types/crm';
 import {
   createUnknownOwnerReporter,
   ownerDisplay,
+  sumValues,
   toClients,
   toEngagements,
+  toFinancials,
   toTeamNames,
+  valueDisplay,
   type OwnerDisplay,
+  type ValueDisplay,
 } from './mappers';
 import { STATUS_CHANGE_KEY, statusChangeMutation, type StatusChange } from './mutations';
-import { activeClientsQuery, pipelineQuery, teamMembersQuery } from './queries';
+import {
+  activeClientsQuery,
+  engagementFinancialsQuery,
+  pipelineQuery,
+  teamMembersQuery,
+} from './queries';
 
 // One per page load: each unknown owner id is logged once, however often it is shown.
 const reportUnknownOwner = createUnknownOwnerReporter();
@@ -78,6 +88,39 @@ export function useActiveClients() {
   const client = useDataClient();
   const { id: userId } = useSignedInUser();
   return useQuery({ ...activeClientsQuery(client, userId), select: toClients });
+}
+
+export interface EngagementValuesView {
+  /** False: render no value, total, dash or value column at all. */
+  canSeeValues: boolean;
+  /** What to show for one engagement's value. */
+  valueOf: (engagementId: string) => ValueDisplay;
+  /** Sum of the recorded amounts; null when there is nothing to show. */
+  totalOf: (engagements: readonly Engagement[]) => number | null;
+}
+
+/**
+ * Contract values (step 2-f), only from `engagement_financials`. The read is sent only for a
+ * user with values access (`enabled`); for anyone else no request leaves the browser and every
+ * value is `hidden`. One cached read per user (the key holds the user id), every financials row
+ * the user may see. While loading, or if the read fails, values are `loading` (nothing shown).
+ */
+export function useEngagementValues(): EngagementValuesView {
+  const client = useDataClient();
+  const { id: userId, canSeeValues } = useSignedInUser();
+  const { data: values } = useQuery({
+    ...engagementFinancialsQuery(client, userId),
+    enabled: canSeeValues,
+    select: toFinancials,
+  });
+  return useMemo(
+    () => ({
+      canSeeValues,
+      valueOf: (engagementId) => valueDisplay(values, canSeeValues, engagementId),
+      totalOf: (engagements) => sumValues(engagements, values, canSeeValues),
+    }),
+    [values, canSeeValues],
+  );
 }
 
 /**

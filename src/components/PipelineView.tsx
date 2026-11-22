@@ -22,11 +22,12 @@ import {
   groupByPipelineStatus,
   isPipelineStatus,
   ownerText,
-  sumValues,
   type OwnerDisplay,
+  type ValueDisplay,
 } from '../lib/data/mappers';
 import {
   useChangeEngagementStatus,
+  useEngagementValues,
   useOwnerName,
   usePendingStatusChanges,
   usePipelineEngagements,
@@ -54,10 +55,19 @@ const isQuiet = (engagement: Engagement) => (daysQuiet(engagement) ?? 0) >= QUIE
 
 type OwnerName = (ownerId: string | null) => OwnerDisplay;
 
+/**
+ * A value in a table cell or the dialog (step 2-f): the amount, "—" when not recorded, nothing
+ * while loading. Callers render no cell at all for a user without values access.
+ */
+const valueText = (shown: ValueDisplay) =>
+  shown.state === 'amount' ? formatINR(shown.amount) : shown.state === 'empty' ? '—' : '';
+
 const NO_ENGAGEMENTS: Engagement[] = [];
 
 interface SortableEngagementCardProps {
   engagement: Engagement;
+  /** Only an amount is shown on a card; empty, loading and hidden show no line. */
+  value: ValueDisplay;
   ownerName: OwnerName;
   onOpenDetails: (engagement: Engagement) => void;
   /** A move is being saved: no second drag until it's done. */
@@ -66,6 +76,7 @@ interface SortableEngagementCardProps {
 
 function EngagementCardItem({
   engagement,
+  value,
   ownerName,
   onOpenDetails,
   isSaving,
@@ -109,10 +120,10 @@ function EngagementCardItem({
         )}
       </div>
 
-      {/* Value, only when there is one */}
-      {engagement.contractValue !== null && (
+      {/* Value, only when one is recorded and the user may see values (step 2-f) */}
+      {value.state === 'amount' && (
         <div className="text-sm font-bold font-mono text-info tabular-nums">
-          {formatINR(engagement.contractValue)}
+          {formatINR(value.amount)}
         </div>
       )}
 
@@ -150,6 +161,8 @@ export function PipelineView() {
   // The `pipeline` view (step 2-c). Minimal loading and error lines; full states are 2-g.
   const { data: loaded, error: loadError, refetch } = usePipelineEngagements();
   const ownerName = useOwnerName();
+  // Values only from engagement_financials, and only for users with values access (step 2-f).
+  const { canSeeValues, valueOf, totalOf } = useEngagementValues();
 
   const [viewMode, setViewMode] = useState<'board' | 'table'>('board');
   const [searchTerm, setSearchTerm] = useState('');
@@ -228,6 +241,7 @@ export function PipelineView() {
 
   const selected = selectedId ? (engagements.find((e) => e.id === selectedId) ?? null) : null;
   const activeDragging = activeDragId ? engagements.find((e) => e.id === activeDragId) : null;
+  const draggingValue = activeDragging ? valueOf(activeDragging.id) : null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-12 space-y-6">
@@ -372,7 +386,8 @@ export function PipelineView() {
             <div className="flex items-start gap-4 min-w-max pb-2">
               {PIPELINE_COLUMNS.map((status) => {
                 const columnItems = columns[status];
-                const columnTotal = sumValues(columnItems);
+                // null (nothing shown) without values access, while loading, or with none recorded
+                const columnTotal = totalOf(columnItems);
 
                 return (
                   <div
@@ -413,6 +428,7 @@ export function PipelineView() {
                             <EngagementCardItem
                               key={engagement.id}
                               engagement={engagement}
+                              value={valueOf(engagement.id)}
                               ownerName={ownerName}
                               onOpenDetails={(e) => setSelectedId(e.id)}
                               isSaving={savingIds.has(engagement.id)}
@@ -433,9 +449,9 @@ export function PipelineView() {
                 <h4 className="text-[15px] font-semibold text-text line-clamp-2">
                   {activeDragging.client.name}
                 </h4>
-                {activeDragging.contractValue !== null && (
+                {draggingValue?.state === 'amount' && (
                   <div className="text-sm font-bold font-mono text-info">
-                    {formatINR(activeDragging.contractValue)}
+                    {formatINR(draggingValue.amount)}
                   </div>
                 )}
               </div>
@@ -455,7 +471,8 @@ export function PipelineView() {
                   <th className="px-4 py-3">Contact</th>
                   <th className="px-4 py-3">Standard</th>
                   <th className="px-4 py-3">Stage</th>
-                  <th className="px-4 py-3">Value</th>
+                  {/* No Value column at all without values access (step 2-f) */}
+                  {canSeeValues && <th className="px-4 py-3">Value</th>}
                   <th className="px-4 py-3">Owner</th>
                   <th className="px-4 py-3">Last Contact</th>
                 </tr>
@@ -488,11 +505,11 @@ export function PipelineView() {
                           {engagement.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 font-mono font-bold text-info tabular-nums">
-                        {engagement.contractValue !== null
-                          ? formatINR(engagement.contractValue)
-                          : '—'}
-                      </td>
+                      {canSeeValues && (
+                        <td className="px-4 py-3 font-mono font-bold text-info tabular-nums">
+                          {valueText(valueOf(engagement.id))}
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-text-secondary">
                         {ownerText(ownerName(engagement.ownerId))}
                       </td>
@@ -559,14 +576,17 @@ export function PipelineView() {
                     {selected.client.contactPerson ?? '—'}
                   </span>
                 </div>
-                <div>
-                  <span className="text-muted block text-[10px] uppercase font-semibold">
-                    Deal Value
-                  </span>
-                  <span className="text-info font-bold font-mono text-xs">
-                    {selected.contractValue !== null ? formatINR(selected.contractValue) : '—'}
-                  </span>
-                </div>
+                {/* No Deal Value block at all without values access (step 2-f) */}
+                {canSeeValues && (
+                  <div>
+                    <span className="text-muted block text-[10px] uppercase font-semibold">
+                      Deal Value
+                    </span>
+                    <span className="text-info font-bold font-mono text-xs">
+                      {valueText(valueOf(selected.id))}
+                    </span>
+                  </div>
+                )}
                 <div>
                   <span className="text-muted block text-[10px] uppercase font-semibold">
                     Current Stage

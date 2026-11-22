@@ -3,17 +3,18 @@ import { describe, expect, it } from 'vitest';
 // src/lib/data/sampleRows.ts was deleted); this file stays here because Vitest runs src/ only.
 import { SAMPLE_ACTIVE_CLIENT_ROWS } from '../../../tests/support/activeClientRows';
 import { ACCOUNTS, teamMemberRows } from '../../../tests/support/auth';
+import { SAMPLE_FINANCIALS_ROWS } from '../../../tests/support/financialsRows';
 import { SAMPLE_PIPELINE_ROWS } from '../../../tests/support/pipelineRows';
 import { SAMPLE_OWNER_IDS, SAMPLE_TEAM } from '../../../tests/support/team';
-import { toTeamNames } from './mappers';
-import { STATUS_VIEW_COLUMNS, TEAM_MEMBER_COLUMNS } from './queries';
+import { toFinancials, toTeamNames } from './mappers';
+import { FINANCIALS_COLUMNS, STATUS_VIEW_COLUMNS, TEAM_MEMBER_COLUMNS } from './queries';
 
 const ALL_ROWS = [...SAMPLE_PIPELINE_ROWS, ...SAMPLE_ACTIVE_CLIENT_ROWS];
 
 describe('sample rows', () => {
-  it('have exactly the 43 status-view columns', () => {
+  it('have exactly the 41 status-view columns the app reads (no values, step 2-f)', () => {
     const columns = STATUS_VIEW_COLUMNS.split(', ').sort();
-    expect(columns).toHaveLength(43);
+    expect(columns).toHaveLength(41);
     for (const row of ALL_ROWS) expect(Object.keys(row).sort()).toEqual(columns);
   });
 
@@ -66,5 +67,29 @@ describe('sample rows', () => {
     }
     const names = toTeamNames(rows);
     for (const member of SAMPLE_TEAM) expect(names.get(member.id)).toBe(member.fullName);
+  });
+});
+
+describe('sample financials rows (step 2-f)', () => {
+  it("have the financials table's columns and belong to a sample engagement, at most one each", () => {
+    const columns = FINANCIALS_COLUMNS.split(', ').sort();
+    const engagementIds = new Set(ALL_ROWS.map((row) => row.id));
+    for (const row of SAMPLE_FINANCIALS_ROWS) {
+      expect(Object.keys(row).sort()).toEqual(columns);
+      expect(engagementIds).toContain(row.engagement_id);
+    }
+    const ids = SAMPLE_FINANCIALS_ROWS.map((row) => row.engagement_id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('cover both empty cases: no financials row, and a row with no amount', () => {
+    const values = toFinancials(SAMPLE_FINANCIALS_ROWS);
+    const withoutRow = ALL_ROWS.filter((row) => row.id && !values.has(row.id));
+    expect(withoutRow.length).toBeGreaterThan(0);
+    expect([...values.values()].some((v) => v.amount === null)).toBe(true);
+  });
+
+  it('hold only made-up amounts and statuses (no contact details)', () => {
+    expect(JSON.stringify(SAMPLE_FINANCIALS_ROWS)).not.toMatch(/@|\+91/);
   });
 });

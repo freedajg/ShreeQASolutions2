@@ -129,7 +129,8 @@ async function openApp(page: Page, theme: Theme) {
   // Pipeline and Clients don't read this store since step 2-b. Pipeline reads the fake
   // `pipeline` view (tests/support/pipelineRows.ts, step 2-c), Clients the fake
   // `active_clients` view (tests/support/activeClientRows.ts, step 2-d), owner names the fake
-  // `team_members` view (tests/support/auth.ts, step 2-e). All are already fake. This still
+  // `team_members` view (tests/support/auth.ts, step 2-e), values the fake engagement_financials
+  // (tests/support/financialsRows.ts, step 2-f). All are already fake. This still
   // covers the hidden screens.
   await page.evaluate(fakeIdentities);
   await page.reload();
@@ -143,6 +144,11 @@ async function openApp(page: Page, theme: Theme) {
   // Owner names come from a third request (`team_members`, step 2-e): wait until the first
   // Lead card's avatar carries its owner's name (Client01 → Demo Owner 1, pipelineRows.ts).
   await waitUntilShown(page, page.locator('#column-Lead [title="Demo Owner 1"]'), watch, {
+    attached: true,
+  });
+  // Values come from a fourth request (`engagement_financials`, step 2-f): wait until Client01's
+  // card shows its amount (tests/support/financialsRows.ts).
+  await waitUntilShown(page, page.locator('#column-Lead').getByText('₹12,00,000'), watch, {
     attached: true,
   });
   // Test-only: background blur renders a few different corner pixels on every frame.

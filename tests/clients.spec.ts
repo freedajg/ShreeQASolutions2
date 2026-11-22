@@ -1,10 +1,11 @@
 // The Clients list against a fake Supabase (step 2-d): it reads the `active_clients` view once
 // (the nav badge and the screen share it), shows each client's engagements in the detail
-// dialog, never shows a value to a role without values access, and gives Marketing (which
+// dialog, never shows a value (or the Contract Value column) to a role without values access
+// (values come only from engagement_financials, step 2-f), and gives Marketing (which
 // reads no active clients) a plain message instead of an empty table.
 import { expect, test, type Page } from '@playwright/test';
 import { DATA_MESSAGES } from '../src/lib/data/errors';
-import { ACCOUNTS, mockSupabase, type FakeStack } from './support/auth';
+import { ACCOUNTS, CONSULTANT_WITH_VALUES, mockSupabase, type FakeStack } from './support/auth';
 
 // The first page load waits for the dev server to compile the app.
 test.describe.configure({ timeout: 60_000 });
@@ -12,12 +13,16 @@ test.describe.configure({ timeout: 60_000 });
 test.use({ viewport: { width: 1440, height: 900 } });
 
 const READ = 'GET /rest/v1/active_clients';
+const VALUES = 'GET /rest/v1/engagement_financials';
 const MARKETING_MESSAGE = 'Certified clients are shown to Owners and Consultants.';
 
 const count = (stack: FakeStack, call: string) => stack.calls.filter((c) => c === call).length;
 // The count badge on the desktop Clients tab (Navbar.tsx: the tab's tabular-nums span).
 const clientsBadge = (page: Page) => page.locator('#nav-tab-clients span.tabular-nums');
 const clientRows = (page: Page) => page.locator('table').first().locator('tbody tr');
+const clientHeaders = (page: Page) => page.locator('table').first().locator('thead th');
+const valueHeader = (page: Page) =>
+  page.getByRole('columnheader', { name: 'Contract Value', exact: true });
 // The client detail dialog has no dialog role (ClientsView.tsx): it is the fixed overlay that
 // holds the client's name as its heading.
 const clientDialog = (page: Page, name: string) =>
@@ -41,6 +46,13 @@ test('an Owner sees the 5 clients from one read, with values, and their certific
   await expect(clientsBadge(page)).toHaveText('5');
   expect(count(stack, READ)).toBe(1); // the badge and the screen share one read
   await expect(clientRows(page).first()).toContainText('₹');
+  await expect(valueHeader(page)).toBeVisible();
+  await expect(clientHeaders(page).nth(5)).toHaveText('Contract Value');
+  // Client10's only engagement has a financials row with no amount: "—".
+  const client10 = clientRows(page).filter({ hasText: 'Client10 Demo Ltd' });
+  await expect(client10.locator('td').nth(5)).toHaveText('—');
+  expect(count(stack, VALUES)).toBe(1);
+  await expect(page.locator('body')).not.toContainText('₹99'); // the fake view's decoy
 
   // Completed with no certificate dates: Valid To shows "—", never an estimate.
   await clientRows(page).filter({ hasText: 'Client10 Demo Ltd' }).click();
@@ -51,20 +63,37 @@ test('an Owner sees the 5 clients from one read, with values, and their certific
   await expect(certifications.locator('td')).toHaveText(['ISO 13485', 'Completed', '—']);
 });
 
-test('a Consultant without values access sees the same clients and no ₹ anywhere', async ({
+test('a Consultant without values access sees the same clients, no ₹ and no Contract Value column', async ({
   page,
 }) => {
-  await mockSupabase(page, { signedInAs: ACCOUNTS.consultant });
+  const stack = await mockSupabase(page, { signedInAs: ACCOUNTS.consultant });
   await openClients(page);
 
   await expect(clientRows(page)).toHaveCount(5);
   await expect(clientsBadge(page)).toHaveText('5');
   await expect(page.locator('body')).not.toContainText('₹');
+  await expect(valueHeader(page)).toHaveCount(0);
+  await expect(clientHeaders(page)).toHaveCount(6);
 
   await clientRows(page).filter({ hasText: 'Client09 Demo Ltd' }).click();
   const dialog = clientDialog(page, 'Client09 Demo Ltd');
   await expect(dialog.locator('tbody tr')).toHaveCount(2);
   await expect(page.locator('body')).not.toContainText('₹');
+  expect(count(stack, VALUES)).toBe(0);
+});
+
+test('a Consultant with values access sees the Contract Value column and ₹ (step 2-f)', async ({
+  page,
+}) => {
+  const stack = await mockSupabase(page, { signedInAs: CONSULTANT_WITH_VALUES });
+  await openClients(page);
+
+  await expect(clientRows(page)).toHaveCount(5);
+  await expect(valueHeader(page)).toBeVisible();
+  await expect(clientHeaders(page).nth(5)).toHaveText('Contract Value');
+  await expect(clientRows(page).first()).toContainText('₹');
+  expect(count(stack, VALUES)).toBe(1);
+  await expect(page.locator('body')).not.toContainText('₹99');
 });
 
 test('Marketing reads no active clients: a plain message, no table, no badge, no ₹', async ({
@@ -79,6 +108,7 @@ test('Marketing reads no active clients: a plain message, no table, no badge, no
   await expect(page.getByText('0 Active Accounts')).toBeVisible();
   await expect(clientsBadge(page)).toHaveCount(0);
   await expect(page.locator('body')).not.toContainText('₹');
+  expect(count(stack, VALUES)).toBe(0);
 });
 
 test('when the clients cannot be read, Clients says so and offers Try again', async ({ page }) => {

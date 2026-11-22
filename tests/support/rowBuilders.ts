@@ -1,7 +1,9 @@
 // Builders for the sample status-view rows the fake Supabase (./auth.ts) answers. Moved here
 // from src/lib/data/sampleRows.ts in step 2-d, when Clients started reading the database, so
-// the app no longer ships them. Rows have the views' own 43-column shape and go through the
-// same mapping code as live rows. Used by ./pipelineRows.ts and ./activeClientRows.ts.
+// the app no longer ships them. Rows have the 41 view columns the app reads (no contract_value
+// or payment_status since step 2-f: values come from ./financialsRows.ts, as the app reads them
+// only from engagement_financials) and go through the same mapping code as live rows. Used by
+// ./pipelineRows.ts and ./activeClientRows.ts.
 // Must not import ./auth.ts: unit tests import this file, and Vitest must not load Playwright.
 // Dummy data only (CLAUDE.md rule 9): fake companies, contacts, @example.com emails,
 // +91 00000 phones. Nothing here is a real client.
@@ -28,7 +30,6 @@ const BLANK: StatusViewRow = {
   client_state_country: null,
   client_website: null,
   completion_date: null,
-  contract_value: null,
   created_at: null,
   created_by: null,
   date_is_estimated: null,
@@ -40,7 +41,6 @@ const BLANK: StatusViewRow = {
   next_audit_date: null,
   next_follow_up_on: null,
   owner_id: null,
-  payment_status: null,
   remarks: null,
   scope: null,
   standard_framework: null,

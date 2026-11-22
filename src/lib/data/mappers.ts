@@ -9,7 +9,7 @@ import {
   type Engagement,
   type PipelineStatus,
 } from '../../types/crm';
-import type { StatusViewRow, TeamMemberRow } from './queries';
+import type { EngagementFinancialsRow, StatusViewRow, TeamMemberRow } from './queries';
 
 export function toEngagement(row: StatusViewRow): Engagement | null {
   if (!row.id || !row.client_id || !row.client_name || !row.status) return null;
@@ -52,8 +52,6 @@ export function toEngagement(row: StatusViewRow): Engagement | null {
     lastContactedOn: row.last_contacted_on,
     nextFollowUpOn: row.next_follow_up_on,
     dateIsEstimated: row.date_is_estimated,
-    contractValue: row.contract_value,
-    paymentStatus: row.payment_status,
   };
 }
 
@@ -100,11 +98,77 @@ export function groupByPipelineStatus(
   return columns;
 }
 
-/** Sum of the values present; null when none has a value (nothing to show). */
-export function sumValues(engagements: readonly Engagement[]): number | null {
+// Values (step 2-f) come only from `engagement_financials`
+// (20261006100000_clients_engagements_rls.sql lines 400–402: read only with
+// app.can_see_values()). The status views' own value columns are never requested.
+
+/** One engagement's financials as the screens use them. */
+export interface EngagementValue {
+  /** Rupees; null when not recorded. A recorded 0 stays 0. */
+  amount: number | null;
+  paymentStatus: string | null;
+}
+
+/** engagement id → its financials. */
+export type EngagementValues = ReadonlyMap<string, EngagementValue>;
+
+/**
+ * A finite number, or a plain numeric string (PostgREST may send `numeric` as text, e.g.
+ * "420000.00"); anything else is empty. Never NaN, so never a made-up "₹0".
+ */
+function toAmount(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string' && /^\d+(\.\d+)?$/.test(value.trim())) return Number(value);
+  return null;
+}
+
+/** `engagement_financials` rows → engagement id → value. A row without an id is dropped. */
+export function toFinancials(rows: readonly EngagementFinancialsRow[]): EngagementValues {
+  const values = new Map<string, EngagementValue>();
+  for (const row of rows) {
+    if (!row.engagement_id) continue;
+    values.set(row.engagement_id, {
+      amount: toAmount(row.contract_value as unknown),
+      paymentStatus: row.payment_status ?? null,
+    });
+  }
+  return values;
+}
+
+export type ValueDisplay =
+  /** The signed-in user has no values access: render nothing, not even a dash or a column. */
+  | { state: 'hidden' }
+  /** Values not here yet, or the read failed: render nothing (no dash, no total). */
+  | { state: 'loading' }
+  /** Not recorded (no financials row, or a row with no amount): "—". */
+  | { state: 'empty' }
+  | { state: 'amount'; amount: number };
+
+/** What to show for one engagement's value. */
+export function valueDisplay(
+  values: EngagementValues | undefined,
+  canSeeValues: boolean,
+  engagementId: string,
+): ValueDisplay {
+  if (!canSeeValues) return { state: 'hidden' };
+  if (!values) return { state: 'loading' };
+  const amount = values.get(engagementId)?.amount ?? null;
+  return amount === null ? { state: 'empty' } : { state: 'amount', amount };
+}
+
+/**
+ * Sum of the recorded amounts; null (nothing to show) when values are hidden or loading, or
+ * none is recorded.
+ */
+export function sumValues(
+  engagements: readonly Engagement[],
+  values: EngagementValues | undefined,
+  canSeeValues: boolean,
+): number | null {
   let total: number | null = null;
-  for (const { contractValue } of engagements) {
-    if (contractValue !== null) total = (total ?? 0) + contractValue;
+  for (const { id } of engagements) {
+    const shown = valueDisplay(values, canSeeValues, id);
+    if (shown.state === 'amount') total = (total ?? 0) + shown.amount;
   }
   return total;
 }

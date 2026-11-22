@@ -24,13 +24,15 @@ describe('decideAccess', () => {
   });
 
   it('signs in each role with its values access', () => {
+    // An Owner sees values even with the profile flag off, as in the seed (seed.sql line 362)
+    // and as app.can_see_values() decides (20261003161427_profiles_roles.sql line 84).
     expect(decideAccess(row())).toEqual({
       ok: true,
       user: {
         id: '5eed0001-0000-4000-8000-000000000001',
         fullName: 'Demo Owner 1',
         role: 'owner',
-        canSeeValues: false,
+        canSeeValues: true,
       },
     });
     const consultant = decideAccess(row({ role: 'consultant', can_see_values: true }));
@@ -39,6 +41,17 @@ describe('decideAccess', () => {
     const marketing = decideAccess(row({ role: 'marketing', can_see_values: null }));
     expect(marketing.ok && marketing.user.role).toBe('marketing');
     expect(marketing.ok && marketing.user.canSeeValues).toBe(false);
+  });
+
+  it('follows app.can_see_values(): Consultants only with the flag, Marketing never (step 2-f)', () => {
+    const access = (overrides: Partial<ProfileRow>) => {
+      const result = decideAccess(row(overrides));
+      return result.ok && result.user.canSeeValues;
+    };
+    expect(access({ role: 'owner', can_see_values: null })).toBe(true);
+    expect(access({ role: 'consultant', can_see_values: false })).toBe(false);
+    expect(access({ role: 'consultant', can_see_values: null })).toBe(false);
+    expect(access({ role: 'marketing', can_see_values: true })).toBe(false);
   });
 
   it('falls back to a neutral name when the profile has none', () => {

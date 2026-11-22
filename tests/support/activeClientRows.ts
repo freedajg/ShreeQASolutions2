@@ -4,7 +4,7 @@
 // screenshots don't change. Built with ./rowBuilders.ts; owner ids from ./team.ts (2-e).
 // Must not import ./auth.ts: unit tests import this file, and Vitest must not load Playwright.
 // Dummy data only (CLAUDE.md rule 9): fake companies, contacts, @example.com emails,
-// +91 00000 phones, made-up amounts. Nothing here is a real client.
+// +91 00000 phones; amounts are in ./financialsRows.ts. Nothing here is a real client.
 import type { StatusViewRow } from '../../src/lib/data/queries';
 import { SAMPLE_CLIENT_01, sampleClient, sampleRow } from './rowBuilders';
 import { SAMPLE_OWNER_IDS } from './team';
@@ -23,8 +23,6 @@ export const SAMPLE_ACTIVE_CLIENT_ROWS: readonly StatusViewRow[] = [
     valid_from: '2024-03-15',
     valid_to: '2027-03-14',
     last_audit_date: '2026-03-10',
-    contract_value: 650000,
-    payment_status: 'Paid',
   }),
   sampleRow('22', 'Certified', C09, {
     certification_type: 'CMMI',
@@ -33,8 +31,6 @@ export const SAMPLE_ACTIVE_CLIENT_ROWS: readonly StatusViewRow[] = [
     completion_date: '2025-06-01',
     valid_to: '2028-05-31',
     last_audit_date: '2025-06-01',
-    contract_value: 1500000,
-    payment_status: 'Partially Paid',
   }),
   sampleRow('23', 'Renewal Due', C09, {
     certification_type: 'ISO 9001',
@@ -42,8 +38,6 @@ export const SAMPLE_ACTIVE_CLIENT_ROWS: readonly StatusViewRow[] = [
     completion_date: '2023-11-21',
     valid_to: '2026-11-20',
     last_audit_date: '2025-11-18',
-    contract_value: 300000,
-    payment_status: 'Paid',
   }),
   // Completed with no certificate dates: shown empty, never estimated in the browser.
   sampleRow('24', 'Completed', C10, {
@@ -57,8 +51,6 @@ export const SAMPLE_ACTIVE_CLIENT_ROWS: readonly StatusViewRow[] = [
     completion_date: '2026-01-31',
     valid_to: '2027-01-30',
     last_audit_date: '2026-01-31',
-    contract_value: 700000,
-    payment_status: 'Not Invoiced',
   }),
   sampleRow('26', 'Renewal Due', C11, {
     certification_type: 'ISO 27701',
@@ -66,8 +58,6 @@ export const SAMPLE_ACTIVE_CLIENT_ROWS: readonly StatusViewRow[] = [
     completion_date: '2023-10-30',
     valid_to: '2026-10-29',
     last_audit_date: '2025-10-28',
-    contract_value: 400000,
-    payment_status: 'Overdue',
   }),
   sampleRow('27', 'Certified', C12, {
     certification_type: 'ISO 27001',
@@ -75,7 +65,5 @@ export const SAMPLE_ACTIVE_CLIENT_ROWS: readonly StatusViewRow[] = [
     completion_date: '2025-08-12',
     valid_to: '2028-08-11',
     last_audit_date: '2025-08-12',
-    contract_value: 550000,
-    payment_status: 'Paid',
   }),
 ];

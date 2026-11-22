@@ -12,6 +12,7 @@ import {
   STATUS_VIEW_COLUMNS,
   TEAM_MEMBER_COLUMNS,
   activeClientsQuery,
+  engagementFinancialsQuery,
   fetchActiveClients,
   fetchEngagementFinancials,
   fetchPipeline,
@@ -58,7 +59,14 @@ describe('status view reads', () => {
       ['retry', false],
     ]);
     expect(STATUS_VIEW_COLUMNS).not.toContain('*');
-    expect(STATUS_VIEW_COLUMNS.split(', ')).toHaveLength(43);
+    expect(STATUS_VIEW_COLUMNS.split(', ')).toHaveLength(41);
+  });
+
+  it('never asks a status view for values: they come only from engagement_financials (step 2-f)', () => {
+    const columns = STATUS_VIEW_COLUMNS.split(', ');
+    expect(columns).not.toContain('contract_value');
+    expect(columns).not.toContain('payment_status');
+    expect(FINANCIALS_COLUMNS).toBe('engagement_id, contract_value, payment_status');
   });
 
   it('fetchActiveClients reads the active_clients view', async () => {
@@ -143,6 +151,16 @@ describe('query keys and options', () => {
       USER,
       ['a', 'b'],
     ]);
+  });
+
+  it('engagementFinancialsQuery uses the user-scoped key and reads every row RLS allows (step 2-f)', async () => {
+    const { client, calls } = fakeClient(ok([]));
+    const options = engagementFinancialsQuery(client, USER);
+    expect(options.queryKey).toEqual(['engagement_financials', USER]);
+    const queryFn = options.queryFn as (context: { signal: AbortSignal }) => Promise<unknown>;
+    await queryFn({ signal: new AbortController().signal });
+    expect(calls[0]).toEqual(['from', 'engagement_financials']);
+    expect(calls.some(([method]) => method === 'in')).toBe(false);
   });
 
   it('pipelineQuery uses the key and reads the pipeline view', async () => {

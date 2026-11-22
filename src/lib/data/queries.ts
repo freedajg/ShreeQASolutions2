@@ -9,16 +9,27 @@ import { toDataError } from './errors';
 import { queryKeys } from './keys';
 
 type PublicSchema = Database['public'];
-export type StatusViewRow = PublicSchema['Views']['pipeline']['Row'];
+/**
+ * One status-view row as the app reads it: the views' columns without `contract_value` and
+ * `payment_status` (step 2-f). Values come only from `engagement_financials`, read only for a
+ * user with values access, so a view row can't carry a value into a screen.
+ */
+export type StatusViewRow = Omit<
+  PublicSchema['Views']['pipeline']['Row'],
+  'contract_value' | 'payment_status'
+>;
 export type EngagementFinancialsRow = Pick<
   PublicSchema['Tables']['engagement_financials']['Row'],
   'engagement_id' | 'contract_value' | 'payment_status'
 >;
 export type TeamMemberRow = PublicSchema['Views']['team_members']['Row'];
 
-// The five status views share these 43 columns (20261006120000_status_views.sql).
+// The five status views share 43 columns (20261006120000_status_views.sql); the app reads 41 of
+// them. `contract_value` and `payment_status` (lines 84–85, a left join on
+// engagement_financials) are never requested here (step 2-f): values come from
+// fetchEngagementFinancials only.
 export const STATUS_VIEW_COLUMNS =
-  'id, client_id, certification_type, standard_framework, scope, status, status_group, status_sort_order, initial_engagement_date, completion_date, certificate_number, valid_from, valid_to, certification_body, surveillance_due_date, last_audit_date, next_audit_date, owner_id, lead_source, remarks, last_contacted_on, next_follow_up_on, date_is_estimated, created_by, archived_at, created_at, updated_at, client_code, client_name, client_industry, client_address, client_city, client_state_country, client_contact_person, client_designation, client_email, client_phone, client_website, client_priority, client_do_not_contact, client_archived_at, contract_value, payment_status' as const;
+  'id, client_id, certification_type, standard_framework, scope, status, status_group, status_sort_order, initial_engagement_date, completion_date, certificate_number, valid_from, valid_to, certification_body, surveillance_due_date, last_audit_date, next_audit_date, owner_id, lead_source, remarks, last_contacted_on, next_follow_up_on, date_is_estimated, created_by, archived_at, created_at, updated_at, client_code, client_name, client_industry, client_address, client_city, client_state_country, client_contact_person, client_designation, client_email, client_phone, client_website, client_priority, client_do_not_contact, client_archived_at' as const;
 
 export const FINANCIALS_COLUMNS = 'engagement_id, contract_value, payment_status' as const;
 
@@ -61,8 +72,9 @@ export async function fetchActiveClients(
 }
 
 /**
- * Contract values and payment status. For a role without values access, RLS returns no rows:
- * that's an empty list, not an error.
+ * Contract values and payment status: the only source of values on screen (step 2-f). The app
+ * asks only for a user with values access; for anyone else RLS would return no rows
+ * (20261006100000_clients_engagements_rls.sql lines 400–402): an empty list, not an error.
  */
 export async function fetchEngagementFinancials(
   client: DrishtiClient,

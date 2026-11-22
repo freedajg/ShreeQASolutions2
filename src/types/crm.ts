@@ -51,9 +51,9 @@ export interface Engagement {
   lastContactedOn: string | null;
   nextFollowUpOn: string | null;
   dateIsEstimated: boolean | null;
-  /** Empty when there is no value or the signed-in role may not see values. */
-  contractValue: number | null;
-  paymentStatus: string | null;
+  // No contract value or payment status here (step 2-f): they come only from
+  // `engagement_financials`, read separately for users with values access (useEngagementValues),
+  // and are looked up by engagement id (valueDisplay in src/lib/data/mappers.ts).
 }
 
 /** A client with its engagements from one status view. */

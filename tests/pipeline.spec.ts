@@ -1,8 +1,15 @@
 // The Pipeline board against a fake Supabase (step 2-c): it reads the `pipeline` view, a drag
 // calls change_engagement_status() once, and a refusal snaps the card back with a plain message.
+// Step 2-f: values come only from engagement_financials, and only for users with values access.
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { DATA_MESSAGES } from '../src/lib/data/errors';
-import { ACCOUNTS, mockSupabase, type FakeStack } from './support/auth';
+import {
+  ACCOUNTS,
+  CONSULTANT_WITH_VALUES,
+  mockSupabase,
+  type FakeAccount,
+  type FakeStack,
+} from './support/auth';
 
 // The first page load waits for the dev server to compile the app.
 test.describe.configure({ timeout: 60_000 });
@@ -12,12 +19,21 @@ test.use({ viewport: { width: 1440, height: 900 } });
 const CLIENT01_LEAD = 'e1a90000-0000-4000-8000-000000000001'; // tests/support/pipelineRows.ts
 const RPC = 'POST /rest/v1/rpc/change_engagement_status';
 const READ = 'GET /rest/v1/pipeline';
+const VALUES = 'GET /rest/v1/engagement_financials';
+const DECOY = '₹99'; // what a status view's value columns hold in the fake (support/auth.ts)
 
 const count = (stack: FakeStack, call: string) => stack.calls.filter((c) => c === call).length;
 const card = (page: Page, column: string, name: string) =>
   page.locator(`#column-${column}`).getByText(name, { exact: true });
 // The count badge on the desktop Pipeline tab (Navbar.tsx: the tab's tabular-nums span).
 const pipelineBadge = (page: Page) => page.locator('#nav-tab-pipeline span.tabular-nums');
+const tableRow = (page: Page, name: string) => page.locator('tbody tr', { hasText: name });
+const valueHeader = (page: Page) => page.getByRole('columnheader', { name: 'Value', exact: true });
+
+async function showTable(page: Page) {
+  await page.getByRole('button', { name: 'Table', exact: true }).click();
+  await expect(page.locator('tbody tr')).toHaveCount(7);
+}
 
 /** Drags `from` onto `to` with the mouse, in small steps, as a person would. */
 async function drag(page: Page, from: Locator, to: Locator) {
@@ -77,7 +93,7 @@ test('Marketing is refused on a lead it did not create: the card snaps back with
   await expect.poll(() => count(stack, READ)).toBe(2); // refetched after the refusal too
   expect(count(stack, RPC)).toBe(1); // never retried
   expect(stack.statusChanges).toEqual([{ engagementId: CLIENT01_LEAD, newStatus: 'Proposal' }]);
-  // No ₹ for Marketing anywhere on the board (values stripped, as RLS does).
+  // No ₹ for Marketing anywhere on the board (no values request; step 2-f).
   await expect(page.locator('#column-Lead')).not.toContainText('₹');
 
   await page.getByRole('button', { name: 'Close message' }).click();
@@ -96,5 +112,81 @@ test('when the board cannot be read, it says so and offers Try again', async ({ 
   expect(count(stack, READ)).toBe(3);
   await expect(page.locator('#column-Lead')).toHaveCount(0);
   await expect(pipelineBadge(page)).toHaveCount(0);
+  expect(pageErrors, 'uncaught errors in the page').toEqual([]);
+});
+
+for (const [label, account] of [
+  ['an Owner (profile flag off, as in the seed)', ACCOUNTS.owner],
+  ['a Consultant with values access', CONSULTANT_WITH_VALUES],
+] as [string, FakeAccount][]) {
+  test(`${label} sees values from engagement_financials only: card, total, table, dialog`, async ({
+    page,
+  }) => {
+    const stack = await mockSupabase(page, { signedInAs: account });
+    await page.goto('/');
+    const lead = page.locator('#column-Lead');
+    await expect(lead.getByText('₹12,00,000')).toBeVisible(); // Client01's card
+    await expect(page.locator('body')).not.toContainText(DECOY);
+    await expect(lead.getByText('₹20,00,000')).toBeVisible(); // Lead total: 12 L + 4.5 L + 3.5 L
+    expect(count(stack, VALUES)).toBe(1);
+
+    await showTable(page);
+    await expect(valueHeader(page)).toBeVisible();
+    await expect(page.locator('thead th').nth(4)).toHaveText('Value');
+    // Client03 has no financials row: an em dash in the value colour (DECISIONS 12-Oct-2026).
+    const empty = tableRow(page, 'Client03 Demo Ltd').locator('td').nth(4);
+    await expect(empty).toHaveText('—');
+    await expect(empty).toHaveClass(/\btext-info\b/);
+
+    await tableRow(page, 'Client01 Demo Ltd').click();
+    await expect(page.getByText('Deal Value', { exact: true })).toBeVisible();
+    await expect(page.locator('body')).not.toContainText(DECOY);
+  });
+}
+
+for (const [label, account] of [
+  ['A default Consultant', ACCOUNTS.consultant],
+  ['Marketing', ACCOUNTS.marketing],
+] as [string, FakeAccount][]) {
+  test(`${label} sees no value, total, Value column or Deal Value, and never asks for values`, async ({
+    page,
+  }) => {
+    const stack = await mockSupabase(page, { signedInAs: account });
+    await page.goto('/');
+    await expect(card(page, 'Lead', 'Client01 Demo Ltd')).toBeVisible();
+    await expect(page.locator('body')).not.toContainText('₹');
+
+    await showTable(page);
+    await expect(valueHeader(page)).toHaveCount(0);
+    await expect(page.locator('thead th')).toHaveCount(6);
+    // (No "—" check on the row: Client03's Last Contact cell is "—" by itself.)
+    await expect(tableRow(page, 'Client03 Demo Ltd').locator('td')).toHaveCount(6);
+
+    await tableRow(page, 'Client01 Demo Ltd').click();
+    await expect(page.getByText('Current Stage', { exact: true })).toBeVisible();
+    await expect(page.getByText('Deal Value', { exact: true })).toHaveCount(0);
+    await expect(page.locator('body')).not.toContainText('₹');
+    expect(count(stack, VALUES)).toBe(0); // no values request ever leaves the browser
+  });
+}
+
+test('when values cannot be read, the board still shows, with no value, total or dash', async ({
+  page,
+}) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  const stack = await mockSupabase(page, { signedInAs: ACCOUNTS.owner, financialsFails: true });
+  await page.goto('/');
+  await expect(card(page, 'Lead', 'Client01 Demo Ltd')).toBeVisible();
+  // Network errors are retried twice (3 tries, about 3 s; src/lib/data/queryClient.ts line 7).
+  await expect.poll(() => count(stack, VALUES), { timeout: 15_000 }).toBe(3);
+  await expect(page.locator('body')).not.toContainText('₹');
+
+  await showTable(page);
+  await expect(valueHeader(page)).toBeVisible(); // the Owner may see values; none arrived
+  await expect(page.locator('thead th').nth(4)).toHaveText('Value');
+  await expect(tableRow(page, 'Client01 Demo Ltd').locator('td').nth(4)).toHaveText('');
+  await expect(tableRow(page, 'Client03 Demo Ltd').locator('td').nth(4)).toHaveText('');
+  await expect(page.getByRole('alert')).toHaveCount(0);
   expect(pageErrors, 'uncaught errors in the page').toEqual([]);
 });

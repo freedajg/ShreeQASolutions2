@@ -17,7 +17,10 @@ export type SignedInUser = {
   id: string;
   fullName: string;
   role: AppRole;
-  // For display only (2-f); the database decides what values each user receives.
+  // For display only (2-f); the database decides what values each user receives. Same rule as
+  // app.can_see_values() (20261003161427_profiles_roles.sql line 84): Owners always (their
+  // profile flag is ignored, and is false in the seed), Consultants only with the flag,
+  // Marketing never.
   canSeeValues: boolean;
 };
 
@@ -41,13 +44,14 @@ export function decideAccess(row: ProfileRow | null | undefined): Access {
   if (!row || row.active !== true || row.role === null || !ROLES.includes(row.role)) {
     return { ok: false };
   }
+  const role = row.role as AppRole;
   return {
     ok: true,
     user: {
       id: row.id,
       fullName: row.full_name?.trim() || 'Signed-in user',
-      role: row.role as AppRole,
-      canSeeValues: row.can_see_values === true,
+      role,
+      canSeeValues: role === 'owner' || (role === 'consultant' && row.can_see_values === true),
     },
   };
 }

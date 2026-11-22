@@ -3,8 +3,8 @@ import { Search, Plus, X } from 'lucide-react';
 import { useCrm } from '../context/CrmContext';
 import { Client as MvpClient, ServiceKind } from '../types';
 import type { Client, Engagement } from '../types/crm';
-import { NO_OWNER, ownerText, sumValues } from '../lib/data/mappers';
-import { useActiveClients, useOwnerName } from '../lib/data/hooks';
+import { NO_OWNER, ownerText } from '../lib/data/mappers';
+import { useActiveClients, useEngagementValues, useOwnerName } from '../lib/data/hooks';
 import { dataErrorMessage } from '../lib/data/errors';
 import { useSignedInUser } from '../lib/auth/context';
 import { formatINR } from '../utils/currency';
@@ -41,6 +41,15 @@ export function ClientsView() {
   const clients = loaded ?? NO_CLIENTS;
   const { role } = useSignedInUser();
   const ownerName = useOwnerName();
+  // Values only from engagement_financials, and only for users with values access (step 2-f).
+  const { canSeeValues, valueOf, totalOf } = useEngagementValues();
+
+  /** The Contract Value cell: the total, "—" when none is recorded, nothing while loading. */
+  const totalText = (client: Client) => {
+    const total = totalOf(client.engagements);
+    if (total !== null) return formatINR(total);
+    return client.engagements.some((e) => valueOf(e.id).state === 'loading') ? '' : '—';
+  };
 
   const [searchTerm, setSearchTerm] = useState('');
   const [serviceFilter, setServiceFilter] = useState<string>('ALL');
@@ -204,13 +213,13 @@ export function ClientsView() {
                   <th className="px-4 py-3">Contact Person</th>
                   <th className="px-4 py-3">Last Audit</th>
                   <th className="px-4 py-3">Status / Valid To</th>
-                  <th className="px-4 py-3">Contract Value</th>
+                  {/* No Contract Value column at all without values access (step 2-f) */}
+                  {canSeeValues && <th className="px-4 py-3">Contract Value</th>}
                   <th className="px-4 py-3">Owner</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line/8 text-text">
                 {filteredClients.map((client) => {
-                  const total = sumValues(client.engagements);
                   const owners = ownerNames(client);
 
                   return (
@@ -264,9 +273,11 @@ export function ClientsView() {
                           ))}
                         </div>
                       </td>
-                      <td className="px-4 py-3 font-mono font-bold text-text tabular-nums">
-                        {total !== null ? formatINR(total) : '—'}
-                      </td>
+                      {canSeeValues && (
+                        <td className="px-4 py-3 font-mono font-bold text-text tabular-nums">
+                          {totalText(client)}
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-text-secondary">
                         {/* Nothing while the names load; "No owner" only when none has one */}
                         {owners.length ? owners.join(', ') : hasOwner(client) ? '' : NO_OWNER}

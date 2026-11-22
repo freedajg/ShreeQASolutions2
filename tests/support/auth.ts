@@ -7,8 +7,15 @@
 // Step 2-e: also the `team_members` view (read-only): every profile in ACCOUNTS for a caller
 // with a role, nothing otherwise (20261003161427_profiles_roles.sql lines 230–235). The own
 // profile read (`profiles?id=eq.<own id>`) is unchanged.
+// Step 2-f: also `engagement_financials` (./financialsRows.ts), the only source of values. Who
+// gets values follows app.can_see_values() (20261003161427_profiles_roles.sql line 84): Owners
+// always, Consultants with can_see_values, Marketing never; read policy
+// 20261006100000_clients_engagements_rls.sql lines 400–402. Every fake account has
+// can_see_values false except CONSULTANT_WITH_VALUES, as the seed has (seed.sql line 362), so
+// an Owner sees values only if the app applies the role rule.
 import type { Page, Route } from '@playwright/test';
 import { SAMPLE_ACTIVE_CLIENT_ROWS } from './activeClientRows';
+import { SAMPLE_FINANCIALS_ROWS } from './financialsRows';
 import { SAMPLE_PIPELINE_ROWS } from './pipelineRows';
 
 export const STACK_URL = 'http://127.0.0.1:54321';
@@ -46,7 +53,8 @@ const account = (n: string, role: FakeAccount['role'], name: string, email: stri
   email,
   full_name: name,
   role,
-  can_see_values: role === 'owner',
+  // As the seed: false for everyone, Owners included (their flag is ignored by the database).
+  can_see_values: false,
   active: true,
 });
 
@@ -60,6 +68,35 @@ export const ACCOUNTS = {
     active: false,
   },
 } satisfies Record<string, FakeAccount>;
+
+/**
+ * A Consultant an Owner has given values access (like the seed's Demo Consultant 2). Not in
+ * ACCOUNTS, so the team list and the screenshots of every other test stay as they are; the fake
+ * knows it only in a test signed in as it.
+ */
+export const CONSULTANT_WITH_VALUES: FakeAccount = {
+  ...account('12', 'consultant', 'Demo Consultant 2', 'demo.consultant2@example.com'),
+  can_see_values: true,
+};
+
+/** app.can_see_values() (20261003161427_profiles_roles.sql lines 75–90). */
+export function seesValues(user: FakeAccount | undefined): boolean {
+  return (
+    !!user &&
+    user.active &&
+    (user.role === 'owner' || (user.role === 'consultant' && user.can_see_values))
+  );
+}
+
+/**
+ * What a status view's two value columns hold for this caller. The app never selects them
+ * (step 2-f); a caller with values access gets a decoy, so a screen that ever read values from
+ * a view again would show "₹99" and fail a test. Everyone else gets null, as RLS gives.
+ */
+const viewValues = (user: FakeAccount | undefined) =>
+  seesValues(user)
+    ? { contract_value: 99, payment_status: 'Paid' }
+    : { contract_value: null, payment_status: null };
 
 // `userMetadata` is what a user can edit about themselves; it appears in the token and the user
 // object, as with real Supabase. The app must ignore it for roles.
@@ -188,13 +225,15 @@ export type FakeStack = {
  * accounts in ACCOUNTS with TEST_PASSWORD. `userMetadata` goes into every session and user the
  * fake Auth hands out (e.g. a self-set `role`, which the app must ignore). `profileFails`
  * aborts every profile request, as if the database were unreachable.
- * The `pipeline` view answers SAMPLE_PIPELINE_ROWS (a fresh copy per test), without values for
- * an account without values access. A status change that's allowed updates that copy, so the
+ * The `pipeline` view answers SAMPLE_PIPELINE_ROWS (a fresh copy per test), with the decoy value
+ * columns from viewValues. A status change that's allowed updates that copy, so the
  * board's refetch shows it. `pipelineFails` aborts every pipeline read; `statusChange:
  * 'refuse'` refuses every status change, whoever asks.
- * The `active_clients` view answers SAMPLE_ACTIVE_CLIENT_ROWS to an Owner or Consultant
- * (without values for an account without values access) and nothing to Marketing, as RLS
- * does. `activeClientsFails` aborts every active_clients read.
+ * The `active_clients` view answers SAMPLE_ACTIVE_CLIENT_ROWS to an Owner or Consultant (decoy
+ * value columns as above) and nothing to Marketing, as RLS does. `activeClientsFails` aborts
+ * every active_clients read.
+ * `engagement_financials` answers SAMPLE_FINANCIALS_ROWS to a caller with values access and
+ * nothing to anyone else (step 2-f). `financialsFails` aborts every financials read.
  * The `team_members` view answers every account in ACCOUNTS to a caller with a role and
  * nothing to a role-less or inactive one (the view's gate). `teamWithout` leaves those ids
  * out (an "Unknown owner"); `teamMembersFails` aborts every team_members read.
@@ -211,10 +250,14 @@ export async function mockSupabase(
     activeClientsFails?: boolean;
     teamMembersFails?: boolean;
     teamWithout?: string[];
+    financialsFails?: boolean;
   } = {},
 ): Promise<FakeStack> {
   const stack: FakeStack = { calls: [], statusChanges: [] };
-  const accounts: FakeAccount[] = Object.values(ACCOUNTS);
+  const accounts: FakeAccount[] = [
+    ...Object.values(ACCOUNTS),
+    ...(options.signedInAs?.id === CONSULTANT_WITH_VALUES.id ? [CONSULTANT_WITH_VALUES] : []),
+  ];
   let current = options.signedInAs;
   const sessionFor = (user: FakeAccount) => fakeSession(user, options.userMetadata);
   // This test's own copy: a status change here never leaks into another test.
@@ -289,11 +332,10 @@ export async function mockSupabase(
       if (options.pipelineFails) return route.abort('connectionrefused');
       // RLS: a role-less or inactive user reads nothing.
       if (!current?.role || !current.active) return json(route, 200, []);
-      const seesValues = current.can_see_values;
       // Array order, not re-sorted: before any change this is exactly SAMPLE_PIPELINE_ROWS.
       const rows = pipelineRows
         .filter((row) => isLead(row.status))
-        .map((row) => (seesValues ? row : { ...row, contract_value: null, payment_status: null }));
+        .map((row) => ({ ...row, ...viewValues(current) }));
       return json(route, 200, rows);
     }
 
@@ -305,11 +347,14 @@ export async function mockSupabase(
       if (!current?.role || !current.active || current.role === 'marketing') {
         return json(route, 200, []);
       }
-      const seesValues = current.can_see_values;
-      const rows = SAMPLE_ACTIVE_CLIENT_ROWS.map((row) =>
-        seesValues ? row : { ...row, contract_value: null, payment_status: null },
-      );
+      const rows = SAMPLE_ACTIVE_CLIENT_ROWS.map((row) => ({ ...row, ...viewValues(current) }));
       return json(route, 200, rows);
+    }
+
+    if (method === 'GET' && url.pathname === '/rest/v1/engagement_financials') {
+      if (options.financialsFails) return route.abort('connectionrefused');
+      // Read policy: using (app.can_see_values()); anyone else gets no rows, not an error.
+      return json(route, 200, seesValues(current) ? SAMPLE_FINANCIALS_ROWS : []);
     }
 
     if (method === 'GET' && url.pathname === '/rest/v1/team_members') {

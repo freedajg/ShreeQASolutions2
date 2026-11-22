@@ -12,9 +12,11 @@ import {
   toClients,
   toEngagement,
   toEngagements,
+  toFinancials,
   toTeamNames,
+  valueDisplay,
 } from './mappers';
-import type { StatusViewRow, TeamMemberRow } from './queries';
+import type { EngagementFinancialsRow, StatusViewRow, TeamMemberRow } from './queries';
 import { SAMPLE_PIPELINE_ROWS } from '../../../tests/support/pipelineRows';
 import { SAMPLE_ACTIVE_CLIENT_ROWS } from '../../../tests/support/activeClientRows';
 
@@ -47,7 +49,6 @@ describe('toEngagement', () => {
       standard_framework: 'DEV ML3',
       owner_id: 'o-1',
       lead_source: 'Referral',
-      contract_value: 450000,
       last_contacted_on: '2026-09-15',
       valid_to: '2027-03-14',
       client_email: 'client01@example.com',
@@ -62,7 +63,6 @@ describe('toEngagement', () => {
       standardFramework: 'DEV ML3',
       ownerId: 'o-1',
       leadSource: 'Referral',
-      contractValue: 450000,
       lastContactedOn: '2026-09-15',
       validTo: '2027-03-14',
     });
@@ -75,7 +75,7 @@ describe('toEngagement', () => {
     });
   });
 
-  it('leaves empty columns empty: no made-up email, phone, date, owner or value', () => {
+  it('leaves empty columns empty: no made-up email, phone, date or owner', () => {
     const e = engagement({});
     expect(e.client.email).toBeNull();
     expect(e.client.phone).toBeNull();
@@ -84,11 +84,14 @@ describe('toEngagement', () => {
     expect(e.nextFollowUpOn).toBeNull();
     expect(e.validTo).toBeNull();
     expect(e.ownerId).toBeNull();
-    expect(e.contractValue).toBeNull();
   });
 
-  it('keeps a value of zero (it is a value, not an empty one)', () => {
-    expect(engagement({ contract_value: 0 }).contractValue).toBe(0);
+  it('carries no value, even if a view row had one (values come only from engagement_financials, step 2-f)', () => {
+    const withDecoy = { ...row({}), contract_value: 99, payment_status: 'Paid' } as StatusViewRow;
+    const e = toEngagement(withDecoy);
+    expect(e).not.toHaveProperty('contractValue');
+    expect(e).not.toHaveProperty('paymentStatus');
+    expect(JSON.stringify(e)).not.toContain('99');
   });
 
   it('drops a row without an id, client, client name or status', () => {
@@ -192,20 +195,85 @@ describe('pipeline columns', () => {
   });
 });
 
-describe('sumValues', () => {
-  it('adds only the values present', () => {
-    expect(
-      sumValues([
-        engagement({ contract_value: 100000 }),
-        engagement({ contract_value: null }),
-        engagement({ contract_value: 250000 }),
-      ]),
-    ).toBe(350000);
+// Step 2-f: values come only from engagement_financials.
+const financials = (
+  engagement_id: string | null,
+  contract_value: unknown,
+  payment_status: string | null = null,
+) => ({ engagement_id, contract_value, payment_status }) as EngagementFinancialsRow;
+
+describe('toFinancials (step 2-f)', () => {
+  it('maps engagement ids to amount and payment status', () => {
+    const values = toFinancials([financials('e-1', 450000, 'Paid'), financials('e-2', null)]);
+    expect(values.get('e-1')).toEqual({ amount: 450000, paymentStatus: 'Paid' });
+    expect(values.get('e-2')).toEqual({ amount: null, paymentStatus: null });
   });
 
-  it('is empty when no engagement has a value, and for no engagements', () => {
-    expect(sumValues([engagement({}), engagement({})])).toBeNull();
-    expect(sumValues([])).toBeNull();
+  it('accepts a numeric string (PostgREST numeric) and keeps a recorded zero', () => {
+    const values = toFinancials([financials('e-1', '420000.00'), financials('e-2', 0)]);
+    expect(values.get('e-1')?.amount).toBe(420000);
+    expect(values.get('e-2')?.amount).toBe(0);
+  });
+
+  it('leaves anything else empty, never NaN', () => {
+    const values = toFinancials([
+      financials('e-1', '4.5 L'),
+      financials('e-2', Number.NaN),
+      financials('e-3', ''),
+      financials('e-4', {}),
+    ]);
+    for (const id of ['e-1', 'e-2', 'e-3', 'e-4']) expect(values.get(id)?.amount).toBeNull();
+  });
+
+  it('drops a row without an engagement id', () => {
+    expect(toFinancials([financials(null, 100000)]).size).toBe(0);
+  });
+});
+
+describe('valueDisplay (step 2-f)', () => {
+  const values = toFinancials([
+    financials('e-1', 450000),
+    financials('e-2', null),
+    financials('e-0', 0),
+  ]);
+
+  it('hides every value from a user without values access, even when values are present', () => {
+    expect(valueDisplay(values, false, 'e-1')).toEqual({ state: 'hidden' });
+    expect(valueDisplay(undefined, false, 'e-1')).toEqual({ state: 'hidden' });
+  });
+
+  it('shows nothing while values are loading (or could not be read)', () => {
+    expect(valueDisplay(undefined, true, 'e-1')).toEqual({ state: 'loading' });
+  });
+
+  it('is empty for a row with no amount and for an engagement with no financials row', () => {
+    expect(valueDisplay(values, true, 'e-2')).toEqual({ state: 'empty' });
+    expect(valueDisplay(values, true, 'e-9')).toEqual({ state: 'empty' });
+  });
+
+  it('shows a recorded amount, including 0', () => {
+    expect(valueDisplay(values, true, 'e-1')).toEqual({ state: 'amount', amount: 450000 });
+    expect(valueDisplay(values, true, 'e-0')).toEqual({ state: 'amount', amount: 0 });
+  });
+});
+
+describe('sumValues', () => {
+  const values = toFinancials([
+    financials('a', 100000),
+    financials('b', null),
+    financials('c', 250000),
+  ]);
+  const three = [engagement({ id: 'a' }), engagement({ id: 'b' }), engagement({ id: 'c' })];
+
+  it('adds only the recorded amounts', () => {
+    expect(sumValues(three, values, true)).toBe(350000);
+  });
+
+  it('is empty without values access, while loading, when none is recorded, and for no engagements', () => {
+    expect(sumValues(three, values, false)).toBeNull();
+    expect(sumValues(three, undefined, true)).toBeNull();
+    expect(sumValues([engagement({ id: 'b' }), engagement({ id: 'x' })], values, true)).toBeNull();
+    expect(sumValues([], values, true)).toBeNull();
   });
 });
 
