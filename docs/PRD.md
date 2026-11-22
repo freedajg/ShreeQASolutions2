@@ -330,7 +330,7 @@ Runs every morning (IST):
 | **Security** | No secret key ever reaches the browser. Permissions enforced in the database. Invite-only. Pramila will inspect it — assume a technical reviewer. |
 | **Privacy (DPDP Act 2023)** | SQAS is the data fiduciary; Freeda is the processor. Data stored in India. Do-not-contact flag. Delete a person's personal data on request. Real client data never used in development or pasted into AI tools. AI provider must not train on her data. |
 | **Email trust** | Nothing is ever sent automatically in v1. Sending needs the client's Microsoft 365 admin approval (Outlook is her email). |
-| **Reliability** | Daily backups. A missed reply notification is caught by a daily re-check. |
+| **Reliability** | Weekly Excel export of all data (Supabase Free plan: no automatic backups; DECISIONS 22-Nov-2026). A missed reply notification is caught by a daily re-check. |
 | **Performance** | First page loads in under 3 seconds on a 4G phone. Works at 10,000 engagements without slowing. |
 | **Usability** | Works on laptop and phone browser. Dates in dd-mmm-yyyy, times in IST, money in ₹ with Indian grouping (₹1,00,000). |
 | **Auditability** | Full change history; archive instead of delete. |

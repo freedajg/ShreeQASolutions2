@@ -160,9 +160,9 @@ A phase is **done only when every "Done when" item passes and the Security gate 
 - Pipeline board reads `pipeline`; dragging a card changes status through a logged SQL function. Moving to In Progress moves it to Delivery.
 - Clients reads `active_clients`; client detail shows all engagements and the activity timeline.
 - Replace the hardcoded team (Ramesh, Sunita) with `profiles` everywhere, including prompts and templates.
-- **Realtime** on the watched tables.
+- ~~**Realtime** on the watched tables.~~ Dropped from Part 1; refetch on window focus instead (DECISIONS 22-Nov-2026).
 - Every list has empty, loading and error states (DESIGN.md §3).
-- The theme choice is saved to the user's profile and applied at login on any device.
+- ~~The theme choice is saved to the user's profile and applied at login on any device.~~ Dropped from Part 1; the theme stays in the browser (DECISIONS 22-Nov-2026).
 
 **Done when**
 - [ ] Two browsers logged in as different users see the same data; a change in one appears in the other within seconds
@@ -260,7 +260,7 @@ A phase is **done only when every "Done when" item passes and the Security gate 
 - A fresh Claude Code session (not the one that wrote the code) plus `/security-review` reviews the whole codebase.
 - Split the bundle so the first page loads fast; check on a phone over 4G.
 - Sentry (PII scrubbing on), health page, `bun audit` clean.
-- Backup restore test on the dev project.
+- Restore-from-weekly-export test on the dev project (Free plan, no automatic backups; DECISIONS 22-Nov-2026).
 
 **🔸 Checkpoint C (UAT, 45 min with Pramila):** she uses it on dummy data: imports, reviews the Radar, approves a draft. Collect feedback; fix only bugs and small changes. New features go on the phase-2 list.
 

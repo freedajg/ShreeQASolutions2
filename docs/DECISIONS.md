@@ -160,6 +160,23 @@ Locked decisions from before the build are in `PLAN.md` §3.
 | 22-Nov-2026 | Visual: 22 baselines re-made by name (header on every signed-in screen; dropdown; More sheet; the no-owner card shows "—" not "?"). SHA-256: 22 match their actuals, 28 byte-identical | Same routine as 12-Oct-2026 |
 | 22-Nov-2026 | Live checks against the local database read `activity_log` names by joining `profiles` (as the server), not `team_members`: with no logged-in user, `app.current_app_role()` is null and the view returns nothing | Avoids a false "no rows" |
 | 22-Nov-2026 | `tests/visual.spec.ts` `waitUntilShown` polls with `page.clock.runFor(1)`, not `runFor(0)` | Playwright's paused clock gives a 0 ms timer created during a tick a due time of now + 1, so `runFor(0)` never fires it; a stranded TanStack notification left the board on "Loading pipeline…" in 5 of 74 `openApp` calls before the fix, 0 after in 2 full runs. Screenshots unchanged (byte-identical) |
+| 22-Nov-2026 | Two Owners only: Mahesh and Pramila. Part 1 builds nothing new for Marketing or Consultant; the existing roles, RLS and role tests stay as they are | Client answer |
+| 22-Nov-2026 | Both Owners see contract values | Client answer |
+| 22-Nov-2026 | Each engagement has its own currency, INR or USD (import column AE). Totals are never converted between currencies | Client answer |
+| 22-Nov-2026 | Import is self-serve, Excel or CSV, including old and closed clients; row 2 is an example row and is skipped | Client answer |
+| 22-Nov-2026 | The client's Excel sheet is frozen on go-live day | Client answer |
+| 22-Nov-2026 | Renewal cycles: CMMI 3 years; ISO yearly surveillance + 3-year recertification; SOC yearly; VAPT, GDPR, DPDP, HIPAA no fixed cycle (dates entered by SQAS); CMMC cycle: to confirm with client (asked 22-Nov-2026) | Client answer |
+| 22-Nov-2026 | CMMC stays in the certification list | Client answer |
+| 22-Nov-2026 | Remarks stays editable in Part 1 | Client answer |
+| 22-Nov-2026 | Notes history moves to Part 2 | Client answer |
+| 22-Nov-2026 | Part 2 follow-ups at 3, 7, 14 and 30 days after the proposal date. A person presses Send every time; nothing is sent automatically. Both Owners' mailboxes are connected | Client answer |
+| 22-Nov-2026 | Risk kept open: the client's Microsoft 365 was bought through GoDaddy, which may block admin consent for mailbox access (Notes to check later, 03-Oct-2026) | Must be settled before Part 2 email work |
+| 22-Nov-2026 | Questionnaire Q19 (AI processing outside India): corrected wording sent to the client; a written Yes is needed before Part 2 | Pending |
+| 22-Nov-2026 | Sign-off for SQAS: Mahesh | Client answer |
+| 22-Nov-2026 | No newsletters | Client answer |
+| 22-Nov-2026 | Hosting: Supabase Free plan in the Mumbai region and Cloudflare free plan, both accounts owned by SQAS; Freeda is Administrator | Client answer |
+| 22-Nov-2026 | Supabase Free plan: the project pauses after 7 days without activity and has no automatic backups, so a weekly Excel export replaces the PRD's "Daily backups"; no organisation-level MFA on this plan | Client's choice (small data, cost) |
+| 22-Nov-2026 | Dropped from Part 1: Realtime, and saving the theme to the profile (the theme stays in the browser) | Client answer |
 
 ## Colour token mapping
 
@@ -223,3 +240,4 @@ Phase 0 part 2, steps 3–10. Each old colour became the token on its row everyw
 | 12-Oct-2026 | Phone Clients: company names wrap to three lines and long certification chips wrap ("CMMI / DEV / ML3") | 2-g |
 | 22-Nov-2026 | MVP names (Pramila, Ramesh, Mahesh, Sunita) and the `src/utils/seedData.ts` sample data must be absent from `dist` before go-live. They are still in hidden MVP code: seedData.ts, localAiEngine.ts, aiService.ts, DashboardView, RenewalRadarView, ImportView, SettingsView, and the hidden Add Client / Add Lead owner options (those dialogs are rebuilt on `team_members` on 24-Nov-2026) | Go-live security review, 02–07-Dec-2026 |
 | 22-Nov-2026 | `favicon.ico` 404 in the console (missing tab icon) | 2-g |
+| 22-Nov-2026 | VAPT default is 12 months in the applied lookups migration, PRD lines 226–235 and PHASE-1-PLAN lines 143–147; client says no fixed cycle | Fix with a new migration in the Renewal Radar step (28-Nov-2026), together with the CMMC answer |
