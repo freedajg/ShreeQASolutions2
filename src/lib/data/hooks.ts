@@ -20,18 +20,29 @@ import {
   toClients,
   toEngagements,
   toFinancials,
+  toOwnerChoices,
   toTeamNames,
   valueDisplay,
+  type Choice,
   type OwnerDisplay,
   type ValueDisplay,
 } from './mappers';
-import { STATUS_CHANGE_KEY, statusChangeMutation, type StatusChange } from './mutations';
+import {
+  STATUS_CHANGE_KEY,
+  invalidateAfterWrite,
+  statusChangeMutation,
+  type StatusChange,
+} from './mutations';
 import {
   activeClientsQuery,
+  clientsQuery,
   engagementFinancialsQuery,
+  lookupsQuery,
   pipelineQuery,
   teamMembersQuery,
+  type ClientRow,
 } from './queries';
+import { saveLead, type LeadSaveError, type NewLead, type SavedLeadParts } from './writes';
 
 // One per page load: each unknown owner id is logged once, however often it is shown.
 const reportUnknownOwner = createUnknownOwnerReporter();
@@ -121,6 +132,62 @@ export function useEngagementValues(): EngagementValuesView {
     }),
     [values, canSeeValues],
   );
+}
+
+// ---------------------------------------------------------------------------
+// Add and Edit (session 2): the forms' lists and the Add Lead save.
+// ---------------------------------------------------------------------------
+
+/** The five dropdown lists (one cached read per user). `data` is undefined while loading. */
+export function useLookups() {
+  const client = useDataClient();
+  const { id: userId } = useSignedInUser();
+  return useQuery(lookupsQuery(client, userId));
+}
+
+const liveClients = (rows: ClientRow[]) => rows.filter((row) => !row.archived_at);
+
+/** Clients the user may read, archived ones left out (Add Lead's client picker). */
+export function useClientsList() {
+  const client = useDataClient();
+  const { id: userId } = useSignedInUser();
+  return useQuery({ ...clientsQuery(client, userId), select: liveClients });
+}
+
+/**
+ * Owner choices from `team_members` (active members with a role, by name), sharing the cached
+ * team read with useOwnerName. `keep`: an owner the form already holds (see toOwnerChoices).
+ */
+export function useOwnerChoices(keep: string | null = null): Choice[] | undefined {
+  const client = useDataClient();
+  const { id: userId } = useSignedInUser();
+  const { data } = useQuery(teamMembersQuery(client, userId));
+  return useMemo(() => (data ? toOwnerChoices(data, keep) : undefined), [data, keep]);
+}
+
+export const ADD_LEAD_KEY = ['add_lead'] as const;
+
+export interface AddLeadRequest {
+  lead: NewLead;
+  /** What an earlier try already saved, so Try again adds nothing twice. */
+  saved: SavedLeadParts;
+}
+
+/**
+ * Saves a new lead (client, engagement, contract value) through saveLead: three requests, never
+ * retried. Afterwards, failed or not, the lists are read again (something may have been saved
+ * part-way), and the mutation stays pending until they are in. Errors are LeadSaveErrors.
+ */
+export function useAddLead() {
+  const client = useDataClient();
+  const queryClient = useQueryClient();
+  return useMutation<{ clientId: string; engagementId: string }, LeadSaveError, AddLeadRequest>({
+    mutationKey: ADD_LEAD_KEY,
+    mutationFn: ({ lead, saved }) => saveLead(client, lead, saved),
+    retry: false,
+    onSettled: (_data, _error, { lead }) =>
+      invalidateAfterWrite(queryClient, { money: lead.financials !== null }),
+  });
 }
 
 /**

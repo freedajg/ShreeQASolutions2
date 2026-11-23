@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -14,10 +14,9 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Plus, Kanban, Table as TableIcon, Search, AlertCircle, Clock, X } from 'lucide-react';
-import { useCrm } from '../context/CrmContext';
 import { useSignedInUser } from '../lib/auth/context';
-import { Lead, Stage, ServiceKind } from '../types';
 import { PIPELINE_COLUMNS, type Engagement } from '../types/crm';
+import { AddLeadDialog } from './forms/LeadForm';
 import {
   groupByPipelineStatus,
   isPipelineStatus,
@@ -41,6 +40,8 @@ import { isFeatureEnabled } from '../lib/screens';
 
 // Hidden until wired (src/lib/screens.ts). The email-draft buttons were removed in 2-b: the MVP
 // draft dialog takes the old types, and drafts are rebuilt in Phase 5 (CLAUDE.md rule 4).
+// Add Lead (Add and Edit, session 2): rebuilt on the database; still off until session 4, and
+// shown to Owners only (answer Q1). The database still decides who may add what.
 const showAddLead = isFeatureEnabled('addLead');
 const showNeedsAttention = isFeatureEnabled('needsAttention');
 
@@ -159,7 +160,8 @@ function EngagementCardItem({
 }
 
 export function PipelineView() {
-  const { addLead } = useCrm();
+  const { role } = useSignedInUser();
+  const canAddLead = showAddLead && role === 'owner';
   // The `pipeline` view (step 2-c); loading, error, empty and no-match states (step 2-g).
   const { data: loaded, error: loadError, refetch } = usePipelineEngagements();
   const ownerName = useOwnerName();
@@ -300,8 +302,9 @@ export function PipelineView() {
             </button>
           </div>
 
-          {showAddLead && (
+          {canAddLead && (
             <button
+              type="button"
               onClick={() => setIsAddLeadOpen(true)}
               className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-primary to-teal hover:from-primary-soft hover:to-info text-on-primary font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
             >
@@ -648,184 +651,8 @@ export function PipelineView() {
         </div>
       )}
 
-      {/* ADD LEAD MODAL (hidden: still the MVP form on the old browser store) */}
-      {showAddLead && isAddLeadOpen && (
-        <AddLeadModal
-          onClose={() => setIsAddLeadOpen(false)}
-          onAdd={(leadData) => {
-            addLead(leadData);
-            setIsAddLeadOpen(false);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function AddLeadModal({
-  onClose,
-  onAdd,
-}: {
-  onClose: () => void;
-  onAdd: (lead: Omit<Lead, 'id'>) => void;
-}) {
-  // Hidden (feature addLead off); rebuilt on team_members later. Default owner: the signed-in
-  // person, from their profile (step 2-e).
-  const { fullName } = useSignedInUser();
-  const [company, setCompany] = useState('');
-  const [contactName, setContactName] = useState('');
-  const [email] = useState('');
-  const [phone] = useState('');
-  const [source] = useState('External Marketing');
-  const [stage] = useState<Stage>('New');
-  const [value, setValue] = useState(500000);
-  const [owner, setOwner] = useState(fullName);
-  const [serviceInterest, setServiceInterest] = useState<ServiceKind>('ISO');
-  const [meetingContext, setMeetingContext] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!company.trim() || !contactName.trim()) return;
-
-    onAdd({
-      company: company.trim(),
-      contactName: contactName.trim(),
-      email: email.trim() || 'contact@' + company.toLowerCase().replace(/\s+/g, '') + '.in',
-      phone: phone.trim() || '+91 98000 00000',
-      source,
-      stage,
-      value: Number(value) || 500000,
-      owner,
-      serviceInterest,
-      lastContactDate: new Date().toISOString().split('T')[0],
-      nextFollowUpDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
-      meetingContext:
-        meetingContext.trim() ||
-        `${owner} connected with ${contactName} regarding ${serviceInterest} certification.`,
-      activity: [
-        {
-          at: new Date().toISOString(),
-          note: `Lead created by ${owner}`,
-          author: owner,
-        },
-      ],
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 bg-backdrop/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="bg-surface border border-line/22 rounded-2xl shadow-2xl w-full max-w-lg p-5 space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-line/12">
-          <h3 className="font-bold text-base text-text">Add New Prospect / Lead</h3>
-          <button onClick={onClose} className="text-muted hover:text-text-strong">
-            <X size={18} />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-muted uppercase font-semibold text-[10px] mb-1">
-                Company Name *
-              </label>
-              <input
-                required
-                type="text"
-                value={company}
-                onChange={(e) => setCompany(e.target.value)}
-                placeholder="e.g. Param Solutions Pvt Ltd"
-                className="w-full px-3 py-2 rounded-xl bg-bg border border-line/16 text-text focus:outline-none focus:border-primary"
-              />
-            </div>
-            <div>
-              <label className="block text-muted uppercase font-semibold text-[10px] mb-1">
-                Contact Person *
-              </label>
-              <input
-                required
-                type="text"
-                value={contactName}
-                onChange={(e) => setContactName(e.target.value)}
-                placeholder="e.g. Rameshwar Gupta"
-                className="w-full px-3 py-2 rounded-xl bg-bg border border-line/16 text-text focus:outline-none focus:border-primary"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-muted uppercase font-semibold text-[10px] mb-1">
-                Standard
-              </label>
-              <select
-                value={serviceInterest}
-                onChange={(e) => setServiceInterest(e.target.value as ServiceKind)}
-                className="w-full px-3 py-2 rounded-xl bg-bg border border-line/16 text-text focus:outline-none focus:border-primary"
-              >
-                <option value="ISO">ISO</option>
-                <option value="CMMI">CMMI</option>
-                <option value="IPA">IPA</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-muted uppercase font-semibold text-[10px] mb-1">
-                Deal Value (₹)
-              </label>
-              <input
-                type="number"
-                value={value}
-                onChange={(e) => setValue(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-xl bg-bg border border-line/16 text-text font-mono focus:outline-none focus:border-primary"
-              />
-            </div>
-            <div>
-              <label className="block text-muted uppercase font-semibold text-[10px] mb-1">
-                Owner
-              </label>
-              <select
-                value={owner}
-                onChange={(e) => setOwner(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-bg border border-line/16 text-text focus:outline-none focus:border-primary"
-              >
-                <option value="Ramesh">Ramesh</option>
-                <option value="Pramila">Pramila</option>
-                <option value="Mahesh">Mahesh</option>
-                <option value="Sunita">Sunita</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-muted uppercase font-semibold text-[10px] mb-1">
-              Internal Meeting Context (3rd Person Note)
-            </label>
-            <textarea
-              rows={2}
-              value={meetingContext}
-              onChange={(e) => setMeetingContext(e.target.value)}
-              placeholder="e.g. Mahesh spoke with Ananya; they discussed ISMS audit scope for Bangalore DC."
-              className="w-full p-2.5 rounded-xl bg-bg border border-line/16 text-text focus:outline-none focus:border-primary"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-line/10">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs text-text-secondary hover:text-text-strong"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-xl bg-gradient-to-r from-primary to-teal text-on-primary font-bold text-xs shadow-md"
-            >
-              Create Lead
-            </button>
-          </div>
-        </form>
-      </div>
+      {/* ADD LEAD (Add and Edit, session 2): Owners only, behind the addLead feature */}
+      {canAddLead && isAddLeadOpen && <AddLeadDialog onClose={() => setIsAddLeadOpen(false)} />}
     </div>
   );
 }

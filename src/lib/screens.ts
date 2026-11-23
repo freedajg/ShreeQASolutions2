@@ -61,6 +61,16 @@ export function enabledScreens<T extends TabKey>(keys: readonly T[]): T[] {
   return keys.filter((key) => isScreenEnabled(key));
 }
 
+// Dev server only (Add and Edit, answer Q13): `?features=addLead` turns a hidden feature on, so
+// the browser tests can use a form before it is switched on for everyone. `import.meta.env.DEV`
+// is `false` in a production build, so the build drops this read and the URL changes nothing.
+// The `window` check comes first: test runners load this file in Node, where there is no
+// `window`, and Playwright's loader (not Vite) has no `import.meta.env` either.
+const DEV_FEATURES =
+  typeof window !== 'undefined' && import.meta.env.DEV
+    ? (new URLSearchParams(window.location.search).get('features') ?? '').split(',')
+    : [];
+
 export function isFeatureEnabled(key: FeatureKey): boolean {
-  return FEATURES[key];
+  return FEATURES[key] || DEV_FEATURES.includes(key);
 }
