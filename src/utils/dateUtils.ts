@@ -44,14 +44,43 @@ export function getRenewalBand(daysRemaining: number): RenewalBand {
   return 'later';
 }
 
+// Fixed English month names (rule 8: dd-MMM-yyyy). Never locale-formatted, so September is
+// always "Sep" (Chrome's en-GB short month is "Sept").
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// IST is UTC+05:30 all year (India has no daylight saving).
+const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
+
+/**
+ * Formats a date as dd-MMM-yyyy, e.g. "28-Sep-2026", "01-Oct-2026".
+ * - Date-only strings (YYYY-MM-DD) are read by their parts: no Date object, no time-zone shift.
+ * - Timestamps (strings with a time, or Date objects) are shown as the calendar day in IST.
+ * - Empty, null, undefined or invalid input gives "—".
+ */
 export function formatStandardDate(dateInput: string | Date): string {
+  if (!dateInput) return '—';
+
+  if (typeof dateInput === 'string') {
+    const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateInput.trim());
+    if (dateOnly) {
+      const year = Number(dateOnly[1]);
+      const month = Number(dateOnly[2]);
+      const day = Number(dateOnly[3]);
+      const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+      const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+      if (month < 1 || month > 12 || day < 1 || day > daysInMonth[month - 1]) return '—';
+      return `${dateOnly[3]}-${MONTHS[month - 1]}-${dateOnly[1]}`;
+    }
+  }
+
   const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
-  if (isNaN(d.getTime())) return '-';
-  return d.toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }); // e.g. "12 Mar 2027"
+  if (!(d instanceof Date) || isNaN(d.getTime())) return '—';
+
+  // Shift the instant by +05:30 and read the UTC fields: that is the calendar day in IST,
+  // whatever time zone the browser is in.
+  const ist = new Date(d.getTime() + IST_OFFSET_MS);
+  const day = String(ist.getUTCDate()).padStart(2, '0');
+  return `${day}-${MONTHS[ist.getUTCMonth()]}-${ist.getUTCFullYear()}`;
 }
 
 export function formatFullDate(dateInput: string | Date = new Date()): string {

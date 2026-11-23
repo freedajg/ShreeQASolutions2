@@ -305,3 +305,17 @@ test('the details dialog is a named modal dialog: focus inside, Tab stays inside
   await expect(dialog).toHaveCount(0);
   await expect(searchBox(page)).toBeFocused();
 });
+
+test('Last Contact shows dd-MMM-yyyy with days ago (step 2-g2)', async ({ page }) => {
+  // Same instant as the visual tests (visual.spec.ts FIXED_NOW). setFixedTime keeps timers
+  // running, so TanStack Query still delivers the read.
+  await page.clock.setFixedTime(new Date('2026-10-01T10:00:00+05:30'));
+  await mockSupabase(page, { signedInAs: ACCOUNTS.owner });
+  await page.goto('/');
+  await showTable(page);
+
+  // Client01's lead: last_contacted_on '2026-09-28' (tests/support/pipelineRows.ts:28).
+  const lastContact = tableRow(page, 'Client01 Demo Ltd').locator('td').last();
+  await expect(lastContact).toHaveText('28-Sep-2026 (3d ago)');
+  await expect(page.locator('body')).not.toContainText('Sept');
+});

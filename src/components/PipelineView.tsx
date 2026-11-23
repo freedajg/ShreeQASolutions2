@@ -539,7 +539,7 @@ export function PipelineView() {
                       <td className="px-4 py-3 text-text-secondary">
                         {ownerText(ownerName(engagement.ownerId))}
                       </td>
-                      <td className="px-4 py-3 text-muted">
+                      <td className="px-4 py-3 text-muted whitespace-nowrap">
                         {quietDays === null
                           ? '—'
                           : `${dateOrDash(engagement.lastContactedOn)} (${quietDays}d ago)`}

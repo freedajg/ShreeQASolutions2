@@ -244,3 +244,29 @@ test('the client dialog is a named modal dialog: focus inside, Tab stays inside,
   await expect(dialog).toHaveCount(0);
   await expect(searchBox(page)).toBeFocused();
 });
+
+test('Last Audit and Valid To show dd-MMM-yyyy (step 2-g2)', async ({ page }) => {
+  await mockSupabase(page, { signedInAs: ACCOUNTS.owner });
+  await openClients(page);
+  await expect(clientRows(page)).toHaveCount(5);
+
+  // Client01: last_audit_date '2026-03-10', valid_to '2027-03-14'.
+  const client01 = clientRows(page).filter({ hasText: 'Client01 Demo Ltd' });
+  await expect(client01.locator('td').nth(3)).toHaveText('10-Mar-2026');
+  await expect(client01.locator('td').nth(4)).toContainText('14-Mar-2027');
+
+  // Client09: latest audit '2025-11-18'; valid_to '2028-05-31' and '2026-11-20'.
+  const client09 = clientRows(page).filter({ hasText: 'Client09 Demo Ltd' });
+  await expect(client09.locator('td').nth(3)).toHaveText('18-Nov-2025');
+  await expect(client09.locator('td').nth(4)).toContainText('31-May-2028');
+  await expect(client09.locator('td').nth(4)).toContainText('20-Nov-2026');
+
+  // Client10: no audit date, no certificate dates: "—", never an estimate.
+  const client10 = clientRows(page).filter({ hasText: 'Client10 Demo Ltd' });
+  await expect(client10.locator('td').nth(3)).toHaveText('—');
+
+  // Dialog Valid To uses the same format.
+  await client01.click();
+  const dialog = clientDialog(page, 'Client01 Demo Ltd');
+  await expect(dialog.locator('tbody tr').first().locator('td').last()).toHaveText('14-Mar-2027');
+});
