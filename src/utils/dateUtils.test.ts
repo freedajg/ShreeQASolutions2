@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatStandardDate } from './dateUtils';
+import { formatStandardDate, parseStandardDate } from './dateUtils';
 
 describe('formatStandardDate', () => {
   it('formats a date-only string as dd-MMM-yyyy, read by its parts', () => {
@@ -56,5 +56,43 @@ describe('formatStandardDate', () => {
   it('gives an em dash for empty or null input', () => {
     expect(formatStandardDate('')).toBe('—');
     expect(formatStandardDate(null as unknown as string)).toBe('—');
+  });
+});
+
+describe('parseStandardDate', () => {
+  it('reads dd-MMM-yyyy as YYYY-MM-DD', () => {
+    expect(parseStandardDate('12-Mar-2026')).toBe('2026-03-12');
+    expect(parseStandardDate('  28-Sep-2026  ')).toBe('2026-09-28');
+  });
+
+  it('accepts any letter case for the month', () => {
+    expect(parseStandardDate('12-mar-2026')).toBe('2026-03-12');
+    expect(parseStandardDate('12-MAR-2026')).toBe('2026-03-12');
+  });
+
+  it('accepts a single-digit day', () => {
+    expect(parseStandardDate('1-Oct-2026')).toBe('2026-10-01');
+  });
+
+  it('refuses a day the month does not have, but knows leap years', () => {
+    expect(parseStandardDate('31-Feb-2027')).toBeNull();
+    expect(parseStandardDate('29-Feb-2027')).toBeNull();
+    expect(parseStandardDate('29-Feb-2028')).toBe('2028-02-29');
+    expect(parseStandardDate('31-Apr-2026')).toBeNull();
+    expect(parseStandardDate('00-Jan-2026')).toBeNull();
+  });
+
+  it('refuses any other format', () => {
+    const others = ['2026-03-12', '12/03/2026', '12-Sept-2026', '12 Mar 2026', '12-Mar-26', ''];
+    for (const text of others) {
+      expect(parseStandardDate(text), text).toBeNull();
+    }
+  });
+
+  it('round-trips with formatStandardDate for every month', () => {
+    for (let month = 1; month <= 12; month += 1) {
+      const iso = `2026-${String(month).padStart(2, '0')}-09`;
+      expect(parseStandardDate(formatStandardDate(iso))).toBe(iso);
+    }
   });
 });

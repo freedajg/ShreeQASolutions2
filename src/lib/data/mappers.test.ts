@@ -6,6 +6,7 @@ import {
   groupByPipelineStatus,
   groupClients,
   isPipelineStatus,
+  LEAD_STATUS_GROUPS,
   ownerDisplay,
   ownerText,
   sumValues,
@@ -13,10 +14,19 @@ import {
   toEngagement,
   toEngagements,
   toFinancials,
+  toLookupChoices,
+  toOwnerChoices,
+  toStatusChoices,
   toTeamNames,
   valueDisplay,
 } from './mappers';
-import type { EngagementFinancialsRow, StatusViewRow, TeamMemberRow } from './queries';
+import type {
+  EngagementFinancialsRow,
+  LookupRow,
+  StatusRow,
+  StatusViewRow,
+  TeamMemberRow,
+} from './queries';
 import { SAMPLE_PIPELINE_ROWS } from '../../../tests/support/pipelineRows';
 import { SAMPLE_ACTIVE_CLIENT_ROWS } from '../../../tests/support/activeClientRows';
 
@@ -372,5 +382,74 @@ describe('createUnknownOwnerReporter (step 2-e)', () => {
     createUnknownOwnerReporter(second)(OWNER);
     expect(first).toHaveBeenCalledTimes(1);
     expect(second).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('form choices (Add and Edit)', () => {
+  const lookups: LookupRow[] = [
+    { code: 'Website', sort_order: 2, active: true },
+    { code: 'Event', sort_order: 6, active: false },
+    { code: 'Referral', sort_order: 1, active: true },
+  ];
+
+  it('lookup choices follow sort_order and leave out retired values, unless the form holds one', () => {
+    expect(toLookupChoices(lookups)).toEqual([
+      { value: 'Referral', label: 'Referral' },
+      { value: 'Website', label: 'Website' },
+    ]);
+    expect(toLookupChoices(lookups, 'Event').map((c) => c.value)).toEqual([
+      'Referral',
+      'Website',
+      'Event',
+    ]);
+  });
+
+  it('status choices can be limited to the lead groups (Lead, Proposal, On Hold)', () => {
+    const statuses: StatusRow[] = [
+      { code: 'On Hold', status_group: 'paused', sort_order: 9 },
+      { code: 'Certified', status_group: 'active', sort_order: 6 },
+      { code: 'Proposal', status_group: 'pipeline', sort_order: 2 },
+      { code: 'Lead', status_group: 'pipeline', sort_order: 1 },
+      { code: 'In Progress', status_group: 'delivery', sort_order: 3 },
+    ];
+    expect(toStatusChoices(statuses, LEAD_STATUS_GROUPS).map((c) => c.value)).toEqual([
+      'Lead',
+      'Proposal',
+      'On Hold',
+    ]);
+    expect(toStatusChoices(statuses)).toHaveLength(5);
+  });
+
+  const member = (id: string, full_name: string, role: string | null, active: boolean) =>
+    ({
+      id,
+      full_name,
+      email: `${id}@example.com`,
+      role,
+      booking_link: null,
+      active,
+    }) as TeamMemberRow;
+
+  it('owner choices are active team members with a role, by name', () => {
+    const team = [
+      member('o2', 'Demo Owner 2', 'owner', true),
+      member('c1', 'Demo Consultant 1', 'consultant', true),
+      member('x1', 'Demo Inactive', 'consultant', false),
+      member('r1', 'Demo Roleless', null, true),
+      member('o1', '  ', 'owner', true),
+    ];
+    expect(toOwnerChoices(team)).toEqual([
+      { value: 'c1', label: 'Demo Consultant 1' },
+      { value: 'o2', label: 'Demo Owner 2' },
+      { value: 'o1', label: 'Unnamed team member' },
+    ]);
+  });
+
+  it('keeps the current owner even when they have been deactivated', () => {
+    const team = [
+      member('o1', 'Demo Owner 1', 'owner', true),
+      member('x1', 'Demo Inactive', 'consultant', false),
+    ];
+    expect(toOwnerChoices(team, 'x1').map((c) => c.value)).toEqual(['x1', 'o1']);
   });
 });

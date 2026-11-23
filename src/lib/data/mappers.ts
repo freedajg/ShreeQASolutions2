@@ -9,7 +9,13 @@ import {
   type Engagement,
   type PipelineStatus,
 } from '../../types/crm';
-import type { EngagementFinancialsRow, StatusViewRow, TeamMemberRow } from './queries';
+import type {
+  EngagementFinancialsRow,
+  LookupRow,
+  StatusRow,
+  StatusViewRow,
+  TeamMemberRow,
+} from './queries';
 
 export function toEngagement(row: StatusViewRow): Engagement | null {
   if (!row.id || !row.client_id || !row.client_name || !row.status) return null;
@@ -219,6 +225,57 @@ export function ownerDisplay(
 /** The text for an owner: empty while loading, otherwise the label. */
 export const ownerText = (shown: OwnerDisplay): string =>
   shown.state === 'loading' ? '' : shown.label;
+
+// Form choices (Add and Edit, session 1). A choice's value is the exact code the database
+// stores (lookups.sql: the Excel spellings); its label is the same text.
+
+export interface Choice {
+  value: string;
+  label: string;
+}
+
+const bySortOrder = <T extends { sort_order: number }>(rows: readonly T[]): T[] =>
+  [...rows].sort((a, b) => a.sort_order - b.sort_order);
+
+/**
+ * A lookup list → choices in sort order. Retired values (`active = false`) are left out, except
+ * `keep`: the value an edit form already holds, so saving doesn't silently change it.
+ */
+export function toLookupChoices(rows: readonly LookupRow[], keep: string | null = null): Choice[] {
+  return bySortOrder(rows)
+    .filter((row) => row.active || row.code === keep)
+    .map((row) => ({ value: row.code, label: row.code }));
+}
+
+/** Statuses → choices in sort order, optionally only those in the given groups. */
+export function toStatusChoices(
+  rows: readonly StatusRow[],
+  groups?: readonly StatusRow['status_group'][],
+): Choice[] {
+  return bySortOrder(rows)
+    .filter((row) => !groups || groups.includes(row.status_group))
+    .map((row) => ({ value: row.code, label: row.code }));
+}
+
+/** The status groups a lead can be in: the Pipeline board's columns (Lead, Proposal, On Hold). */
+export const LEAD_STATUS_GROUPS: readonly StatusRow['status_group'][] = ['pipeline', 'paused'];
+
+/**
+ * Owner choices from `team_members`: active members with a role, by name (the view also returns
+ * inactive and role-less profiles). `keep`: the owner an edit form already holds, shown even if
+ * they have since been deactivated, so saving doesn't silently change it. "No owner" is not in
+ * the list: the form adds it (value null).
+ */
+export function toOwnerChoices(
+  rows: readonly TeamMemberRow[],
+  keep: string | null = null,
+): Choice[] {
+  return rows
+    .filter((row): row is TeamMemberRow & { id: string } => !!row.id)
+    .filter((row) => (row.active && row.role !== null) || row.id === keep)
+    .map((row) => ({ value: row.id, label: row.full_name?.trim() || UNNAMED_MEMBER }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'en-IN'));
+}
 
 /**
  * Reports each unknown owner id once per page load (the id only: no name, no client).

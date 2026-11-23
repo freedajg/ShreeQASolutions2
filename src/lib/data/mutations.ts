@@ -30,6 +30,26 @@ export async function invalidateAfterStatusChange(queryClient: QueryClient): Pro
   );
 }
 
+/**
+ * What to refetch after a form saves (Add and Edit, session 1). Prefixes only (no user id), so
+ * the list is refreshed whoever's cache holds it. A new or edited engagement can move between
+ * views, and a client's details show on every view row and in the client list. Values are
+ * refetched only when money was written.
+ */
+export function writeInvalidationKeys({ money }: { money: boolean }): string[] {
+  return [...STATUS_VIEWS, 'clients', ...(money ? ['engagement_financials'] : [])];
+}
+
+/** Refetches after a save; the returned promise ends when the fresh rows are in the cache. */
+export async function invalidateAfterWrite(
+  queryClient: QueryClient,
+  options: { money: boolean },
+): Promise<void> {
+  await Promise.all(
+    writeInvalidationKeys(options).map((key) => queryClient.invalidateQueries({ queryKey: [key] })),
+  );
+}
+
 export type StatusChange = { engagementId: string; newStatus: string };
 
 /** Finds the status changes still in progress (useMutationState). */

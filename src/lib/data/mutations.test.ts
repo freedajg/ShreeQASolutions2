@@ -7,7 +7,9 @@ import {
   STATUS_CHANGE_KEY,
   changeEngagementStatus,
   invalidateAfterStatusChange,
+  invalidateAfterWrite,
   statusChangeMutation,
+  writeInvalidationKeys,
 } from './mutations';
 import { createQueryClient } from './queryClient';
 
@@ -156,5 +158,37 @@ describe('invalidateAfterStatusChange', () => {
     for (const view of STATUS_VIEWS) {
       expect(spy).toHaveBeenCalledWith({ queryKey: [view] });
     }
+  });
+});
+
+describe('after a form saves (Add and Edit)', () => {
+  it('refetches the five status views and the client list', () => {
+    expect(writeInvalidationKeys({ money: false })).toEqual([...STATUS_VIEWS, 'clients']);
+  });
+
+  it('also refetches values when money was written', () => {
+    expect(writeInvalidationKeys({ money: true })).toEqual([
+      ...STATUS_VIEWS,
+      'clients',
+      'engagement_financials',
+    ]);
+  });
+
+  it('invalidates each key as a prefix, so every user cache of that list is refreshed', async () => {
+    const queryClient = createQueryClient();
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    await invalidateAfterWrite(queryClient, { money: true });
+    expect(spy).toHaveBeenCalledTimes(STATUS_VIEWS.length + 2);
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['clients'] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['engagement_financials'] });
+  });
+
+  it('leaves the team list and the dropdown lists alone', async () => {
+    const queryClient = createQueryClient();
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    await invalidateAfterWrite(queryClient, { money: false });
+    expect(spy).not.toHaveBeenCalledWith({ queryKey: ['team_members'] });
+    expect(spy).not.toHaveBeenCalledWith({ queryKey: ['lookups'] });
+    expect(spy).not.toHaveBeenCalledWith({ queryKey: ['engagement_financials'] });
   });
 });

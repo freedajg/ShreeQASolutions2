@@ -60,3 +60,62 @@ export interface Engagement {
 export interface Client extends ClientDetails {
   engagements: Engagement[];
 }
+
+// What the add and edit forms write (Add and Edit, session 1). Text is trimmed and an empty
+// field is null: nothing is filled in (CLAUDE.md rule 7). Dates are `YYYY-MM-DD`. Only columns
+// the database lets the app write (20261006100000_clients_engagements_rls.sql lines 253–272).
+
+/** A client's own columns (PRD §6.2 A–K, AC, plus do-not-contact). */
+export interface ClientInput {
+  clientCode: string | null;
+  name: string;
+  industry: string | null;
+  address: string | null;
+  city: string | null;
+  stateCountry: string | null;
+  contactPerson: string | null;
+  designation: string | null;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  priority: string | null;
+  doNotContact: boolean;
+}
+
+/** An engagement's columns (PRD §6.2 L–X, AA, AB, AD, plus the follow-up dates). */
+export interface EngagementInput {
+  clientId: string;
+  certificationType: string | null;
+  standardFramework: string | null;
+  scope: string | null;
+  status: string | null;
+  initialEngagementDate: string | null;
+  completionDate: string | null;
+  certificateNumber: string | null;
+  validFrom: string | null;
+  validTo: string | null;
+  certificationBody: string | null;
+  surveillanceDueDate: string | null;
+  lastAuditDate: string | null;
+  nextAuditDate: string | null;
+  ownerId: string | null;
+  leadSource: string | null;
+  remarks: string | null;
+  lastContactedOn: string | null;
+  nextFollowUpOn: string | null;
+}
+
+/**
+ * What an edit may change on an engagement: never its client, and never its status, which goes
+ * through change_engagement_status() so it is checked and logged in one place.
+ */
+export type EngagementChanges = Partial<Omit<EngagementInput, 'clientId' | 'status'>>;
+
+/**
+ * Contract value and payment status, written only to `engagement_financials`. The one place a
+ * currency will be added (next step); the amount itself carries no currency.
+ */
+export interface FinancialsInput {
+  contractValue: number | null;
+  paymentStatus: string | null;
+}

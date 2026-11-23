@@ -21,4 +21,7 @@ export const queryKeys = {
       ? (['engagement_financials', userId, [...engagementIds].sort()] as const)
       : (['engagement_financials', userId] as const),
   teamMembers: (userId: string) => ['team_members', userId] as const,
+  // Add and Edit (session 1): the forms' dropdown lists and the client picker / edit source.
+  lookups: (userId: string) => ['lookups', userId] as const,
+  clients: (userId: string) => ['clients', userId] as const,
 };

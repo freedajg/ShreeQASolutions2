@@ -23,6 +23,39 @@ export type EngagementFinancialsRow = Pick<
   'engagement_id' | 'contract_value' | 'payment_status'
 >;
 export type TeamMemberRow = PublicSchema['Views']['team_members']['Row'];
+export type ClientRow = Pick<
+  PublicSchema['Tables']['clients']['Row'],
+  | 'id'
+  | 'client_code'
+  | 'name'
+  | 'industry'
+  | 'address'
+  | 'city'
+  | 'state_country'
+  | 'contact_person'
+  | 'designation'
+  | 'email'
+  | 'phone'
+  | 'website'
+  | 'priority'
+  | 'do_not_contact'
+  | 'archived_at'
+  | 'updated_at'
+>;
+export type LookupRow = { code: string; sort_order: number; active: boolean };
+export type StatusRow = Pick<
+  PublicSchema['Tables']['statuses']['Row'],
+  'code' | 'status_group' | 'sort_order'
+>;
+
+/** The forms' dropdown lists (20261003180745_lookups.sql), as the database returns them. */
+export interface LookupRows {
+  certificationTypes: LookupRow[];
+  statuses: StatusRow[];
+  leadSources: LookupRow[];
+  priorities: LookupRow[];
+  paymentStatuses: LookupRow[];
+}
 
 // The five status views share 43 columns (20261006120000_status_views.sql); the app reads 41 of
 // them. `contract_value` and `payment_status` (lines 84–85, a left join on
@@ -34,6 +67,14 @@ export const STATUS_VIEW_COLUMNS =
 export const FINANCIALS_COLUMNS = 'engagement_id, contract_value, payment_status' as const;
 
 export const TEAM_MEMBER_COLUMNS = 'id, full_name, email, role, booking_link, active' as const;
+
+// The client's own columns, plus updated_at for the "changed meanwhile" check on edit (the
+// status views carry the engagement's updated_at, not the client's).
+export const CLIENT_COLUMNS =
+  'id, client_code, name, industry, address, city, state_country, contact_person, designation, email, phone, website, priority, do_not_contact, archived_at, updated_at' as const;
+
+const LOOKUP_COLUMNS = 'code, sort_order, active' as const;
+const STATUS_COLUMNS = 'code, status_group, sort_order' as const;
 
 type ReadOptions = { signal?: AbortSignal };
 
@@ -105,6 +146,57 @@ export async function fetchTeamMembers(
   return data ?? [];
 }
 
+/**
+ * Every client the caller may read (Owners and Consultants: all; Marketing: lead clients and
+ * its own new ones; rls.sql lines 277–292), for the Add Lead client picker and the client edit
+ * form. Archived rows are included; screens filter them.
+ */
+export async function fetchClients(
+  client: DrishtiClient,
+  { signal }: ReadOptions = {},
+): Promise<ClientRow[]> {
+  let query = client.from('clients').select(CLIENT_COLUMNS).order('name').retry(false);
+  if (signal) query = query.abortSignal(signal);
+  const { data, error, status } = await query;
+  if (error) throw toDataError(error, status);
+  return data ?? [];
+}
+
+/**
+ * The five dropdown lists, read together (every role-holder may read them; lookups.sql lines
+ * 156–195). Inactive values are included here and dropped by the mappers, so an edit form can
+ * still show a value that has since been retired.
+ */
+export async function fetchLookups(
+  client: DrishtiClient,
+  { signal }: ReadOptions = {},
+): Promise<LookupRows> {
+  const rowsOf = async <T>(
+    query: PromiseLike<{ data: T[] | null; error: unknown; status: number }>,
+  ): Promise<T[]> => {
+    const { data, error, status } = await query;
+    if (error) throw toDataError(error, status);
+    return data ?? [];
+  };
+  const withSignal = <Q extends { abortSignal: (s: AbortSignal) => Q }>(query: Q): Q =>
+    signal ? query.abortSignal(signal) : query;
+  const lookup = (
+    table: 'certification_types' | 'lead_sources' | 'priorities' | 'payment_statuses',
+  ) => withSignal(client.from(table).select(LOOKUP_COLUMNS).order('sort_order').retry(false));
+
+  const [certificationTypes, statuses, leadSources, priorities, paymentStatuses] =
+    await Promise.all([
+      rowsOf<LookupRow>(lookup('certification_types')),
+      rowsOf<StatusRow>(
+        withSignal(client.from('statuses').select(STATUS_COLUMNS).order('sort_order').retry(false)),
+      ),
+      rowsOf<LookupRow>(lookup('lead_sources')),
+      rowsOf<LookupRow>(lookup('priorities')),
+      rowsOf<LookupRow>(lookup('payment_statuses')),
+    ]);
+  return { certificationTypes, statuses, leadSources, priorities, paymentStatuses };
+}
+
 // Ready-made options for useQuery, e.g. useQuery(pipelineQuery(supabase, user.id)).
 
 export const pipelineQuery = (client: DrishtiClient, userId: string) =>
@@ -133,4 +225,16 @@ export const teamMembersQuery = (client: DrishtiClient, userId: string) =>
   queryOptions({
     queryKey: queryKeys.teamMembers(userId),
     queryFn: ({ signal }) => fetchTeamMembers(client, { signal }),
+  });
+
+export const clientsQuery = (client: DrishtiClient, userId: string) =>
+  queryOptions({
+    queryKey: queryKeys.clients(userId),
+    queryFn: ({ signal }) => fetchClients(client, { signal }),
+  });
+
+export const lookupsQuery = (client: DrishtiClient, userId: string) =>
+  queryOptions({
+    queryKey: queryKeys.lookups(userId),
+    queryFn: ({ signal }) => fetchLookups(client, { signal }),
   });

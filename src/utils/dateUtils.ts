@@ -83,6 +83,25 @@ export function formatStandardDate(dateInput: string | Date): string {
   return `${day}-${MONTHS[ist.getUTCMonth()]}-${ist.getUTCFullYear()}`;
 }
 
+/**
+ * Reads a date typed as dd-MMM-yyyy (e.g. "12-Mar-2026"; also "1-Oct-2026", any letter case)
+ * and returns it as `YYYY-MM-DD` for the database, or null if it isn't a real date in that
+ * format. Read by its parts: no Date object, no time-zone shift (same rule as formatStandardDate).
+ */
+export function parseStandardDate(text: string): string | null {
+  const match = /^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/.exec(text.trim());
+  if (!match) return null;
+  const day = Number(match[1]);
+  const monthName = match[2][0].toUpperCase() + match[2].slice(1).toLowerCase();
+  const month = MONTHS.indexOf(monthName) + 1;
+  const year = Number(match[3]);
+  if (month === 0) return null;
+  const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (day < 1 || day > daysInMonth[month - 1]) return null;
+  return `${match[3]}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 export function formatFullDate(dateInput: string | Date = new Date()): string {
   const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
   return d.toLocaleDateString('en-GB', {

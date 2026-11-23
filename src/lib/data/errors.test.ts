@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { DATA_MESSAGES, DataError, dataErrorMessage, isNetworkError, toDataError } from './errors';
+import {
+  DATA_MESSAGES,
+  DataError,
+  dataErrorMessage,
+  isNetworkError,
+  toDataError,
+  toSaveError,
+} from './errors';
 
 // The exact texts raised by change_engagement_status() and the step 8 row rules.
 const pg = (code: string, message: string) => ({ code, message, details: '', hint: '' });
@@ -78,5 +85,55 @@ describe('toDataError: session, network and unknown', () => {
     expect(message).not.toContain('example.test');
     expect(message).not.toContain('5,00,000');
     expect(dataErrorMessage(pg('42501', raw.message))).not.toContain('example.test');
+  });
+});
+
+describe('toSaveError: saving a form (Add and Edit)', () => {
+  it('a duplicate Client ID gets its own message; any other duplicate means changed meanwhile', () => {
+    const code = toSaveError(
+      pg('23505', 'duplicate key value violates unique constraint "clients_client_code_key"'),
+    );
+    expect(code.kind).toBe('duplicate-code');
+    expect(code.message).toBe('That Client ID is already used by another client.');
+    expect(
+      toSaveError(pg('23505', 'duplicate key value violates "engagement_financials_pkey"')).kind,
+    ).toBe('changed-or-refused');
+  });
+
+  it('a refused check, number or date is invalid data', () => {
+    for (const code of ['23514', '22P02', '22003', '22007', '22008']) {
+      const error = toSaveError(pg(code, 'new row for relation "clients" violates check'));
+      expect(error.kind, code).toBe('invalid-data');
+      expect(error.message).toBe(DATA_MESSAGES['invalid-data']);
+    }
+  });
+
+  it('an unknown lookup value is an unavailable choice', () => {
+    const error = toSaveError(pg('23503', 'violates foreign key constraint'));
+    expect(error.kind).toBe('unknown-choice');
+    expect(error.message).toBe(DATA_MESSAGES['unknown-choice']);
+  });
+
+  it('every 42501 is a refused save, whichever rule refused it, without the raw text', () => {
+    for (const message of [
+      'new row violates row-level security policy for table "clients"',
+      'permission denied for column created_by',
+      "Only an Owner can change an engagement's creator, client or owner",
+    ]) {
+      const error = toSaveError(pg('42501', message));
+      expect(error.kind, message).toBe('save-refused');
+      expect(error.message).toBe("You don't have permission to save this change.");
+    }
+  });
+
+  it('leaves session, network and unknown errors to toDataError, and the move messages unchanged', () => {
+    expect(toSaveError(pg('PGRST303', 'JWT expired')).kind).toBe('session');
+    expect(toSaveError(pg('', 'TypeError: Failed to fetch')).kind).toBe('network');
+    expect(toSaveError(pg('XX000', 'internal')).kind).toBe('unknown');
+    expect(toDataError(pg('42501', 'new row violates row-level security policy')).kind).toBe('rls');
+    expect(DATA_MESSAGES.rls).toBe("You can't move this engagement to that status.");
+    expect(DATA_MESSAGES['changed-or-refused']).toBe(
+      "This record was changed by someone else, or you can't edit it. Close and open it again to see the latest.",
+    );
   });
 });

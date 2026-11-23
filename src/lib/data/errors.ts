@@ -15,7 +15,13 @@ export type DataErrorKind =
   | 'invalid' // any other 22023
   | 'session' // the login has expired
   | 'network' // the server couldn't be reached
-  | 'unknown';
+  | 'unknown'
+  // Saving a form (Add and Edit, session 1; toSaveError below):
+  | 'duplicate-code' // 23505 on clients.client_code
+  | 'invalid-data' // 23514 / 22P02 / 22003 / 22007 / 22008: a check, number or date was refused
+  | 'unknown-choice' // 23503: a lookup value that doesn't exist (any more)
+  | 'save-refused' // 42501: a row rule, a column grant or a guard trigger refused the save
+  | 'changed-or-refused'; // an update matched no row: changed meanwhile, or not editable
 
 export const DATA_MESSAGES: Record<DataErrorKind, string> = {
   'no-access': "Your account doesn't have access to change statuses. Please contact an Owner.",
@@ -29,6 +35,12 @@ export const DATA_MESSAGES: Record<DataErrorKind, string> = {
   session: 'Your session has ended. Please sign in again.',
   network: "Can't reach the server. Check that the local database is running.",
   unknown: 'Something went wrong. Please try again.',
+  'duplicate-code': 'That Client ID is already used by another client.',
+  'invalid-data': "Some details aren't valid. Check the highlighted fields and try again.",
+  'unknown-choice': "One of the choices isn't available any more. Refresh the page and try again.",
+  'save-refused': "You don't have permission to save this change.",
+  'changed-or-refused':
+    "This record was changed by someone else, or you can't edit it. Close and open it again to see the latest.",
 };
 
 export class DataError extends Error {
@@ -84,6 +96,33 @@ export function toDataError(error: unknown, status?: number): DataError {
   // supabase-js reports a failed fetch as { code: '', message: 'TypeError: Failed to fetch' }.
   if (code === '' && NETWORK_FAILURE.test(message)) return new DataError('network');
   return new DataError('unknown', code || undefined);
+}
+
+const INVALID_DATA_CODES = new Set(['23514', '22P02', '22003', '22007', '22008']);
+
+/**
+ * Maps an error from saving a form (insert or update on clients, engagements,
+ * engagement_financials). Separate from toDataError, whose wording is about status moves:
+ * every 42501 here is a refused save, whichever rule refused it. Anything that isn't a save
+ * refusal (session, network, unknown) goes through toDataError unchanged.
+ */
+export function toSaveError(error: unknown, status?: number): DataError {
+  if (error instanceof DataError) return error;
+  if (error !== null && typeof error === 'object') {
+    const fields = error as { code?: unknown; message?: unknown };
+    const code = typeof fields.code === 'string' ? fields.code : '';
+    const message = typeof fields.message === 'string' ? fields.message : '';
+    if (code === '23505') {
+      // The only other unique key written by the forms is engagement_financials' primary key:
+      // someone added the row meanwhile.
+      const kind = message.includes('client_code') ? 'duplicate-code' : 'changed-or-refused';
+      return new DataError(kind, code);
+    }
+    if (INVALID_DATA_CODES.has(code)) return new DataError('invalid-data', code);
+    if (code === '23503') return new DataError('unknown-choice', code);
+    if (code === '42501') return new DataError('save-refused', code);
+  }
+  return toDataError(error, status);
 }
 
 /** The message a screen shows for any error. */
