@@ -29,3 +29,6 @@ real-data/
 # OS and logs
 .DS_Store
 *.log
+
+# Vercel CLI project link (IDs only)
+.vercel

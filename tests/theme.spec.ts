@@ -1,8 +1,14 @@
 // Theme toggle (PHASE-0-PART-2-PLAN.md step 13, DESIGN.md §2a).
 import { expect, test, type Page } from '@playwright/test';
+import { ACCOUNTS, mockSupabase } from './support/auth';
 
 // The first page load waits for the dev server to compile the app.
 test.describe.configure({ timeout: 60_000 });
+
+// The theme controls live in the signed-in app.
+test.beforeEach(async ({ page }) => {
+  await mockSupabase(page, { signedInAs: ACCOUNTS.owner });
+});
 
 const DARK_BG = 'rgb(8, 12, 22)';
 const LIGHT_BG = 'rgb(248, 250, 252)';
@@ -16,7 +22,7 @@ async function expectTheme(page: Page, theme: 'light' | 'dark') {
 }
 
 async function chooseInUserMenu(page: Page, option: 'Light' | 'Dark' | 'System') {
-  await page.getByRole('button', { name: 'Switch active user' }).click();
+  await page.getByRole('button', { name: 'Account menu' }).click();
   await page.getByRole('radio', { name: option }).click();
 }
 

@@ -31,8 +31,8 @@
             │ SUPABASE (Mumbai, ap-south-1)                                   │
             │                                                                 │
             │  Auth ──► Postgres (tables, views, row-level security)          │
-            │               ▲    ▲                                            │
-            │   Realtime ───┘    │  pg_cron (daily 07:00 IST) ──► pg_net ─┐   │
+            │                    ▲                                            │
+            │   (no Realtime)    │  pg_cron (daily 07:00 IST) ──► pg_net ─┐   │
             │                    │                                        ▼   │
             │  Edge Functions (Deno + TypeScript) ◄───────────────────────┘   │
             │   drishti-chat ─────────────► Google Gemini API (paid tier)     │
@@ -77,12 +77,12 @@
 | **Views** | `pipeline` (Lead, Proposal, On Hold), `delivery` (In Progress, Implemented, Audit Completed), `active_clients` (Certified, Renewal Due, Completed), `v_renewals` | Views use `security_invoker = true` so RLS still applies. This split fixes the plan bug |
 | **Postgres functions (RPC)** | Renewal date rule, status changes with logging, import commit | Business rules that must be the same everywhere live here, not only in React |
 | **Auth** | Email + password and magic link; invite-only | Public sign-up switched off. A trigger creates the `profiles` row |
-| **Realtime** | Two users see each other's changes live | Only on the tables the screens watch |
+| **Realtime** | Dropped from Part 1 (DECISIONS 22-Nov-2026) | A second browser sees changes by refetching when its window gets focus (TanStack Query `refetchOnWindowFocus`) |
 | **Edge Functions** | All server code (Deno + TypeScript) | Every function checks the caller's login and role first. Secrets come from `Deno.env` only |
 | **pg_cron + pg_net** | Daily jobs call Edge Functions | Cron runs in UTC: `30 1 * * *` = 07:00 IST |
 | **Vault** | Outlook refresh tokens, encrypted | Only Edge Functions using the service role can read them; never returned to the browser |
 | **Region** | **Mumbai (`ap-south-1`)** for production | Keeps data in India (DPDP). Dev project on the free plan can be anywhere |
-| **Plan** | Free for development; **Pro** for production | Pro gives daily backups and no project pausing |
+| **Plan** | Free, for development and production (Mumbai region, SQAS-owned) | Client's choice (small data, cost). No automatic backups (weekly Excel export instead) and the project pauses after 7 days without activity (DECISIONS 22-Nov-2026) |
 
 ### Edge Functions list
 

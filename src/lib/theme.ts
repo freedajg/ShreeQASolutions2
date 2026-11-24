@@ -5,10 +5,12 @@
 export type ThemePreference = 'light' | 'dark' | 'system';
 export type Theme = 'light' | 'dark';
 
-export const THEME_STORAGE_KEY = 'drishti-theme';
-// Dark until the client approves the light theme; then System (PHASE-0-PART-2-PLAN.md).
-// Changing it means changing the index.html script too.
-export const DEFAULT_PREFERENCE: ThemePreference = 'dark';
+// v2 since 24-Nov-2026: choices saved under the old key (when Dark/System was the default) are
+// ignored once, so everyone starts on Light.
+export const THEME_STORAGE_KEY = 'drishti-theme-v2';
+// Light (white) by default: the user's choice on 24-Nov-2026 (DECISIONS). Each person can still
+// pick Dark or System. Changing it means changing the index.html script too.
+export const DEFAULT_PREFERENCE: ThemePreference = 'light';
 const LIGHT_QUERY = '(prefers-color-scheme: light)';
 
 type KeyValueStore = Pick<Storage, 'getItem' | 'setItem'>;
