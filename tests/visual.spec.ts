@@ -52,7 +52,7 @@ test.describe.configure({ timeout: 60_000 });
 async function prepare(page: Page, theme: Theme) {
   // Dark is the default, so dark runs exactly as before; light is saved before the first load.
   if (theme === 'light') {
-    await page.addInitScript(() => localStorage.setItem('drishti-theme', 'light'));
+    await page.addInitScript(() => localStorage.setItem('drishti-theme-v2', 'light'));
   }
   // pauseAt can only move forward, so install just before FIXED_NOW.
   await page.clock.install({ time: FIXED_NOW.getTime() - 60_000 });

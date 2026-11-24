@@ -229,6 +229,96 @@ h4,
   background: var(--color-primary);
 }
 
+/* Drishti mark and sign-in page motion (DrishtiEye.tsx, LoginPage.tsx) */
+.drishti-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: drishti-ping 3s ease-out infinite;
+  opacity: 0;
+}
+.drishti-sweep {
+  transform-origin: 60px 60px;
+  animation: drishti-spin 5s linear infinite;
+}
+.drishti-lid {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: drishti-blink 6s ease-in-out infinite;
+}
+.drishti-iris {
+  animation: drishti-look 8s ease-in-out infinite;
+}
+.drishti-float {
+  animation: drishti-float 14s ease-in-out infinite;
+}
+.drishti-rise {
+  animation: drishti-rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes drishti-ping {
+  0% {
+    transform: scale(0.45);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.15);
+    opacity: 0;
+  }
+}
+@keyframes drishti-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes drishti-blink {
+  0%,
+  90%,
+  100% {
+    transform: scaleY(1);
+  }
+  94% {
+    transform: scaleY(0.08);
+  }
+}
+@keyframes drishti-look {
+  0%,
+  15%,
+  90%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25%,
+  40% {
+    transform: translate(-10px, 1px);
+  }
+  50%,
+  65% {
+    transform: translate(10px, -1px);
+  }
+  75% {
+    transform: translate(0, 3px);
+  }
+}
+@keyframes drishti-float {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(24px, -18px) scale(1.08);
+  }
+}
+@keyframes drishti-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Prefers reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *,

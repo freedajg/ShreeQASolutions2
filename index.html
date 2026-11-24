@@ -14,7 +14,7 @@
       (function () {
         var pref = null;
         try {
-          pref = localStorage.getItem('drishti-theme');
+          pref = localStorage.getItem('drishti-theme-v2');
         } catch (e) {}
         var theme = pref === 'dark' ? 'dark' : 'light';
         if (pref === 'system' && window.matchMedia) {

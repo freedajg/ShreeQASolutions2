@@ -5,7 +5,9 @@
 export type ThemePreference = 'light' | 'dark' | 'system';
 export type Theme = 'light' | 'dark';
 
-export const THEME_STORAGE_KEY = 'drishti-theme';
+// v2 since 24-Nov-2026: choices saved under the old key (when Dark/System was the default) are
+// ignored once, so everyone starts on Light.
+export const THEME_STORAGE_KEY = 'drishti-theme-v2';
 // Light (white) by default: the user's choice on 24-Nov-2026 (DECISIONS). Each person can still
 // pick Dark or System. Changing it means changing the index.html script too.
 export const DEFAULT_PREFERENCE: ThemePreference = 'light';
