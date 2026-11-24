@@ -24,11 +24,11 @@ describe('parsePreference', () => {
     expect(parsePreference('system')).toBe('system');
   });
 
-  it('treats a missing or unknown value as Dark (the default for now)', () => {
-    expect(DEFAULT_PREFERENCE).toBe('dark');
-    expect(parsePreference(null)).toBe('dark');
-    expect(parsePreference(undefined)).toBe('dark');
-    expect(parsePreference('blue')).toBe('dark');
+  it('treats a missing or unknown value as Light (the default)', () => {
+    expect(DEFAULT_PREFERENCE).toBe('light');
+    expect(parsePreference(null)).toBe('light');
+    expect(parsePreference(undefined)).toBe('light');
+    expect(parsePreference('blue')).toBe('light');
   });
 });
 
@@ -51,12 +51,12 @@ describe('saved preference', () => {
     expect(readPreference(store)).toBe('light');
   });
 
-  it('defaults to Dark when nothing is saved or storage is unavailable', () => {
-    expect(readPreference(memoryStore())).toBe('dark');
-    expect(readPreference(undefined)).toBe('dark');
+  it('defaults to Light when nothing is saved or storage is unavailable', () => {
+    expect(readPreference(memoryStore())).toBe('light');
+    expect(readPreference(undefined)).toBe('light');
   });
 
-  it('defaults to Dark when storage throws', () => {
+  it('defaults to Light when storage throws', () => {
     const broken = {
       getItem: () => {
         throw new Error('blocked');
@@ -65,7 +65,7 @@ describe('saved preference', () => {
         throw new Error('blocked');
       },
     };
-    expect(readPreference(broken)).toBe('dark');
+    expect(readPreference(broken)).toBe('light');
     expect(() => savePreference('dark', broken)).not.toThrow();
   });
 });
@@ -74,5 +74,10 @@ describe('index.html first-paint script', () => {
   it('reads the same storage key as theme.ts', () => {
     const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
     expect(html).toContain(`'${THEME_STORAGE_KEY}'`);
+  });
+
+  it('paints Light first unless Dark was chosen, like DEFAULT_PREFERENCE', () => {
+    const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+    expect(html).toContain(`pref === 'dark' ? 'dark' : 'light'`);
   });
 });

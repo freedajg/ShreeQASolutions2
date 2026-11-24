@@ -10,13 +10,13 @@
     <script>
       // Sets the theme before anything paints, so there's no flash of the wrong theme.
       // Same rules as src/lib/theme.ts: Light or Dark if chosen, the device's setting for
-      // System, and Dark when nothing is saved.
+      // System, and Light when nothing is saved.
       (function () {
         var pref = null;
         try {
           pref = localStorage.getItem('drishti-theme');
         } catch (e) {}
-        var theme = pref === 'light' ? 'light' : 'dark';
+        var theme = pref === 'dark' ? 'dark' : 'light';
         if (pref === 'system' && window.matchMedia) {
           theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
         }
