@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
     return json(
       {
         error:
-          'Microsoft 365 isn’t set up for Drishti yet (app registration and admin consent are pending).',
+          'Outlook can’t be connected yet: SQAS’s Microsoft 365 isn’t linked to Drishti. See Settings → Outlook for the steps left.',
       },
       503,
     );

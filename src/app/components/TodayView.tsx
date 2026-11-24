@@ -491,7 +491,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
                           className="inline-flex items-center gap-1.5 rounded-lg bg-primary-strong hover:bg-primary-strong disabled:opacity-45 disabled:cursor-not-allowed px-4 py-2 text-xs font-medium text-on-primary transition-colors"
                         >
                           <Send className="h-3.5 w-3.5" />
-                          <span>Send from {selectedOwner.name.split(' ')[0]}’s Outlook</span>
+                          <span>Send from {selectedOwner.name}’s Outlook</span>
                         </button>
                         <button
                           type="button"

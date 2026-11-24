@@ -19,7 +19,7 @@ interface SettingsViewProps {
   onChangeMemberRole: (memberId: string, role: Role) => void;
   onToggleConsultantValueAccess: (memberId: string) => void;
   onToggleMemberActive: (memberId: string) => void;
-  onInviteMember: (name: string, email: string, role: Role, title: string) => void;
+  onInviteMember: (name: string, email: string, role: Role) => void;
   /** Database column names of app_settings (Owners only; the database refuses anyone else). */
   onUpdateSettings: (patch: Record<string, unknown>) => void;
   onUpdateCycle: (
@@ -57,13 +57,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [inviteName, setInviteName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<Role>('Consultant');
-  const [inviteTitle, setInviteTitle] = useState('');
   const [auditFilter, setAuditFilter] = useState<string>('all');
 
   const handleInviteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteName.trim() || !inviteEmail.trim()) return;
-    onInviteMember(inviteName.trim(), inviteEmail.trim(), inviteRole, inviteTitle.trim());
+    onInviteMember(inviteName.trim(), inviteEmail.trim(), inviteRole);
     setInviteName('');
     setInviteEmail('');
   };
@@ -214,47 +213,61 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             onSubmit={handleInviteSubmit}
             className="rounded-xl border border-border bg-surface p-5 space-y-4"
           >
-            <div className="flex items-center gap-2 text-sm font-semibold text-text">
-              <UserPlus className="h-4 w-4 text-primary" />
-              <span>Invite Team Member (Invite-Only Policy)</span>
+            <div>
+              <div className="flex items-center gap-2 text-sm font-semibold text-text">
+                <UserPlus className="h-4 w-4 text-primary" />
+                <span>Invite a team member</span>
+              </div>
+              <p className="mt-1 text-[11px] text-muted">
+                Only invited people can sign in. They get an email with a link to set their
+                password, then sign in to Drishti with this email.
+              </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-              <input
-                type="text"
-                value={inviteName}
-                onChange={(e) => setInviteName(e.target.value)}
-                placeholder="Full Name"
-                required
-                className="rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text"
-              />
-              <input
-                type="email"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="name@shreeqasolutions.com"
-                required
-                className="rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text"
-              />
-              <input
-                type="text"
-                value={inviteTitle}
-                onChange={(e) => setInviteTitle(e.target.value)}
-                placeholder="Designation"
-                className="rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text"
-              />
-              <select
-                value={inviteRole}
-                onChange={(e) => setInviteRole(e.target.value as Role)}
-                className="rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text"
-              >
-                <option value="Consultant">Consultant</option>
-                <option value="Marketing">Marketing</option>
-                <option value="Owner/Admin">Owner/Admin</option>
-              </select>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <label className="space-y-1">
+                <span className="block text-[11px] font-medium text-text-secondary">Full name</span>
+                <input
+                  type="text"
+                  value={inviteName}
+                  onChange={(e) => setInviteName(e.target.value)}
+                  placeholder="e.g. Priya Sharma"
+                  required
+                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text"
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="block text-[11px] font-medium text-text-secondary">
+                  Work email (their Outlook address)
+                </span>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="name@shreeqasolutions.com"
+                  required
+                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text"
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="block text-[11px] font-medium text-text-secondary">Role</span>
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as Role)}
+                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text"
+                >
+                  <option value="Consultant">
+                    Consultant: their own clients, no money figures
+                  </option>
+                  <option value="Marketing">Marketing: views clients, no money, can't send</option>
+                  <option value="Owner/Admin">
+                    Owner/Admin: everything, needs two-step sign-in
+                  </option>
+                </select>
+              </label>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <span className="text-[11px] text-muted">
-                Deactivated members retain all past email threads and meeting notes under their
+                Deactivated members can't sign in, but keep their past emails and notes under their
                 name.
               </span>
               <button
