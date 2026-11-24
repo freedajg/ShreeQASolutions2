@@ -375,6 +375,23 @@ export async function connectOutlook(db: Db) {
   window.location.assign(data.url);
 }
 
+export interface EmailSetupStatus {
+  microsoftAppSet: boolean;
+  encryptionKeySet: boolean;
+  appOriginSet: boolean;
+  redirectUri: string;
+  webhookUrl: string;
+}
+
+/** Server-side readiness for real email (Owners). Null when the function isn't reachable yet. */
+export async function emailSetupStatus(db: Db): Promise<EmailSetupStatus | null> {
+  try {
+    return (await invokeOrThrow(db, 'outlook-connect', { action: 'status' })) as EmailSetupStatus;
+  } catch {
+    return null;
+  }
+}
+
 export const disconnectOutlook = (db: Db) =>
   invokeOrThrow(db, 'outlook-connect', { action: 'disconnect' });
 

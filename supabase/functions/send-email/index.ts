@@ -56,7 +56,18 @@ Deno.serve(async (req) => {
     .select('email_test_mode')
     .eq('id', 1)
     .single();
-  const testMode = settings?.email_test_mode !== false || !msConfigured();
+  // Test mode is only ever chosen in Settings. With test mode off, a missing Microsoft 365 setup
+  // is an error the person sees, never a quiet fall-back that looks like a real send.
+  const testMode = settings?.email_test_mode !== false;
+  if (!testMode && !msConfigured()) {
+    return json(
+      {
+        error:
+          'Real email is switched on, but Microsoft 365 is not connected to Drishti yet. Turn test mode back on in Settings, or finish the Microsoft 365 setup.',
+      },
+      503,
+    );
+  }
 
   const results: Result[] = [];
   for (const draftId of ids) {

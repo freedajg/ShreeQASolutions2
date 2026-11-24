@@ -295,3 +295,4 @@ Phase 0 part 2, steps 3–10. Each old colour became the token on its row everyw
 | 24-Nov-2026 | Existing pgTAP files were updated (aal2 claims, new columns/policies) but only the new `crm_extensions.test.sql` (46/46) was run, against the hosted dev project; run `bun run db:test` locally or in CI before merging | Next CI run |
 | 24-Nov-2026 | `xlsx` 0.18.5 (npm) has known advisories for untrusted files; PLAN.md already plans the official SheetJS build. CSV import (client answer) not yet accepted | Phase 3 |
 | 24-Nov-2026 | Edge Functions deployed through the Supabase MCP carry trimmed copies of `_shared/*.ts` (same code, fewer comments); a `supabase functions deploy` from the repo replaces them | Next deploy |
+| 24-Nov-2026 | Real email: with test mode off and Microsoft 365 not set up, send-email returns an error instead of quietly recording a test send; Settings shows a go-live checklist (owners only, yes/no from the server, never secret values) | Go-live |

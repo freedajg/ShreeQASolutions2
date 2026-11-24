@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { AlertTriangle, CheckCircle2, Lock, Mail, Shield, UserPlus, Users } from 'lucide-react';
 import { ActivityLogEntry, AppSettings, Role, TeamMember } from '../types/crm';
 import { formatTimestampIST } from '../utils/formatters';
+import { EmailGoLiveChecklist } from './EmailGoLiveChecklist';
+import type { EmailSetupStatus } from '../data/actions';
 
 interface SettingsViewProps {
   currentUser: TeamMember;
@@ -27,6 +29,8 @@ interface SettingsViewProps {
   ) => void;
   /** Runs the retention cleanup now (Owners; it also runs monthly on its own). */
   onRunRetention: () => void;
+  /** Server-side readiness for real email (go-live checklist). */
+  loadEmailStatus: () => Promise<EmailSetupStatus | null>;
 }
 
 const monthsOrNull = (v: string) => (v.trim() === '' ? null : Math.max(1, Math.round(Number(v))));
@@ -45,6 +49,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onUpdateSettings,
   onUpdateCycle,
   onRunRetention,
+  loadEmailStatus,
 }) => {
   const m365Provider = settings.m365Provider;
   const m365AdminConsentGranted = settings.m365AdminConsent;
@@ -266,6 +271,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* Microsoft 365 & Outlook Connection Hub (§10 & §11 ⚠1 + FR-7) */}
       {tab === 'outlook' && (
         <div className="space-y-6">
+          <EmailGoLiveChecklist
+            settings={settings}
+            teamMembers={teamMembers}
+            loadStatus={loadEmailStatus}
+          />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* 1. Tenant-Level Admin Consent */}
             <div className="rounded-xl border border-border bg-surface p-5 space-y-4 text-xs">

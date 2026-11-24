@@ -59,6 +59,7 @@ export function DrishtiApp() {
     queryFn: () => loadCrmData(db, me),
     staleTime: 30_000,
   });
+  const loadEmailStatus = useCallback(() => act.emailSetupStatus(db), [db]);
   const reload = useCallback(
     () => queryClient.invalidateQueries({ queryKey: ['crm', me.id] }),
     [queryClient, me.id],
@@ -635,6 +636,7 @@ export function DrishtiApp() {
               onUpdateSettings={(patch) =>
                 void run(() => act.updateSettings(db, patch), 'Settings saved.')
               }
+              loadEmailStatus={loadEmailStatus}
               onRunRetention={() =>
                 void run(async () => {
                   const r = await act.runRetention(db);

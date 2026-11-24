@@ -42,6 +42,19 @@ Deno.serve(async (req) => {
     return json({ ok: true });
   }
 
+  // Go-live checklist (Settings): which server-side pieces are in place. Owners only; it returns
+  // yes/no answers and public addresses, never a secret value.
+  if (action === 'status') {
+    if (caller.role !== 'owner') return json({ error: 'Owners only' }, 403);
+    return json({
+      microsoftAppSet: msConfigured(),
+      encryptionKeySet: Boolean(Deno.env.get('TOKEN_ENC_KEY')),
+      appOriginSet: Boolean(Deno.env.get('APP_ORIGIN')),
+      redirectUri: REDIRECT,
+      webhookUrl: `${SUPABASE_URL}/functions/v1/graph-webhook`,
+    });
+  }
+
   if (action !== 'start') return json({ error: 'Unknown action' }, 400);
   if (!msConfigured()) {
     return json(
