@@ -41,45 +41,11 @@ export default defineConfig([
   // without changing MVP code in Phase 0. Each file lists only the rules it fails.
   // Remove a file from this list when its phase rewrites it; everything else,
   // including all new code, keeps these rules as errors.
-  {
-    files: [
-      'src/components/SettingsView.tsx',
-      'src/components/DrishtiView.tsx',
-      'src/components/Navbar.tsx',
-      'src/components/RenewalRadarView.tsx',
-    ],
-    rules: {
-      '@typescript-eslint/no-unused-vars': 'warn',
-    },
-  },
-  {
-    files: [
-      'src/components/ImportView.tsx',
-      'src/services/aiService.ts',
-      'src/utils/localAiEngine.ts',
-    ],
-    rules: {
-      '@typescript-eslint/no-unused-vars': 'warn',
-      '@typescript-eslint/no-explicit-any': 'warn',
-    },
-  },
+  // The MVP screens were replaced on 24-Nov-2026 (DECISIONS); only src/types.ts remains.
   {
     files: ['src/types.ts'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'warn',
-    },
-  },
-  {
-    files: ['src/components/DrishtiFace.tsx', 'src/components/EmailDraftModal.tsx'],
-    rules: {
-      'react-hooks/set-state-in-effect': 'warn',
-    },
-  },
-  {
-    files: ['src/context/CrmContext.tsx'],
-    rules: {
-      'react-hooks/set-state-in-effect': 'warn',
-      'react-refresh/only-export-components': 'warn',
     },
   },
   // Must stay last: turns off rules that conflict with Prettier.

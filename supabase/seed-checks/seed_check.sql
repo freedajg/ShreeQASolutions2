@@ -131,7 +131,7 @@ $$;
 -- As Demo Owner 1: every row of each view (9 / 3 / 9 / 1 / 1), with values
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "5eed0001-0000-4000-8000-000000000001", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "5eed0001-0000-4000-8000-000000000001", "role": "authenticated", "aal": "aal2"}';
 
 do $$
 declare
@@ -162,7 +162,7 @@ reset role;
 -- As Demo Consultant 1 (no values access): all 23 engagements, no values
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "5eed0001-0000-4000-8000-000000000011", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "5eed0001-0000-4000-8000-000000000011", "role": "authenticated", "aal": "aal2"}';
 
 do $$
 declare
@@ -184,7 +184,7 @@ reset role;
 -- As Demo Consultant 2 (values access): all financials
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "5eed0001-0000-4000-8000-000000000012", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "5eed0001-0000-4000-8000-000000000012", "role": "authenticated", "aal": "aal2"}';
 
 do $$
 declare
@@ -201,7 +201,7 @@ reset role;
 -- As Demo Marketing 1: the 9 pipeline rows only, no other view, no values
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "5eed0001-0000-4000-8000-000000000021", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "5eed0001-0000-4000-8000-000000000021", "role": "authenticated", "aal": "aal2"}';
 
 do $$
 declare

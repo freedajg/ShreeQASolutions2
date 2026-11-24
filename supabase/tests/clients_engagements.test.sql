@@ -49,8 +49,9 @@ select columns_are('public', 'engagements', array[
   'initial_engagement_date', 'completion_date', 'certificate_number', 'valid_from', 'valid_to',
   'certification_body', 'surveillance_due_date', 'last_audit_date', 'next_audit_date', 'owner_id',
   'lead_source', 'remarks', 'last_contacted_on', 'next_follow_up_on', 'date_is_estimated',
-  'created_by', 'archived_at', 'created_at', 'updated_at'
-], 'engagements has Excel L-X, AA, AB, AD plus follow-up, estimate, created by, archived and timestamps');
+  'created_by', 'archived_at', 'created_at', 'updated_at',
+  'closed_reason', 'follow_up_count', 'replied_at'
+], 'engagements has Excel L-X, AA, AB, AD plus follow-up, estimate, closed reason, replied, created by, archived and timestamps');
 select columns_are('public', 'engagement_financials', array[
   'engagement_id', 'contract_value', 'payment_status', 'created_at', 'updated_at'
 ], 'engagement_financials has Excel Y and Z only');
@@ -91,7 +92,7 @@ select fk_ok('public', 'engagement_financials', 'payment_status', 'public', 'pay
 -- 20-38: what the tables accept, checked as the server
 -- ---------------------------------------------------------------------------
 -- The login claims are set so auth.uid() returns the Owner, to check the created_by default.
-set local request.jwt.claims to '{"sub": "c0000000-0000-4000-8000-000000000001", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "c0000000-0000-4000-8000-000000000001", "role": "authenticated", "aal": "aal2"}';
 
 select lives_ok(
   $$insert into public.clients (id, client_code, name, email, priority) values

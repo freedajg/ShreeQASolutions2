@@ -371,7 +371,12 @@ export interface SeedData {
 }
 
 // Builds clients (one per Client ID), engagements (one per row) and financials from the sheet.
-export function parseRows(rows: readonly SheetRow[], options: { date1904: boolean }): SeedData {
+// `resolveOwner` maps a column AA name to a team member id (the in-app import passes the real
+// team); without it the fixed DUMMY name map is used (the seed).
+export function parseRows(
+  rows: readonly SheetRow[],
+  options: { date1904: boolean; resolveOwner?: (name: string) => string | null },
+): SeedData {
   const flags: Flag[] = [];
   const clients: SeedClient[] = [];
   const engagements: SeedEngagement[] = [];
@@ -505,6 +510,9 @@ export function parseRows(rows: readonly SheetRow[], options: { date1904: boolea
     const ownerName = cellText(cell('AA'));
     if (ownerName === null) {
       flag('AA', 'MISSING_OWNER');
+    } else if (options.resolveOwner) {
+      ownerId = options.resolveOwner(ownerName);
+      if (ownerId === null) flag('AA', 'UNMATCHED_OWNER');
     } else {
       const key = OWNER_MAP.get(ownerName);
       if (key === undefined) {

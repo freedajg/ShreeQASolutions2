@@ -36,8 +36,19 @@ describe('checkSupabaseConfig', () => {
     expect(problemOf(LOCAL_URL, '')).toMatch(/VITE_SUPABASE_ANON_KEY is not set/);
   });
 
-  it('refuses anything that is not the local stack', () => {
+  it('accepts the hosted dev project over https only', () => {
+    expect(checkSupabaseConfig('https://noyxpuzhyviqzhglakdo.supabase.co', ANON)).toEqual({
+      ok: true,
+      config: { url: 'https://noyxpuzhyviqzhglakdo.supabase.co', anonKey: ANON },
+    });
+    expect(problemOf('http://noyxpuzhyviqzhglakdo.supabase.co', ANON)).toMatch(/local stack/);
+  });
+
+  it('refuses anything that is not the local stack or the dev project', () => {
     expect(problemOf('https://abcdefgh.supabase.co', ANON)).toMatch(/local stack/);
+    expect(problemOf('https://noyxpuzhyviqzhglakdo.supabase.co.example.com', ANON)).toMatch(
+      /local stack/,
+    );
     expect(problemOf('http://192.168.1.20:54321', ANON)).toMatch(/local stack/);
     expect(problemOf('http://127.0.0.1.example.com:54321', ANON)).toMatch(/local stack/);
     expect(problemOf('not a url', ANON)).toMatch(/not a valid URL/);

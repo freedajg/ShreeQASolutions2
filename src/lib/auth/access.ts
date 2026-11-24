@@ -63,7 +63,7 @@ export const MESSAGES = {
   empty: 'Enter your email and password.',
   noAccess: "Your account doesn't have access yet. Please contact an Owner.",
   tooMany: 'Too many attempts. Wait a few minutes and try again.',
-  connection: "Can't reach the server. Check that the local database is running.",
+  connection: "Can't reach the server. Check your connection and try again.",
   generic: "Sign-in didn't work. Please try again.",
 } as const;
 

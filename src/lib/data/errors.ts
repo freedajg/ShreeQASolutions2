@@ -33,7 +33,7 @@ export const DATA_MESSAGES: Record<DataErrorKind, string> = {
   'same-status': "It's already in that status.",
   invalid: "That change isn't valid.",
   session: 'Your session has ended. Please sign in again.',
-  network: "Can't reach the server. Check that the local database is running.",
+  network: "Can't reach the server. Check your connection and try again.",
   unknown: 'Something went wrong. Please try again.',
   'duplicate-code': 'That Client ID is already used by another client.',
   'invalid-data': "Some details aren't valid. Check the highlighted fields and try again.",

@@ -20,7 +20,7 @@ export const supabase: DrishtiClient | null = supabaseConfig.ok
         storageKey: AUTH_STORAGE_KEY,
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: false, // no magic link yet (step 17)
+        detectSessionInUrl: true, // magic-link and invite links sign in from the URL (step 17)
       },
     })
   : null;

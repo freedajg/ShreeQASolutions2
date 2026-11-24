@@ -79,7 +79,7 @@ select set_eq(
     ('ISO 9001', 12, 36), ('ISO 20000-1', 12, 36), ('ISO 27001', 12, 36), ('ISO 22301', 12, 36),
     ('ISO 27701', 12, 36), ('ISO 42001', 12, 36), ('ISO 13485', 12, 36),
     ('CMMI', null::integer, 36), ('CMMC', null::integer, 36),
-    ('SOC 1', null::integer, 12), ('SOC 2', null::integer, 12), ('VAPT', null::integer, 12),
+    ('SOC 1', null::integer, 12), ('SOC 2', null::integer, 12), ('VAPT', null::integer, null::integer), -- no fixed cycle (20261124100600_vapt_no_cycle.sql)
     ('GDPR', null::integer, null::integer), ('DPDP', null::integer, null::integer),
     ('HIPAA', null::integer, null::integer), ('Other', null::integer, null::integer)$$,
   'Default renewal cycles match PRD FR-4'
@@ -103,7 +103,7 @@ reset role;
 -- 18-19: Consultant
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b0000000-0000-4000-8000-000000000011", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b0000000-0000-4000-8000-000000000011", "role": "authenticated", "aal": "aal2"}';
 
 select is(
   (select (select count(*) from public.certification_types) + (select count(*) from public.statuses)
@@ -128,7 +128,7 @@ reset role;
 -- 20-21: Marketing
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b0000000-0000-4000-8000-000000000021", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b0000000-0000-4000-8000-000000000021", "role": "authenticated", "aal": "aal2"}';
 
 select is(
   (select (select count(*) from public.certification_types) + (select count(*) from public.statuses)
@@ -149,7 +149,7 @@ reset role;
 -- 22: a user without a role; 23: an inactive Consultant
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b0000000-0000-4000-8000-000000000031", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b0000000-0000-4000-8000-000000000031", "role": "authenticated", "aal": "aal2"}';
 
 select is(
   (select (select count(*) from public.certification_types) + (select count(*) from public.statuses)
@@ -162,7 +162,7 @@ select is(
 reset role;
 
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b0000000-0000-4000-8000-000000000013", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b0000000-0000-4000-8000-000000000013", "role": "authenticated", "aal": "aal2"}';
 
 select is(
   (select (select count(*) from public.certification_types) + (select count(*) from public.statuses)
@@ -178,7 +178,7 @@ reset role;
 -- 24-31: Owner
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b0000000-0000-4000-8000-000000000001", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b0000000-0000-4000-8000-000000000001", "role": "authenticated", "aal": "aal2"}';
 
 select lives_ok(
   $$insert into public.lead_sources (code, sort_order) values ('Webinar', 8)$$,

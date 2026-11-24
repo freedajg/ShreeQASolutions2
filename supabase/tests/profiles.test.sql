@@ -67,7 +67,7 @@ reset role;
 -- 5-18: Consultant 1
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "a0000000-0000-4000-8000-000000000011", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "a0000000-0000-4000-8000-000000000011", "role": "authenticated", "aal": "aal2"}';
 
 select is(
   (select can_see_values from public.profiles where id = 'a0000000-0000-4000-8000-000000000011'),
@@ -154,7 +154,7 @@ reset role;
 -- 19-20: Marketing
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "a0000000-0000-4000-8000-000000000021", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "a0000000-0000-4000-8000-000000000021", "role": "authenticated", "aal": "aal2"}';
 
 select is(
   (select count(*)::int from public.team_members where email like '%@example.test'),
@@ -173,7 +173,7 @@ reset role;
 -- 21-22: a user without a role
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "a0000000-0000-4000-8000-000000000031", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "a0000000-0000-4000-8000-000000000031", "role": "authenticated", "aal": "aal2"}';
 
 select is(
   (select count(*)::int from public.profiles where email like '%@example.test'),
@@ -192,7 +192,7 @@ reset role;
 -- 23-25: an inactive Consultant (added test c)
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "a0000000-0000-4000-8000-000000000013", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "a0000000-0000-4000-8000-000000000013", "role": "authenticated", "aal": "aal2"}';
 
 select is(
   (select count(*)::int from public.profiles where email like '%@example.test'),
@@ -215,7 +215,7 @@ reset role;
 -- 26: an inactive Owner
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "a0000000-0000-4000-8000-000000000002", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "a0000000-0000-4000-8000-000000000002", "role": "authenticated", "aal": "aal2"}';
 
 select ok(not app.is_owner(), 'An inactive Owner is not treated as an Owner');
 
@@ -228,7 +228,7 @@ reset role;
 -- 27-33: the active Owner (the only one)
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "a0000000-0000-4000-8000-000000000001", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "a0000000-0000-4000-8000-000000000001", "role": "authenticated", "aal": "aal2"}';
 
 select is(
   (select count(*)::int from public.profiles where email like '%@example.test'),
@@ -294,7 +294,7 @@ select throws_ok(
 update public.profiles set active = true where id = 'a0000000-0000-4000-8000-000000000002';
 
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "a0000000-0000-4000-8000-000000000001", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "a0000000-0000-4000-8000-000000000001", "role": "authenticated", "aal": "aal2"}';
 
 select lives_ok(
   $$update public.profiles set role = 'consultant' where id = 'a0000000-0000-4000-8000-000000000001'$$,

@@ -36,7 +36,7 @@ create function pg_temp.log_count(p_engagement uuid)
 returns integer
 language sql
 as $$
-  select count(*)::int from public.activity_log where engagement_id = p_engagement
+  select count(*)::int from public.activity_log where kind = 'status_change' and engagement_id = p_engagement
 $$;
 
 -- An engagement's log rows as text, oldest first: actor|source|from|to;... ('-' = empty).
@@ -48,7 +48,7 @@ as $$
     format('%s|%s|%s|%s', coalesce(actor_id::text, '-'), source, coalesce(from_status, '-'),
       coalesce(to_status, '-')),
     ';' order by id)
-  from public.activity_log where engagement_id = p_engagement
+  from public.activity_log where kind = 'status_change' and engagement_id = p_engagement
 $$;
 
 -- An engagement's status and log count, e.g. 'Certified|0' (call as the server).
@@ -175,8 +175,9 @@ select has_table('public', 'activity_log', 'activity_log exists');
 select ok((select relrowsecurity from pg_class where oid = 'public.activity_log'::regclass),
   'Row-level security is on for activity_log');
 select columns_are('public', 'activity_log', array[
-  'id', 'created_at', 'actor_id', 'source', 'kind', 'engagement_id', 'from_status', 'to_status'
-], 'activity_log has who, when, source, kind, engagement, from and to; no value or free-form column');
+  'id', 'created_at', 'actor_id', 'source', 'kind', 'engagement_id', 'from_status', 'to_status',
+  'client_id', 'meta'
+], 'activity_log has who, when, source, kind, engagement, client, from, to and server-written meta; no value column');
 select col_is_pk('public', 'activity_log', 'id', 'activity_log.id is the primary key');
 select fk_ok('public', 'activity_log', 'actor_id', 'public', 'profiles', 'id',
   'activity_log.actor_id is a team member');
@@ -188,7 +189,9 @@ select fk_ok('public', 'activity_log', 'to_status', 'public', 'statuses', 'code'
   'activity_log.to_status is a status');
 select policies_are('public', 'activity_log', array[
   'activity_log: owners and consultants read all',
-  'activity_log: marketing reads lead history'
+  'activity_log: marketing reads lead history',
+  'activity_log: owners and consultants read client history',
+  'activity_log: owners read firm-wide rows'
 ], 'activity_log has read policies only');
 
 select table_privs_are('public', 'activity_log', 'anon', array[]::text[],
@@ -269,7 +272,7 @@ select throws_ok(
   $$insert into public.activity_log (actor_id, source, kind, engagement_id) values
     (null, 'system', 'note', 'f3000000-0000-4000-8000-000000000047')$$,
   '23514', null::text,
-  'Only the status_change kind exists for now'
+  'An unknown kind is refused'
 );
 select throws_ok(
   $$insert into public.activity_log (actor_id, source, kind, engagement_id, from_status, to_status) values
@@ -299,7 +302,7 @@ insert into public.activity_log (actor_id, source, kind, engagement_id, from_sta
 
 -- 29-31
 select is(
-  (select count(*)::int from public.activity_log where engagement_id in (
+  (select count(*)::int from public.activity_log where kind = 'status_change' and engagement_id in (
     'f3000000-0000-4000-8000-000000000047', 'f3000000-0000-4000-8000-000000000048',
     'f3000000-0000-4000-8000-000000000049', 'f3000000-0000-4000-8000-000000000050')),
   5,
@@ -307,7 +310,7 @@ select is(
 );
 select is(
   (select count(*)::int from public.activity_log
-   where engagement_id in (
+   where kind = 'status_change' and engagement_id in (
      'f3000000-0000-4000-8000-000000000047', 'f3000000-0000-4000-8000-000000000048',
      'f3000000-0000-4000-8000-000000000049', 'f3000000-0000-4000-8000-000000000050')
      and (source = 'system') <> (actor_id is null)),
@@ -326,7 +329,7 @@ select is(
 
 -- 32-35: Owner 1
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated", "aal": "aal2"}';
 select throws_ok(
   $$insert into public.activity_log (actor_id, source, kind, engagement_id, from_status, to_status) values
     ('f1000000-0000-4000-8000-000000000001', 'manual', 'status_change',
@@ -336,14 +339,14 @@ select throws_ok(
   $$update public.activity_log set to_status = 'Lead' where engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
   '42501', null::text, 'An Owner cannot change a log row');
 select throws_ok(
-  $$delete from public.activity_log where engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
+  $$delete from public.activity_log where kind = 'status_change' and engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
   '42501', null::text, 'An Owner cannot delete a log row');
 select throws_ok($$truncate public.activity_log$$, '42501', null::text, 'An Owner cannot empty the log');
 reset role;
 
 -- 36-39: Owner 2
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000002", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000002", "role": "authenticated", "aal": "aal2"}';
 select throws_ok(
   $$insert into public.activity_log (actor_id, source, kind, engagement_id, from_status, to_status) values
     ('f1000000-0000-4000-8000-000000000002', 'manual', 'status_change',
@@ -353,14 +356,14 @@ select throws_ok(
   $$update public.activity_log set to_status = 'Lead' where engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
   '42501', null::text, 'The second Owner cannot change a log row');
 select throws_ok(
-  $$delete from public.activity_log where engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
+  $$delete from public.activity_log where kind = 'status_change' and engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
   '42501', null::text, 'The second Owner cannot delete a log row');
 select throws_ok($$truncate public.activity_log$$, '42501', null::text, 'The second Owner cannot empty the log');
 reset role;
 
 -- 40-43: Consultant 1
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000011", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000011", "role": "authenticated", "aal": "aal2"}';
 select throws_ok(
   $$insert into public.activity_log (actor_id, source, kind, engagement_id, from_status, to_status) values
     ('f1000000-0000-4000-8000-000000000011', 'manual', 'status_change',
@@ -370,14 +373,14 @@ select throws_ok(
   $$update public.activity_log set to_status = 'Lead' where engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
   '42501', null::text, 'A Consultant cannot change a log row');
 select throws_ok(
-  $$delete from public.activity_log where engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
+  $$delete from public.activity_log where kind = 'status_change' and engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
   '42501', null::text, 'A Consultant cannot delete a log row');
 select throws_ok($$truncate public.activity_log$$, '42501', null::text, 'A Consultant cannot empty the log');
 reset role;
 
 -- 44-47: Consultant 2 (values access)
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000012", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000012", "role": "authenticated", "aal": "aal2"}';
 select throws_ok(
   $$insert into public.activity_log (actor_id, source, kind, engagement_id, from_status, to_status) values
     ('f1000000-0000-4000-8000-000000000012', 'manual', 'status_change',
@@ -387,7 +390,7 @@ select throws_ok(
   $$update public.activity_log set to_status = 'Lead' where engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
   '42501', null::text, 'A Consultant with values access cannot change a log row');
 select throws_ok(
-  $$delete from public.activity_log where engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
+  $$delete from public.activity_log where kind = 'status_change' and engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
   '42501', null::text, 'A Consultant with values access cannot delete a log row');
 select throws_ok($$truncate public.activity_log$$, '42501', null::text,
   'A Consultant with values access cannot empty the log');
@@ -395,7 +398,7 @@ reset role;
 
 -- 48-51: Marketing
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000021", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000021", "role": "authenticated", "aal": "aal2"}';
 select throws_ok(
   $$insert into public.activity_log (actor_id, source, kind, engagement_id, from_status, to_status) values
     ('f1000000-0000-4000-8000-000000000021', 'manual', 'status_change',
@@ -405,7 +408,7 @@ select throws_ok(
   $$update public.activity_log set to_status = 'Lead' where engagement_id = 'f3000000-0000-4000-8000-000000000048'$$,
   '42501', null::text, 'Marketing cannot change a log row');
 select throws_ok(
-  $$delete from public.activity_log where engagement_id = 'f3000000-0000-4000-8000-000000000048'$$,
+  $$delete from public.activity_log where kind = 'status_change' and engagement_id = 'f3000000-0000-4000-8000-000000000048'$$,
   '42501', null::text, 'Marketing cannot delete a log row');
 select throws_ok($$truncate public.activity_log$$, '42501', null::text, 'Marketing cannot empty the log');
 reset role;
@@ -424,7 +427,7 @@ select throws_ok(
   $$update public.activity_log set to_status = 'Lead' where engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
   '42501', null::text, 'anon cannot change a log row');
 select throws_ok(
-  $$delete from public.activity_log where engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
+  $$delete from public.activity_log where kind = 'status_change' and engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
   '42501', null::text, 'anon cannot delete a log row');
 reset role;
 
@@ -437,7 +440,7 @@ select throws_ok(
   $$update public.activity_log set to_status = 'Lead' where engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
   '42501', null::text, 'The service role cannot change a log row');
 select throws_ok(
-  $$delete from public.activity_log where engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
+  $$delete from public.activity_log where kind = 'status_change' and engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
   '42501', null::text, 'The service role cannot delete a log row');
 select throws_ok($$truncate public.activity_log$$, '42501', null::text, 'The service role cannot empty the log');
 select lives_ok(
@@ -454,7 +457,7 @@ select throws_ok(
   $$update public.activity_log set to_status = 'Lead' where engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
   '42501', null::text, 'The table owner cannot change a log row');
 select throws_ok(
-  $$delete from public.activity_log where engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
+  $$delete from public.activity_log where kind = 'status_change' and engagement_id = 'f3000000-0000-4000-8000-000000000047'$$,
   '42501', null::text, 'The table owner cannot delete a log row');
 select throws_ok($$truncate public.activity_log$$, '42501', null::text, 'The table owner cannot empty the log');
 select is(
@@ -470,7 +473,7 @@ select is(
 
 -- 64-66 C1: Owner 1 moves someone else's engagement, Certified -> Renewal Due
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated", "aal": "aal2"}';
 select lives_ok(
   $$select public.change_engagement_status('f3000000-0000-4000-8000-000000000001', 'Renewal Due')$$,
   'An Owner changes the status of an engagement someone else owns');
@@ -479,13 +482,13 @@ select is(pg_temp.log_rows('f3000000-0000-4000-8000-000000000001'),
   'f1000000-0000-4000-8000-000000000001|manual|Certified|Renewal Due',
   'Exactly one log row: the Owner, manual, Certified to Renewal Due');
 select is(
-  (select created_at from public.activity_log where engagement_id = 'f3000000-0000-4000-8000-000000000001'),
+  (select created_at from public.activity_log where kind = 'status_change' and engagement_id = 'f3000000-0000-4000-8000-000000000001'),
   now(),
   'The log row records when the change was made');
 
 -- 67-68 C2: Owner 2 moves a lead Owner 1 created, Lead -> Proposal
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000002", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000002", "role": "authenticated", "aal": "aal2"}';
 select lives_ok(
   $$select public.change_engagement_status('f3000000-0000-4000-8000-000000000002', 'Proposal')$$,
   'The second Owner changes the status of a lead the first Owner created');
@@ -496,7 +499,7 @@ select is(pg_temp.log_rows('f3000000-0000-4000-8000-000000000002'),
 
 -- 69-70 C3: Consultant 1 moves their own engagement, In Progress -> Implemented
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000011", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000011", "role": "authenticated", "aal": "aal2"}';
 select lives_ok(
   $$select public.change_engagement_status('f3000000-0000-4000-8000-000000000003', 'Implemented')$$,
   'A Consultant changes the status of an engagement they own');
@@ -507,7 +510,7 @@ select is(pg_temp.log_rows('f3000000-0000-4000-8000-000000000003'),
 
 -- 71-72 C4: Consultant 2 moves their own engagement, Renewal Due -> Certified
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000012", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000012", "role": "authenticated", "aal": "aal2"}';
 select lives_ok(
   $$select public.change_engagement_status('f3000000-0000-4000-8000-000000000004', 'Certified')$$,
   'A Consultant with values access changes the status of an engagement they own');
@@ -518,7 +521,7 @@ select is(pg_temp.log_rows('f3000000-0000-4000-8000-000000000004'),
 
 -- 73-74 C5: Marketing moves its own lead, Proposal -> On Hold
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000021", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000021", "role": "authenticated", "aal": "aal2"}';
 select lives_ok(
   $$select public.change_engagement_status('f3000000-0000-4000-8000-000000000005', 'On Hold')$$,
   'Marketing moves its own lead from Proposal to On Hold');
@@ -529,7 +532,7 @@ select is(pg_temp.log_rows('f3000000-0000-4000-8000-000000000005'),
 
 -- 75-76 C6: Owner 1 gives an engagement with no status its first status
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated", "aal": "aal2"}';
 select lives_ok(
   $$select public.change_engagement_status('f3000000-0000-4000-8000-000000000006', 'Lead')$$,
   'An Owner gives an engagement with no status a status');
@@ -544,7 +547,7 @@ select is(pg_temp.log_rows('f3000000-0000-4000-8000-000000000006'),
 
 -- 77-78 D1: Consultant 1, someone else's engagement
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000011", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000011", "role": "authenticated", "aal": "aal2"}';
 select throws_ok(
   $$select public.change_engagement_status('f3000000-0000-4000-8000-000000000011', 'Renewal Due')$$,
   '42501', null::text, 'A Consultant cannot change the status of an engagement someone else owns');
@@ -554,7 +557,7 @@ select is(pg_temp.state('f3000000-0000-4000-8000-000000000011'), 'Certified|0',
 
 -- 79-80 D2: Consultant 2, someone else's engagement
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000012", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000012", "role": "authenticated", "aal": "aal2"}';
 select throws_ok(
   $$select public.change_engagement_status('f3000000-0000-4000-8000-000000000012', 'Implemented')$$,
   '42501', null::text, 'A Consultant with values access cannot change someone else''s engagement');
@@ -564,7 +567,7 @@ select is(pg_temp.state('f3000000-0000-4000-8000-000000000012'), 'In Progress|0'
 
 -- 81-82 D3: Consultant 1, an engagement nobody owns
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000011", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000011", "role": "authenticated", "aal": "aal2"}';
 select throws_ok(
   $$select public.change_engagement_status('f3000000-0000-4000-8000-000000000013', 'Proposal')$$,
   '42501', null::text, 'A Consultant cannot change the status of an engagement nobody owns');
@@ -574,7 +577,7 @@ select is(pg_temp.state('f3000000-0000-4000-8000-000000000013'), 'Lead|0',
 
 -- 83-84 D4: Marketing, its own lead out of the pipeline
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000021", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000021", "role": "authenticated", "aal": "aal2"}';
 select throws_ok(
   $$select public.change_engagement_status('f3000000-0000-4000-8000-000000000014', 'In Progress')$$,
   '42501', null::text, 'Marketing cannot move its own lead out of the pipeline');
@@ -584,7 +587,7 @@ select is(pg_temp.state('f3000000-0000-4000-8000-000000000014'), 'Lead|0',
 
 -- 85-86 D5: Marketing, a lead someone else created
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000021", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000021", "role": "authenticated", "aal": "aal2"}';
 select throws_ok(
   $$select public.change_engagement_status('f3000000-0000-4000-8000-000000000015', 'Proposal')$$,
   '42501', null::text, 'Marketing cannot change the status of a lead someone else created');
@@ -594,7 +597,7 @@ select is(pg_temp.state('f3000000-0000-4000-8000-000000000015'), 'Lead|0',
 
 -- 87-88 D6: Marketing, a delivery engagement it can't read
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000021", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000021", "role": "authenticated", "aal": "aal2"}';
 select throws_ok(
   $$select public.change_engagement_status('f3000000-0000-4000-8000-000000000016', 'Implemented')$$,
   '42501', 'Engagement not found, or you can''t change its status',
@@ -605,7 +608,7 @@ select is(pg_temp.state('f3000000-0000-4000-8000-000000000016'), 'In Progress|0'
 
 -- 89-90 D7: an inactive Consultant, their own engagement
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000013", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000013", "role": "authenticated", "aal": "aal2"}';
 select throws_ok(
   $$select public.change_engagement_status('f3000000-0000-4000-8000-000000000017', 'Implemented')$$,
   '42501', null::text, 'An inactive Consultant cannot change the status of an engagement they own');
@@ -615,7 +618,7 @@ select is(pg_temp.state('f3000000-0000-4000-8000-000000000017'), 'In Progress|0'
 
 -- 91-92 D8: a user without a role
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000031", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000031", "role": "authenticated", "aal": "aal2"}';
 select throws_ok(
   $$select public.change_engagement_status('f3000000-0000-4000-8000-000000000018', 'Proposal')$$,
   '42501', null::text, 'A user without a role cannot change a status');
@@ -635,7 +638,7 @@ select is(pg_temp.state('f3000000-0000-4000-8000-000000000019'), 'Lead|0',
 
 -- 95 D10: an engagement that doesn't exist
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated", "aal": "aal2"}';
 select throws_ok(
   $$select public.change_engagement_status('f3000000-0000-4000-8000-000000000099', 'Proposal')$$,
   '42501', 'Engagement not found, or you can''t change its status',
@@ -646,7 +649,7 @@ reset role;
 -- 96-103: invalid statuses and the same status are refused, with no log row
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated", "aal": "aal2"}';
 select throws_ok(
   $$select public.change_engagement_status('f3000000-0000-4000-8000-000000000021', 'Won')$$,
   '22023', 'Unknown status', 'A status that doesn''t exist is refused');
@@ -655,7 +658,7 @@ select is(pg_temp.state('f3000000-0000-4000-8000-000000000021'), 'Proposal|0',
   'Status unchanged, no log row');
 
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated", "aal": "aal2"}';
 select throws_ok(
   $$select public.change_engagement_status('f3000000-0000-4000-8000-000000000022', 'lead')$$,
   '22023', 'Unknown status', 'A status in the wrong case is refused (codes are exact)');
@@ -664,7 +667,7 @@ select is(pg_temp.state('f3000000-0000-4000-8000-000000000022'), 'Proposal|0',
   'Status unchanged, no log row');
 
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated", "aal": "aal2"}';
 select throws_ok(
   $$select public.change_engagement_status('f3000000-0000-4000-8000-000000000023', null)$$,
   '22023', 'Unknown status', 'An empty status is refused');
@@ -673,7 +676,7 @@ select is(pg_temp.state('f3000000-0000-4000-8000-000000000023'), 'Proposal|0',
   'Status unchanged, no log row');
 
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated", "aal": "aal2"}';
 select throws_ok(
   $$select public.change_engagement_status('f3000000-0000-4000-8000-000000000024', 'Proposal')$$,
   '22023', 'The engagement already has that status', 'Moving to the same status is refused');
@@ -685,7 +688,7 @@ select is(pg_temp.state('f3000000-0000-4000-8000-000000000024'), 'Proposal|0',
 -- 104-117: direct updates are logged exactly once, and only when the status changes
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated", "aal": "aal2"}';
 
 -- 104-107: F1-F4 as Owner 1; their log checks are 108-111
 -- F1: Certified -> Closed
@@ -737,7 +740,7 @@ select is(pg_temp.log_rows('f3000000-0000-4000-8000-000000000036'),
 
 -- 114-115 F6: Marketing, a direct update out of the pipeline
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000021", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000021", "role": "authenticated", "aal": "aal2"}';
 select throws_ok(
   $$update public.engagements set status = 'In Progress' where id = 'f3000000-0000-4000-8000-000000000037'$$,
   '42501', null::text, 'Marketing cannot move its lead out of the pipeline with a direct update either');
@@ -747,7 +750,7 @@ select is(pg_temp.state('f3000000-0000-4000-8000-000000000037'), 'Lead|0',
 
 -- 116-117 F7: Consultant 1, a direct update on their own engagement
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000011", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000011", "role": "authenticated", "aal": "aal2"}';
 select is(
   pg_temp.changed($$update public.engagements set status = 'Implemented'
     where id = 'f3000000-0000-4000-8000-000000000038'$$),
@@ -761,46 +764,46 @@ select is(pg_temp.log_rows('f3000000-0000-4000-8000-000000000038'),
 -- 118-126: who reads which log rows (the G7-G10 history only)
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000001", "role": "authenticated", "aal": "aal2"}';
 select is(
   (select count(*)::int from public.activity_log
-   where engagement_id::text between 'f3000000-0000-4000-8000-000000000047'
+   where kind = 'status_change' and engagement_id::text between 'f3000000-0000-4000-8000-000000000047'
      and 'f3000000-0000-4000-8000-000000000050'),
   5, 'An Owner reads every log row');
 reset role;
 
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000002", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000002", "role": "authenticated", "aal": "aal2"}';
 select is(
   (select count(*)::int from public.activity_log
-   where engagement_id::text between 'f3000000-0000-4000-8000-000000000047'
+   where kind = 'status_change' and engagement_id::text between 'f3000000-0000-4000-8000-000000000047'
      and 'f3000000-0000-4000-8000-000000000050'),
   5, 'The second Owner reads every log row');
 reset role;
 
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000011", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000011", "role": "authenticated", "aal": "aal2"}';
 select is(
   (select count(*)::int from public.activity_log
-   where engagement_id::text between 'f3000000-0000-4000-8000-000000000047'
+   where kind = 'status_change' and engagement_id::text between 'f3000000-0000-4000-8000-000000000047'
      and 'f3000000-0000-4000-8000-000000000050'),
   5, 'A Consultant reads every log row');
 reset role;
 
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000012", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000012", "role": "authenticated", "aal": "aal2"}';
 select is(
   (select count(*)::int from public.activity_log
-   where engagement_id::text between 'f3000000-0000-4000-8000-000000000047'
+   where kind = 'status_change' and engagement_id::text between 'f3000000-0000-4000-8000-000000000047'
      and 'f3000000-0000-4000-8000-000000000050'),
   5, 'A Consultant with values access reads every log row');
 reset role;
 
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000021", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000021", "role": "authenticated", "aal": "aal2"}';
 select set_eq(
   $$select engagement_id, from_status, to_status from public.activity_log
-    where engagement_id::text between 'f3000000-0000-4000-8000-000000000047'
+    where kind = 'status_change' and engagement_id::text between 'f3000000-0000-4000-8000-000000000047'
       and 'f3000000-0000-4000-8000-000000000050'$$,
   $$values ('f3000000-0000-4000-8000-000000000048'::uuid, 'Lead'::text, 'Proposal'::text),
            ('f3000000-0000-4000-8000-000000000050'::uuid, null::text, 'Lead'::text)$$,
@@ -810,24 +813,24 @@ select is(
   (select count(*)::int from public.engagements where id = 'f3000000-0000-4000-8000-000000000047'),
   1, 'Marketing can read the On Hold lead that came back from delivery');
 select is(
-  (select count(*)::int from public.activity_log where engagement_id = 'f3000000-0000-4000-8000-000000000047'),
+  (select count(*)::int from public.activity_log where kind = 'status_change' and engagement_id = 'f3000000-0000-4000-8000-000000000047'),
   0, 'but not its delivery history');
 reset role;
 
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000031", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000031", "role": "authenticated", "aal": "aal2"}';
 select is(
   (select count(*)::int from public.activity_log
-   where engagement_id::text between 'f3000000-0000-4000-8000-000000000047'
+   where kind = 'status_change' and engagement_id::text between 'f3000000-0000-4000-8000-000000000047'
      and 'f3000000-0000-4000-8000-000000000050'),
   0, 'A user without a role reads no log row');
 reset role;
 
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000013", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "f1000000-0000-4000-8000-000000000013", "role": "authenticated", "aal": "aal2"}';
 select is(
   (select count(*)::int from public.activity_log
-   where engagement_id::text between 'f3000000-0000-4000-8000-000000000047'
+   where kind = 'status_change' and engagement_id::text between 'f3000000-0000-4000-8000-000000000047'
      and 'f3000000-0000-4000-8000-000000000050'),
   0, 'An inactive Consultant reads no log row');
 reset role;

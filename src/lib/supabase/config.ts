@@ -1,6 +1,7 @@
 // Checks the Supabase URL and key from .env.local before the client is created (Phase 1, step 12).
-// Phase 1 runs against the local stack only, so any other host is refused. Relax this on purpose
-// when a hosted dev project arrives, with a DECISIONS line.
+// Allowed: the local stack, and the hosted dev project (dummy data only, https only;
+// DECISIONS 24-Nov-2026). Any other host is refused, so a production project can't be pointed
+// at by mistake from a developer's machine.
 // Only the anon key (a JWT with role "anon") is accepted: a service-role or secret key in the
 // browser would bypass every row-level security rule.
 
@@ -11,6 +12,8 @@ export type ConfigCheck = { ok: true; config: SupabaseConfig } | { ok: false; pr
 export const AUTH_STORAGE_KEY = 'drishti-auth';
 
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost']);
+// The hosted dev project `drishti-crm` (dummy data only).
+const DEV_PROJECT_HOSTS = new Set(['noyxpuzhyviqzhglakdo.supabase.co']);
 
 /** The payload of a JWT, or undefined if `token` isn't one. Never verifies the signature. */
 function jwtPayload(token: string): Record<string, unknown> | undefined {
@@ -47,10 +50,12 @@ export function checkSupabaseConfig(
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     return { ok: false, problem: 'VITE_SUPABASE_URL must start with http:// or https://.' };
   }
-  if (!LOCAL_HOSTS.has(parsed.hostname)) {
+  const isDevProject = DEV_PROJECT_HOSTS.has(parsed.hostname) && parsed.protocol === 'https:';
+  if (!LOCAL_HOSTS.has(parsed.hostname) && !isDevProject) {
     return {
       ok: false,
-      problem: 'VITE_SUPABASE_URL must point at the local stack (127.0.0.1 or localhost).',
+      problem:
+        'VITE_SUPABASE_URL must point at the local stack (127.0.0.1 or localhost) or the Drishti dev project.',
     };
   }
 

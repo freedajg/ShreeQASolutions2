@@ -54,6 +54,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       if (access?.ok) {
         signedInUserId.current = access.user.id;
+        // Owners need a second factor (aal2) before the database gives them any data.
+        if (access.user.role === 'owner') {
+          const { data: aal } = await client.auth.mfa.getAuthenticatorAssuranceLevel();
+          if (aal?.currentLevel !== 'aal2') {
+            setState({
+              status: 'mfa',
+              mode: aal?.nextLevel === 'aal2' ? 'verify' : 'enroll',
+              user: access.user,
+            });
+            return null;
+          }
+        }
         setState({ status: 'signed-in', user: access.user });
         return null;
       }
@@ -124,6 +136,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [resolveSession],
   );
 
+  const sendMagicLink = useCallback(async (email: string): Promise<string> => {
+    const neutral = 'If that email has a Drishti account, a sign-in link is on its way.';
+    const cleanEmail = email.trim();
+    if (!supabase) return MESSAGES.generic;
+    if (cleanEmail === '') return 'Enter your email.';
+    try {
+      // shouldCreateUser: false keeps sign-up closed (invite-only, PRD FR-1).
+      const { error } = await supabase.auth.signInWithOtp({
+        email: cleanEmail,
+        options: { shouldCreateUser: false, emailRedirectTo: window.location.origin },
+      });
+      if (error && (error.status === 429 || error.code === 'over_email_send_rate_limit')) {
+        return MESSAGES.tooMany;
+      }
+    } catch {
+      return MESSAGES.connection;
+    }
+    return neutral;
+  }, []);
+
+  const startMfaEnrollment = useCallback(async () => {
+    if (!supabase) return MESSAGES.generic;
+    // Remove any half-finished factor from an earlier attempt, then start a fresh one.
+    const { data: factors } = await supabase.auth.mfa.listFactors();
+    for (const f of factors?.all ?? []) {
+      if (f.status === 'unverified') await supabase.auth.mfa.unenroll({ factorId: f.id });
+    }
+    const { data, error } = await supabase.auth.mfa.enroll({
+      factorType: 'totp',
+      friendlyName: 'Authenticator app',
+    });
+    if (error || !data) return "Couldn't start authenticator set-up. Please try again.";
+    return { factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret };
+  }, []);
+
+  const verifyMfa = useCallback(
+    async (code: string, factorId?: string): Promise<string | null> => {
+      if (!supabase) return MESSAGES.generic;
+      const clean = code.replace(/\s/g, '');
+      if (!/^\d{6}$/.test(clean)) return 'Enter the 6-digit code from your authenticator app.';
+      let id = factorId;
+      if (!id) {
+        const { data } = await supabase.auth.mfa.listFactors();
+        id = data?.totp.find((f) => f.status === 'verified')?.id;
+      }
+      if (!id) return "Couldn't find your authenticator. Set it up again.";
+      const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: id, code: clean });
+      if (error) return 'That code is not right, or it expired. Try the current code.';
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) return MESSAGES.generic;
+      return resolveSession(supabase, session.session.user.id);
+    },
+    [resolveSession],
+  );
+
   const signOut = useCallback(async () => {
     if (!supabase) return;
     signedInUserId.current = null;
@@ -132,8 +199,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ state, signIn, signOut }),
-    [state, signIn, signOut],
+    () => ({ state, signIn, sendMagicLink, startMfaEnrollment, verifyMfa, signOut }),
+    [state, signIn, sendMagicLink, startMfaEnrollment, verifyMfa, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

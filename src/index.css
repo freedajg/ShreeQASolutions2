@@ -5,51 +5,63 @@
 
 /*
  * Design tokens (docs/DESIGN.md §2). Components use these only, never raw colours,
- * e.g. `bg-surface`, `text-muted`, `border-line/16`, `bg-primary/30`.
- * Values below are the dark theme: exactly the MVP's colours.
- * Where the MVP used a Tailwind built-in colour (e.g. `emerald-400`), the token copies
- * Tailwind's own oklch value, which is not the same as the old hex, so nothing shifts.
+ * e.g. `bg-surface`, `text-muted`, `border-border`, `bg-primary/30`.
+ * Values below are the dark theme. Since 24-Nov-2026 they follow the approved AI Studio
+ * design (slate neutrals, sky brand; DECISIONS 24-Nov-2026), replacing the MVP palette.
  */
 @theme {
   /* Surfaces */
-  --color-bg: #080c16;
-  --color-surface: #111828;
-  --color-raised: #18213a;
-  --color-overlay: #1e2947;
+  --color-bg: #080d1a;
+  --color-surface: #0f172a; /* slate-900 */
+  --color-raised: #1e293b; /* slate-800 */
+  --color-overlay: #0f172a;
+  /* Inverse fill: dark chips, toasts, the active segment (light text on it: on-primary) */
+  --color-ink: #f1f5f9; /* slate-100 */
 
   /* Text */
-  --color-text: #e9eefb;
-  --color-text-secondary: #9aabcc;
-  --color-muted: #6d7c9c;
-  --color-text-strong: #fff; /* was white: hover/emphasis text */
-  --color-on-primary: oklch(12.9% 0.042 264.695); /* was slate-950: text on bright fills */
+  --color-text: #f1f5f9; /* slate-100 */
+  --color-text-secondary: #cbd5e1; /* slate-300 */
+  --color-muted: #94a3b8; /* slate-400 */
+  --color-text-strong: #fff;
+  --color-on-primary: #020617; /* slate-950: text on bright fills and on ink */
 
-  /* Lines. The MVP uses many strengths (6%-35%): write them as `border-line/16`. */
-  --color-line: rgb(148 175 235);
-  --color-border: rgb(148 175 235 / 0.18); /* the default strength, for new code */
+  /* Lines */
+  --color-line: rgb(148 175 235); /* legacy forms use it at 10-30% */
+  --color-border: #1e293b; /* slate-800 */
+  --color-border-strong: #334155; /* slate-700: inputs, outlined buttons */
+  --color-primary-line: #075985; /* sky-800 */
+  --color-danger-line: rgb(127 29 29 / 0.6); /* red-900/60 */
+  --color-success-line: rgb(6 78 59 / 0.6); /* emerald-900/60 */
+  --color-warning-line: rgb(120 53 15 / 0.6); /* amber-900/60 */
+
+  /* Soft fills behind badges and notices */
+  --color-primary-wash: rgb(8 47 73 / 0.5); /* sky-950/50 */
+  --color-danger-wash: rgb(69 10 10 / 0.45); /* red-950/45 */
+  --color-success-wash: rgb(2 44 34 / 0.35); /* emerald-950/35 */
+  --color-warning-wash: rgb(69 26 3 / 0.4); /* amber-950/40 */
 
   /* Brand */
-  --color-primary: #818cf8;
-  --color-primary-strong: #6366f1;
+  --color-primary: #38bdf8; /* sky-400 */
+  --color-primary-strong: #0ea5e9; /* sky-500: primary buttons */
   --color-primary-soft: #a78bfa;
   --color-primary-tint: oklch(58.5% 0.233 277.117); /* was indigo-500: tints, borders */
   --color-violet: oklch(60.6% 0.25 292.717); /* was violet-500: gradients */
   --color-teal: #2dd4bf; /* accent: gradients, "active" dots */
 
   /* Meaning */
-  --color-danger: #fb7185;
+  --color-danger: #f87171; /* red-400 */
   --color-danger-light: oklch(81% 0.117 11.638); /* was rose-300 */
   --color-danger-medium: oklch(71.2% 0.194 13.428); /* was rose-400 */
   --color-danger-strong: oklch(64.5% 0.246 16.439); /* was rose-500 */
   --color-warning: #fbbf24;
   --color-info: #22d3ee;
   --color-info-tint: oklch(78.9% 0.154 211.53); /* was cyan-400: gradients */
-  --color-success: oklch(76.5% 0.177 163.223); /* was emerald-400 */
+  --color-success: #34d399; /* emerald-400 */
   --color-success-lighter: oklch(90.5% 0.093 164.15); /* was emerald-200 */
   --color-success-light: oklch(84.5% 0.143 164.978); /* was emerald-300 */
-  --color-success-strong: oklch(69.6% 0.17 162.48); /* was emerald-500 */
+  --color-success-strong: #10b981; /* emerald-500 */
   --color-on-success: oklch(26.2% 0.051 172.552); /* was emerald-950 */
-  --color-neutral: #6d7c9c;
+  --color-neutral: #94a3b8;
 
   /* Small UI pieces */
   --color-backdrop: #000; /* was black: behind dialogs, used at 70-80% */
@@ -93,6 +105,7 @@
   --color-surface: #fff;
   --color-raised: #f1f5f9;
   --color-overlay: #fff;
+  --color-ink: #0f172a; /* slate-900 */
 
   --color-text: #0f172a;
   --color-text-secondary: #334155;
@@ -102,10 +115,20 @@
 
   /* slate-500: at the usual 16-18% strength this lands near slate-200 on white */
   --color-line: #64748b;
-  --color-border: #e2e8f0;
+  --color-border: #e2e8f0; /* slate-200 */
+  --color-border-strong: #cbd5e1; /* slate-300 */
+  --color-primary-line: #bae6fd; /* sky-200 */
+  --color-danger-line: #fecaca; /* red-200 */
+  --color-success-line: #a7f3d0; /* emerald-200 */
+  --color-warning-line: #fde68a; /* amber-200 */
 
-  --color-primary: #4f46e5;
-  --color-primary-strong: #4338ca;
+  --color-primary-wash: #f0f9ff; /* sky-50 */
+  --color-danger-wash: #fef2f2; /* red-50 */
+  --color-success-wash: #ecfdf5; /* emerald-50 */
+  --color-warning-wash: #fffbeb; /* amber-50 */
+
+  --color-primary: #0369a1; /* sky-700 */
+  --color-primary-strong: #075985; /* sky-800 */
   --color-primary-soft: #7c3aed; /* used as text, so not DESIGN.md's indigo-50 (see DECISIONS.md) */
   --color-teal: #08736b;
 
@@ -113,13 +136,13 @@
    * Meaning colours: same hues as Tailwind's red/amber/cyan/teal/emerald, darkened just enough
    * that text reaches 4.6:1 on every background and on its own badge tint (step 14).
    */
-  --color-danger: #ba0412;
+  --color-danger: #b91c1c; /* red-700 */
   --color-danger-light: #b91c1c;
   --color-danger-medium: #d51b1f;
   --color-danger-strong: #ef4444;
-  --color-warning: #9e4703;
+  --color-warning: #b45309; /* amber-700 */
   --color-info: #036984;
-  --color-success: #067253;
+  --color-success: #047857; /* emerald-700 */
   --color-success-lighter: #064e3b;
   --color-success-light: #065f46;
   --color-success-strong: #059669;
@@ -153,6 +176,7 @@ body {
   background-color: var(--color-bg);
   color: var(--color-text);
   font-family:
+    'DM Sans',
     'Inter',
     -apple-system,
     BlinkMacSystemFont,
@@ -165,6 +189,20 @@ body {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+}
+
+/* Headings use the display face of the approved design (Plus Jakarta Sans). */
+h1,
+h2,
+h3,
+h4,
+.font-display {
+  font-family: 'Plus Jakarta Sans', 'DM Sans', system-ui, sans-serif;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Tabular figures for all financial, countdown, and metric values */

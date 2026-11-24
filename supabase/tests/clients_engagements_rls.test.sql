@@ -178,7 +178,7 @@ reset role;
 
 -- 14-16: Owner reads everything
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000001", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000001", "role": "authenticated", "aal": "aal2"}';
 
 select is((select count(*)::int from public.clients where client_code like 'TST-C1%'), 5,
   'An Owner reads every client');
@@ -191,7 +191,7 @@ reset role;
 
 -- 17-19: Consultant (default) reads all clients and engagements, no financials
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000011", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000011", "role": "authenticated", "aal": "aal2"}';
 
 select is((select count(*)::int from public.clients where client_code like 'TST-C1%'), 5,
   'A Consultant reads every client');
@@ -204,7 +204,7 @@ reset role;
 
 -- 20-22: Consultant with values access
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000012", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000012", "role": "authenticated", "aal": "aal2"}';
 
 select is((select count(*)::int from public.clients where client_code like 'TST-C1%'), 5,
   'A Consultant with values access reads every client');
@@ -217,7 +217,7 @@ reset role;
 
 -- 23-26: Marketing reads leads only (On Hold included) and the clients behind them
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000021", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000021", "role": "authenticated", "aal": "aal2"}';
 
 select set_eq(
   $$select id from public.engagements where id::text like 'e8000000-%'$$,
@@ -243,7 +243,7 @@ reset role;
 
 -- 27-29: a user without a role reads nothing
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000031", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000031", "role": "authenticated", "aal": "aal2"}';
 
 select is((select count(*)::int from public.clients where client_code like 'TST-C1%'), 0,
   'A user without a role reads no client');
@@ -256,7 +256,7 @@ reset role;
 
 -- 30-32: an inactive Consultant (with values access switched on) reads nothing
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000013", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000013", "role": "authenticated", "aal": "aal2"}';
 
 select is((select count(*)::int from public.clients where client_code like 'TST-C1%'), 0,
   'An inactive Consultant reads no client');
@@ -269,7 +269,7 @@ reset role;
 
 -- 33-35: an inactive Owner reads nothing
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000002", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000002", "role": "authenticated", "aal": "aal2"}';
 
 select is((select count(*)::int from public.clients where client_code like 'TST-C1%'), 0,
   'An inactive Owner reads no client');
@@ -284,7 +284,7 @@ reset role;
 -- 36-46: Owner changes everything; nobody deletes
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000001", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000001", "role": "authenticated", "aal": "aal2"}';
 
 select lives_ok(
   $$insert into public.clients (client_code, name) values ('TST-C106', 'Test Owner Client')$$,
@@ -355,7 +355,7 @@ reset role;
 -- 47-66: Consultant (default) edits only what they own
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000011", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000011", "role": "authenticated", "aal": "aal2"}';
 
 select lives_ok(
   $$insert into public.clients (client_code, name) values ('TST-C107', 'Test Consultant Client')$$,
@@ -478,7 +478,7 @@ reset role;
 -- 67-73: Consultant with values access: financials of their own engagements only
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000012", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000012", "role": "authenticated", "aal": "aal2"}';
 
 select lives_ok(
   $$insert into public.engagement_financials (engagement_id, contract_value, payment_status) values
@@ -527,7 +527,7 @@ reset role;
 -- 74-101: Marketing adds and edits only its own leads, and they must stay leads
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000021", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000021", "role": "authenticated", "aal": "aal2"}';
 
 select lives_ok(
   $$insert into public.clients (client_code, name) values ('TST-C108', 'Test Marketing Client')$$,
@@ -699,7 +699,7 @@ reset role;
 -- 102-105: a user without a role changes nothing
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000031", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000031", "role": "authenticated", "aal": "aal2"}';
 
 select throws_ok(
   $$insert into public.clients (name) values ('Test No Role Client')$$,
@@ -731,7 +731,7 @@ reset role;
 -- 106-108: an inactive Consultant (with values access) changes nothing, even what they own
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000013", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000013", "role": "authenticated", "aal": "aal2"}';
 
 select throws_ok(
   $$insert into public.clients (name) values ('Test Inactive Client')$$,
@@ -757,7 +757,7 @@ reset role;
 -- 109-111: an inactive Owner changes nothing
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000002", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000002", "role": "authenticated", "aal": "aal2"}';
 
 select throws_ok(
   $$insert into public.clients (name) values ('Test Inactive Owner Client')$$,
@@ -790,7 +790,7 @@ select is(
   'Server work with no login (seed, import) keeps the created_by it gives'
 );
 
-set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000021", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b8000000-0000-4000-8000-000000000021", "role": "authenticated", "aal": "aal2"}';
 
 insert into public.clients (client_code, name, created_by) values
   ('TST-C109', 'Test Trigger Client', 'b8000000-0000-4000-8000-000000000001');

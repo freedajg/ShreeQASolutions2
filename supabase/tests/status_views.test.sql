@@ -214,7 +214,7 @@ reset role;
 -- 32-38: Owner sees every row of each view, with values; blanks where none are recorded
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b9000000-0000-4000-8000-000000000001", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b9000000-0000-4000-8000-000000000001", "role": "authenticated", "aal": "aal2"}';
 
 select set_eq(
   $$select id from public.pipeline where id::text like 'e9000000-%'$$,
@@ -292,7 +292,7 @@ reset role;
 -- 39-44: Consultant (default) sees every row, never a value, not even on their own engagement
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b9000000-0000-4000-8000-000000000011", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b9000000-0000-4000-8000-000000000011", "role": "authenticated", "aal": "aal2"}';
 
 select set_eq(
   $$select id from public.pipeline where id::text like 'e9000000-%'$$,
@@ -341,7 +341,7 @@ reset role;
 -- 45-50: Consultant with values access sees every row, with values
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b9000000-0000-4000-8000-000000000012", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b9000000-0000-4000-8000-000000000012", "role": "authenticated", "aal": "aal2"}';
 
 select set_eq(
   $$select id from public.pipeline where id::text like 'e9000000-%'$$,
@@ -404,7 +404,7 @@ reset role;
 -- 51-56: Marketing sees pipeline rows only, and never a value
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b9000000-0000-4000-8000-000000000021", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b9000000-0000-4000-8000-000000000021", "role": "authenticated", "aal": "aal2"}';
 
 select set_eq(
   $$select id from public.pipeline where id::text like 'e9000000-%'$$,
@@ -433,7 +433,7 @@ reset role;
 -- 57-61: a user without a role sees nothing
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b9000000-0000-4000-8000-000000000031", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b9000000-0000-4000-8000-000000000031", "role": "authenticated", "aal": "aal2"}';
 
 select is((select count(*)::int from public.pipeline where id::text like 'e9000000-%'), 0,
   'A user without a role: pipeline is empty');
@@ -452,7 +452,7 @@ reset role;
 -- 62-66: an inactive Consultant (with values access switched on) sees nothing
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b9000000-0000-4000-8000-000000000013", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b9000000-0000-4000-8000-000000000013", "role": "authenticated", "aal": "aal2"}';
 
 select is((select count(*)::int from public.pipeline where id::text like 'e9000000-%'), 0,
   'An inactive Consultant: pipeline is empty');
@@ -475,7 +475,7 @@ set local request.jwt.claims to '';
 update public.engagements set archived_at = now() where id = 'e9000000-0000-4000-8000-000000000002';
 
 set local role authenticated;
-set local request.jwt.claims to '{"sub": "b9000000-0000-4000-8000-000000000001", "role": "authenticated"}';
+set local request.jwt.claims to '{"sub": "b9000000-0000-4000-8000-000000000001", "role": "authenticated", "aal": "aal2"}';
 
 select is(
   (select archived_at is not null from public.pipeline where id = 'e9000000-0000-4000-8000-000000000002'),

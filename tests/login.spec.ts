@@ -7,7 +7,7 @@ test.describe.configure({ timeout: 60_000 });
 
 const INVALID = 'Email or password is incorrect.';
 const NO_ACCESS = "Your account doesn't have access yet. Please contact an Owner.";
-const CONNECTION = "Can't reach the server. Check that the local database is running.";
+const CONNECTION = "Can't reach the server. Check your connection and try again.";
 
 async function signIn(page: Page, email: string, password: string) {
   await page.getByLabel('Email').fill(email);

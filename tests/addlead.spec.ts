@@ -172,7 +172,7 @@ test('client saved but lead failed: Try again sends only the engagement', async 
   await submitButton(page).click();
 
   await expect(dialog.getByRole('alert')).toHaveText(
-    "The client was saved, but the lead wasn't. Can't reach the server. Check that the local database is running.Try again",
+    "The client was saved, but the lead wasn't. Can't reach the server. Check your connection and try again.Try again",
   );
   // The saved client's fields are locked, so Try again can't send a different client.
   await expect(
