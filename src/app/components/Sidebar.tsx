@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { AppView, TeamMember } from '../types/crm';
 import { OUTREACH_LABEL } from '../features';
+import { DrishtiEye } from '../../components/DrishtiEye';
 
 interface SidebarProps {
   activeView: AppView;
@@ -152,8 +153,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Clean Brand Wordmark */}
       <div className="flex h-14 items-center justify-between px-4 border-b border-border">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-ink text-on-primary font-display font-bold text-xs">
-            D
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-wash">
+            <DrishtiEye size={24} radar={false} />
           </div>
           <span className="font-display text-sm font-semibold tracking-tight text-text whitespace-nowrap">
             Drishti
