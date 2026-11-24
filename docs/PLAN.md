@@ -83,6 +83,22 @@ A phase is **done only when every "Done when" item passes and the Security gate 
 
 ---
 
+### Status on 24-Nov-2026 (branch `phase-1`, not merged, not pushed)
+
+| Phase | Built in the repo | Still needs a person / an account |
+|---|---|---|
+| 0 | Done | Branch protection (GitHub paid plan) |
+| 1 | Schema, RLS for every table, pgTAP, seed, login, magic link, invite/deactivate, MFA for Owners | Run `bun run db:test` in CI; Owners try MFA |
+| 2 | Every screen on Supabase (AI Studio layout), page addresses, refetch on focus, states | Two-browser check with real logins |
+| 3 | Import (template, column mapping, CSV), Radar, Delivery, Dashboard, `.xlsx` export that re-imports | Checkpoint A with Pramila |
+| 4 | `drishti-assistant` (rules fallback, proposals with Apply/Dismiss, daily cap) | Gemini key after the client's Q19 Yes; injection test with the key on |
+| 5 | Outlook connect, send from the owner's mailbox in thread, open tracking, reply webhook + daily re-check, reconnect prompt | Entra app + admin consent (Checkpoint B), secrets, deploy |
+| 6 | Reminder engine (06:00 IST), Today, polish in the owner's voice, morning summary, monthly retention | Turn off test mode after a real send |
+| 7 | Fresh security review + fixes, `/health`, bundle split | Playwright journeys for the new UI, UAT (Checkpoint C), Sentry (needs approval for the package) |
+| 8 | `USER-GUIDE.md`, `DEPLOYMENT.md`, `PROCESSING-AGREEMENT-DRAFT.md` | SQAS accounts, production import, repo transfer |
+
+Details and open items: DECISIONS.md (24-Nov-2026 rows).
+
 ## 5. Phases
 
 ### Phase 0 — Repo, rules and safety setup (1–2 days)

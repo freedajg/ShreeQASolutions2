@@ -3,7 +3,8 @@ import { AlertTriangle, CheckCircle2, FileSpreadsheet, Upload, XCircle } from 'l
 import { AppSettings, Client, ImportBatchRecord, TeamMember } from '../types/crm';
 import { formatTimestampIST } from '../utils/formatters';
 import { flagText } from '../data/importFlags';
-import type { ImportPreview } from '../data/importExcel';
+import type { ImportPreview, MappingNeeded } from '../data/importExcel';
+import { EXPECTED_HEADERS } from '../../lib/import/seed-rules';
 
 interface ExcelImportViewProps {
   currentUser: TeamMember;
@@ -33,18 +34,29 @@ export const ExcelImportView: React.FC<ExcelImportViewProps> = ({
   const [busy, setBusy] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [skipExampleRow, setSkipExampleRow] = useState(true);
+  // Column mapping for files that aren't the exact template (PLAN Phase 3: Upload → Map → Preview).
+  const [pending, setPending] = useState<{
+    file: File;
+    need: MappingNeeded;
+    mapping: number[];
+  } | null>(null);
 
-  const handleFile = async (file: File | undefined) => {
+  const handleFile = async (file: File | undefined, mapping?: number[]) => {
     if (!file) return;
     setProblem(null);
     setPreview(null);
     setBusy(true);
     // The Excel reader is loaded only now, so it doesn't slow down the first page load.
     const { previewImport } = await import('../data/importExcel');
-    const result = await previewImport(file, team, existingClients, { skipExampleRow });
+    const result = await previewImport(file, team, existingClients, { skipExampleRow, mapping });
     setBusy(false);
     if (typeof result === 'string') setProblem(result);
-    else setPreview(result);
+    else if ('needsMapping' in result)
+      setPending({ file, need: result, mapping: result.suggested });
+    else {
+      setPending(null);
+      setPreview(result);
+    }
   };
 
   const handleCommit = async () => {
@@ -81,14 +93,14 @@ export const ExcelImportView: React.FC<ExcelImportViewProps> = ({
       <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-surface p-8 text-center cursor-pointer hover:bg-bg">
         <Upload className="h-6 w-6 text-primary" />
         <span className="text-sm font-medium text-text">
-          {busy ? 'Reading…' : 'Choose an Excel file (.xlsx)'}
+          {busy ? 'Reading…' : 'Choose an Excel (.xlsx) or CSV file'}
         </span>
         <span className="text-xs text-muted">
           Columns A–AD in the template order. Rows sharing a Client ID become one client.
         </span>
         <input
           type="file"
-          accept=".xlsx,.xls"
+          accept=".xlsx,.csv"
           className="sr-only"
           disabled={busy}
           onChange={(e) => {
@@ -106,6 +118,59 @@ export const ExcelImportView: React.FC<ExcelImportViewProps> = ({
         />
         Row 2 is the template&apos;s example row: skip it
       </label>
+
+      {pending && (
+        <div className="rounded-xl border border-border bg-surface">
+          <div className="border-b border-border px-4 py-3 text-xs">
+            <div className="font-semibold text-text">Match the columns of {pending.file.name}</div>
+            <div className="text-muted">
+              This file isn&apos;t in the 30-column template. Choose which of its columns holds each
+              field; leave a field on &ldquo;Not in this file&rdquo; to keep it empty.
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 p-4 text-xs max-h-96 overflow-y-auto">
+            {EXPECTED_HEADERS.map((h, i) => (
+              <label key={h} className="flex items-center justify-between gap-2">
+                <span className="text-text-secondary">{i === 1 ? <strong>{h}</strong> : h}</span>
+                <select
+                  value={pending.mapping[i]}
+                  onChange={(e) => {
+                    const next = [...pending.mapping];
+                    next[i] = Number(e.target.value);
+                    setPending({ ...pending, mapping: next });
+                  }}
+                  className="w-48 rounded-lg border border-border bg-bg px-2 py-1 text-text"
+                >
+                  <option value={-1}>Not in this file</option>
+                  {pending.need.fileHeaders.map((fh, c) => (
+                    <option key={c} value={c}>
+                      {fh || `Column ${c + 1}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
+          <div className="flex justify-end gap-2 border-t border-border px-4 py-3">
+            <button
+              type="button"
+              onClick={() => setPending(null)}
+              className="rounded-lg border border-border px-3.5 py-2 text-xs font-medium text-text-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={busy || pending.mapping[1] < 0}
+              title={pending.mapping[1] < 0 ? 'Client Name must be mapped' : undefined}
+              onClick={() => void handleFile(pending.file, pending.mapping)}
+              className="rounded-lg bg-primary-strong px-4 py-2 text-xs font-medium text-on-primary disabled:opacity-60"
+            >
+              Preview with this mapping
+            </button>
+          </div>
+        </div>
+      )}
 
       {problem && (
         <div

@@ -7,9 +7,29 @@ const GIF = Uint8Array.from(atob('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAA
 );
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Rate limit (PLAN Phase 5): one counted open per token per minute, and at most 120 database
+// lookups per minute per function instance, so the public URL can't be used to hammer the
+// database. An unknown token records nothing.
+const lastSeen = new Map<string, number>();
+let windowStart = Date.now();
+let lookups = 0;
+
+function allowed(token: string): boolean {
+  const now = Date.now();
+  if (now - windowStart > 60_000) {
+    windowStart = now;
+    lookups = 0;
+    lastSeen.clear();
+  }
+  if (lookups >= 120 || (lastSeen.get(token) ?? 0) > now - 60_000) return false;
+  lookups++;
+  lastSeen.set(token, now);
+  return true;
+}
+
 Deno.serve(async (req) => {
   const token = new URL(req.url).searchParams.get('t') ?? '';
-  if (UUID.test(token)) {
+  if (UUID.test(token) && allowed(token)) {
     const admin = adminClient();
     const { data: msg } = await admin
       .from('email_messages')

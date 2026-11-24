@@ -39,7 +39,14 @@ export async function accessTokenFor(
       scope: GRAPH_SCOPES,
     }),
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    // Revoked or expired consent: show "Connect mailbox" instead of failing silently later.
+    const detail = await res.json().catch(() => ({}));
+    if (detail.error === 'invalid_grant') {
+      await admin.from('profiles').update({ mailbox_connected: false }).eq('id', profileId);
+    }
+    return null;
+  }
   const tok = await res.json();
   if (tok.refresh_token) {
     await admin
@@ -136,4 +143,118 @@ export async function repliesSince(
   return (data.value as Array<Record<string, any>>).filter(
     (m) => (m.from?.emailAddress?.address ?? '').toLowerCase() !== ownAddress.toLowerCase(),
   );
+}
+
+// ---------------------------------------------------------------------------
+// Reply detection by change notifications (PLAN Phase 5): one subscription per connected
+// mailbox on new Inbox messages. Graph subscriptions for mail last under 3 days, so the daily
+// job renews them; graph-webhook checks clientState before trusting any notification.
+// ---------------------------------------------------------------------------
+const WEBHOOK_URL = `${Deno.env.get('SUPABASE_URL') ?? ''}/functions/v1/graph-webhook`;
+const SUBSCRIPTION_MINUTES = 4200; // ~2.9 days, under Graph's limit for mail
+
+export async function subscribeMailbox(
+  admin: SupabaseClient,
+  token: string,
+  profileId: string,
+): Promise<boolean> {
+  const clientState = crypto.randomUUID() + crypto.randomUUID();
+  const res = await graph(token, '/subscriptions', {
+    method: 'POST',
+    body: JSON.stringify({
+      changeType: 'created',
+      notificationUrl: WEBHOOK_URL,
+      resource: "me/mailFolders('inbox')/messages",
+      expirationDateTime: new Date(Date.now() + SUBSCRIPTION_MINUTES * 60_000).toISOString(),
+      clientState,
+    }),
+  });
+  if (!res.ok) return false;
+  const sub = await res.json();
+  await admin.from('mailbox_subscriptions').delete().eq('profile_id', profileId);
+  await admin.from('mailbox_subscriptions').insert({
+    id: sub.id,
+    profile_id: profileId,
+    client_state: clientState,
+    expires_at: sub.expirationDateTime,
+  });
+  return true;
+}
+
+/** Renews subscriptions that end within two days; re-creates any that Graph no longer knows. */
+export async function renewSubscriptions(admin: SupabaseClient): Promise<number> {
+  const soon = new Date(Date.now() + 2 * 86400_000).toISOString();
+  const { data: subs } = await admin
+    .from('mailbox_subscriptions')
+    .select('id, profile_id')
+    .lt('expires_at', soon);
+  let renewed = 0;
+  for (const s of subs ?? []) {
+    const token = await accessTokenFor(admin, s.profile_id);
+    if (!token) continue;
+    const expires = new Date(Date.now() + SUBSCRIPTION_MINUTES * 60_000).toISOString();
+    const res = await graph(token, `/subscriptions/${encodeURIComponent(s.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ expirationDateTime: expires }),
+    });
+    if (res.ok) {
+      await admin.from('mailbox_subscriptions').update({ expires_at: expires }).eq('id', s.id);
+      renewed++;
+    } else if (await subscribeMailbox(admin, token, s.profile_id)) {
+      renewed++;
+    }
+  }
+  return renewed;
+}
+
+export async function getMessage(token: string, messageId: string) {
+  const res = await graph(
+    token,
+    `/me/messages/${encodeURIComponent(messageId)}?$select=id,from,subject,bodyPreview,receivedDateTime,internetMessageId,conversationId`,
+  );
+  return res.ok ? ((await res.json()) as Record<string, any>) : null;
+}
+
+/**
+ * Stores a client's reply in its thread, once. The database trigger then marks the engagement
+ * replied, stops the follow-up sequence and logs it (FR-8). Messages from the owner's own
+ * address, or in no thread Drishti started, are ignored. The body is kept as plain text.
+ */
+export async function recordInbound(
+  admin: SupabaseClient,
+  ownerId: string,
+  ownerEmail: string,
+  m: Record<string, any>,
+): Promise<boolean> {
+  const from = String(m.from?.emailAddress?.address ?? '').toLowerCase();
+  if (!m.conversationId || !from || from === ownerEmail.toLowerCase()) return false;
+  const { data: thread } = await admin
+    .from('email_threads')
+    .select('id, engagement_id, client_id')
+    .eq('conversation_id', m.conversationId)
+    .eq('owner_id', ownerId)
+    .limit(1)
+    .maybeSingle();
+  if (!thread) return false;
+  const { data: seen } = await admin
+    .from('email_messages')
+    .select('id')
+    .eq('provider_message_id', m.id)
+    .maybeSingle();
+  if (seen) return false;
+  await admin.from('email_messages').insert({
+    thread_id: thread.id,
+    engagement_id: thread.engagement_id,
+    client_id: thread.client_id,
+    direction: 'inbound',
+    from_email: from,
+    to_email: ownerEmail,
+    subject: String(m.subject ?? '').slice(0, 300),
+    body: String(m.bodyPreview ?? ''),
+    provider: 'outlook',
+    provider_message_id: m.id,
+    internet_message_id: m.internetMessageId ?? null,
+    sent_at: m.receivedDateTime ?? new Date().toISOString(),
+  });
+  return true;
 }

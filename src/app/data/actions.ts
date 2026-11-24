@@ -561,6 +561,25 @@ export async function submitWebLead(
   check(error);
 }
 
+/** Drishti rewrites a draft in the owner's voice; the text comes back to the editor only. */
+export async function polishDraft(db: Db, draftId: string) {
+  const { data, error } = await db.functions.invoke('drishti-assistant', { body: { draftId } });
+  if (error) {
+    const detail = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    throw new Error(detail?.error ?? 'Drishti could not rewrite this draft.');
+  }
+  return data as { subject: string; body: string };
+}
+
+export async function runRetention(db: Db) {
+  // Not in the generated types until `bun run db:types` is re-run against migration 100700.
+  const { data, error } = await (db.rpc as unknown as (fn: string) => ReturnType<Db['rpc']>)(
+    'run_retention',
+  );
+  check(error);
+  return data as unknown as Record<string, number | string>;
+}
+
 export async function askDrishti(db: Db, question: string) {
   const { data, error } = await db.functions.invoke('drishti-assistant', { body: { question } });
   if (error) throw new Error('Drishti is unavailable right now. Try again in a moment.');

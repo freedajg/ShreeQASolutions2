@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { TeamMember } from '../types/crm';
-import { previewImport } from './importExcel';
+import { csvDateSerial, previewImport, suggestMapping } from './importExcel';
 
 // The DUMMY workbook's Test Notes sheet lists what the import must flag (PRD FR-3 acceptance).
 const member = (id: string, name: string): TeamMember =>
@@ -18,7 +18,7 @@ async function preview() {
   const file = new File([bytes], 'SQAS_Client_Database_DUMMY.xlsx');
   // The DUMMY file has data from row 2 (no example row).
   const result = await previewImport(file, TEAM, [], { skipExampleRow: false });
-  if (typeof result === 'string') throw new Error(result);
+  if (typeof result === 'string' || 'needsMapping' in result) throw new Error('not a preview');
   return result;
 }
 
@@ -53,5 +53,54 @@ describe('previewImport with the DUMMY workbook', () => {
   it('refuses a workbook that is not the 30-column template', async () => {
     const file = new File([new Uint8Array([1, 2, 3])], 'notes.txt');
     expect(await previewImport(file, TEAM, [])).toMatch(/Excel file/);
+  });
+});
+
+describe('other layouts and CSV (PLAN Phase 3)', () => {
+  it('asks for a column mapping when the headers are not the template', async () => {
+    const csv = ['Company,Mail,Cert', 'X Co,x@example.test,ISO 27001', ''].join('\n');
+    const result = await previewImport(new File([csv], 'other.csv'), TEAM, [], {
+      skipExampleRow: false,
+    });
+    expect(typeof result !== 'string' && 'needsMapping' in result).toBe(true);
+  });
+
+  it('imports with a mapping: Company → Client Name, Mail → Email, Cert → Service', async () => {
+    const csv = [
+      'Company,Mail,Cert,Valid To',
+      'X Co,x@example.test,ISO 27001,28-Jul-2028',
+      '',
+    ].join('\n');
+    const mapping = Array(30).fill(-1);
+    mapping[1] = 0;
+    mapping[8] = 1;
+    mapping[11] = 2;
+    mapping[19] = 3;
+    const result = await previewImport(new File([csv], 'other.csv'), TEAM, [], {
+      skipExampleRow: false,
+      mapping,
+    });
+    if (typeof result === 'string' || 'needsMapping' in result) throw new Error('no preview');
+    const row = result.rows[0] as {
+      client: Record<string, string>;
+      engagement: Record<string, string>;
+    };
+    expect(row.client.name).toBe('X Co');
+    expect(row.client.email).toBe('x@example.test');
+    expect(row.engagement.certification_type).toBe('ISO 27001');
+    expect(row.engagement.valid_to).toBe('2028-07-28');
+  });
+
+  it('accepts only unambiguous CSV dates, never guesses', () => {
+    expect(csvDateSerial('12-Mar-2024')).toBe(csvDateSerial('2024-03-12'));
+    expect(csvDateSerial('03/04/2024')).toBeNull();
+    expect(csvDateSerial('31-Feb-2027')).toBeNull();
+  });
+
+  it('suggests exact header matches only', () => {
+    const m = suggestMapping(['client name', 'EMAIL', 'Something else']);
+    expect(m[1]).toBe(0);
+    expect(m[8]).toBe(1);
+    expect(m[0]).toBe(-1);
   });
 });

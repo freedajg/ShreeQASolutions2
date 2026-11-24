@@ -35,6 +35,7 @@ import { NewLeadModal } from './components/NewLeadModal';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { ProfileOutlookModal } from './components/ProfileOutlookModal';
 import { BulkEmailModal } from './components/BulkEmailModal';
+import { useViewRoute } from './route';
 
 /** Screens each role may open (the database is the real wall; this keeps the menu honest). */
 function canOpen(view: AppView, user: TeamMember): boolean {
@@ -67,9 +68,7 @@ export function DrishtiApp() {
   const [clockOffset, setClockOffset] = useState(0);
   const referenceDate = addDays(todayIST(), clockOffset);
 
-  const [activeView, setActiveView] = useState<AppView>(
-    me.role === 'marketing' ? 'dashboard' : 'today',
-  );
+  const [activeView, setActiveView] = useViewRoute(me.role === 'marketing' ? 'dashboard' : 'today');
   const [viewFilterHint, setViewFilterHint] = useState<string | undefined>();
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [selectedEngagementId, setSelectedEngagementId] = useState<string | null>(null);
@@ -358,6 +357,16 @@ export function DrishtiApp() {
                     )
               }
               onOpenClient={handleOpenClient}
+              onPolishDraft={async (id) => {
+                try {
+                  return await act.polishDraft(db, id);
+                } catch (e) {
+                  showToast(
+                    e instanceof Error ? e.message : 'Drishti could not rewrite this draft.',
+                  );
+                  return null;
+                }
+              }}
             />
           )}
 
@@ -625,6 +634,14 @@ export function DrishtiApp() {
               }
               onUpdateSettings={(patch) =>
                 void run(() => act.updateSettings(db, patch), 'Settings saved.')
+              }
+              onRunRetention={() =>
+                void run(async () => {
+                  const r = await act.runRetention(db);
+                  showToast(
+                    `Retention run: ${r.clients_contacts_removed} client contact(s), ${r.email_bodies_removed} email body(ies), ${r.open_tracking_cleared} open record(s) cleared.`,
+                  );
+                })
               }
               onUpdateCycle={(code, s, r) =>
                 void run(() => act.updateCycle(db, code, s, r), `Cycle for ${code} saved.`)

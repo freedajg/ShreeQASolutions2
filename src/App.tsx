@@ -1,12 +1,14 @@
 import { useAuth } from './lib/auth/context';
 import { AuthLoading, ConfigProblem, LoginPage, MfaScreen } from './components/LoginPage';
 import { DrishtiApp } from './app/DrishtiApp';
+import { HealthPage } from './components/HealthPage';
 
 // Sign-in gate: nothing of the app renders until the user's profile grants access, and an Owner
 // has passed MFA (the database enforces the same rule: Owner access needs aal2).
 export default function App() {
   const { state } = useAuth();
 
+  if (window.location.pathname === '/health') return <HealthPage />;
   if (state.status === 'loading') return <AuthLoading />;
   if (state.status === 'not-configured') return <ConfigProblem problem={state.problem} />;
   if (state.status === 'signed-out') return <LoginPage />;

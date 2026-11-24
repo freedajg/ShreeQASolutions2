@@ -228,7 +228,7 @@ export async function loadCrmData(db: Db, me: SignedInUser): Promise<CrmData> {
       ...(notesOf.get(n.engagement_id) ?? []),
       {
         id: n.id,
-        date: n.held_on,
+        date: n.held_on ?? '', // an imported note may have no date (never invented)
         heldById: n.held_by ?? '',
         heldByName: (n.held_by && nameOf.get(n.held_by)) || 'Former member',
         summary: n.summary,
@@ -414,6 +414,9 @@ export async function loadCrmData(db: Db, me: SignedInUser): Promise<CrmData> {
       ]),
     ),
     emailTestMode: s?.email_test_mode ?? true,
+    // Column added by migration 100700 (re-run `bun run db:types` to drop the cast).
+    assistantDailyLimit:
+      (s as { assistant_daily_limit?: number } | null)?.assistant_daily_limit ?? 40,
     m365Provider: (s?.m365_provider ?? 'unknown') as AppSettings['m365Provider'],
     m365AdminConsent: s?.m365_admin_consent ?? false,
     retention: {

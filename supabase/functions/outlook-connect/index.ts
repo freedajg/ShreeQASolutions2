@@ -5,6 +5,7 @@
 // Needs MS_CLIENT_ID, MS_CLIENT_SECRET, MS_TENANT_ID, TOKEN_ENC_KEY and APP_ORIGIN.
 import {
   adminClient,
+  safeEqual,
   corsHeaders,
   encrypt,
   getCaller,
@@ -12,7 +13,7 @@ import {
   sign,
   SUPABASE_URL,
 } from '../_shared/util.ts';
-import { GRAPH_SCOPES, msConfigured, tokenUrl } from '../_shared/graph.ts';
+import { GRAPH_SCOPES, msConfigured, subscribeMailbox, tokenUrl } from '../_shared/graph.ts';
 
 const REDIRECT = `${SUPABASE_URL}/functions/v1/outlook-connect`;
 const APP = Deno.env.get('APP_ORIGIN') ?? 'http://localhost:3000';
@@ -23,11 +24,13 @@ Deno.serve(async (req) => {
   if (req.method === 'GET') return callback(new URL(req.url));
 
   const caller = await getCaller(req);
-  if (!caller) return json({ error: 'Not signed in' }, 401);
+  // A role is required (an Owner must have passed MFA); a role-less login can't connect.
+  if (!caller?.role) return json({ error: 'Not signed in, or no access' }, 401);
   const { action } = await req.json().catch(() => ({ action: '' }));
 
   if (action === 'disconnect') {
     const admin = adminClient();
+    await admin.from('mailbox_subscriptions').delete().eq('profile_id', caller.id);
     await admin.from('mailbox_connections').delete().eq('profile_id', caller.id);
     await admin.from('profiles').update({ mailbox_connected: false }).eq('id', caller.id);
     await admin.from('activity_log').insert({
@@ -71,7 +74,8 @@ async function callback(url: URL): Promise<Response> {
   const code = url.searchParams.get('code');
   const [uid, exp, sig] = (url.searchParams.get('state') ?? '').split('.');
   if (!code || !uid || !exp || !sig) return back('failed');
-  if (Number(exp) < Date.now() || (await sign(`${uid}.${exp}`)) !== sig) return back('expired');
+  if (Number(exp) < Date.now() || !safeEqual(await sign(`${uid}.${exp}`), sig))
+    return back('expired');
 
   const res = await fetch(tokenUrl(), {
     method: 'POST',
@@ -106,6 +110,8 @@ async function callback(url: URL): Promise<Response> {
     updated_at: new Date().toISOString(),
   });
   await admin.from('profiles').update({ mailbox_connected: true }).eq('id', uid);
+  // Reply detection: notifications for new Inbox mail (renewed daily by daily-digest).
+  await subscribeMailbox(admin, tok.access_token, uid).catch(() => false);
   await admin.from('activity_log').insert({
     actor_id: uid,
     source: 'manual',

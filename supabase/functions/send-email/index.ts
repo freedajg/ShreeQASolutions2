@@ -104,7 +104,8 @@ async function sendOne(
   if (typeof edit.body === 'string') patch.body = edit.body.slice(0, 10000);
   const { data: allowed, error: permError } = await asUser
     .from('email_drafts')
-    .update(Object.keys(patch).length ? patch : { status: 'waiting' })
+    // status back to 'waiting' also lets a failed draft be edited and sent again.
+    .update({ ...patch, status: 'waiting' })
     .eq('id', draftId)
     .in('status', ['waiting', 'rescheduled', 'failed'])
     .select('id')
@@ -123,7 +124,7 @@ async function sendOne(
     .update({ status: 'sending', failure_reason: null })
     .eq('id', draftId)
     .in('status', ['waiting', 'rescheduled', 'failed'])
-    .select('id, engagement_id, client_id, owner_id, thread_id, to_email, subject, body, batch_id')
+    .select('id, engagement_id, client_id, owner_id, thread_id, subject, body, batch_id')
     .maybeSingle();
   if (!draft) return { draftId, status: 'failed', reason: 'Already being sent' };
 
@@ -143,14 +144,27 @@ async function sendOne(
     return { draftId, status: 'failed', reason };
   };
 
-  const { data: client } = await admin
-    .from('clients')
-    .select('email, do_not_contact, archived_at')
-    .eq('id', draft.client_id)
-    .single();
+  const [{ data: client }, { data: engagement }, { data: kindRow }] = await Promise.all([
+    admin
+      .from('clients')
+      .select('email, do_not_contact, archived_at')
+      .eq('id', draft.client_id)
+      .single(),
+    admin.from('engagements').select('owner_id, status').eq('id', draft.engagement_id).single(),
+    admin.from('email_drafts').select('kind').eq('id', draftId).single(),
+  ]);
+  // Always from the engagement's CURRENT Relationship Owner (CLAUDE.md rule 4).
+  if (engagement?.owner_id !== draft.owner_id) {
+    return fail('The Relationship Owner changed: write a new draft from the new owner');
+  }
+  // Delivery engagements never get sales follow-ups (CLAUDE.md rule 6).
+  if (kindRow?.kind === 'follow_up' && !['Lead', 'Proposal'].includes(engagement?.status ?? '')) {
+    return fail('Sales follow-ups are only for Lead and Proposal engagements');
+  }
   if (client?.do_not_contact) return fail('Client is marked do-not-contact');
   if (client?.archived_at) return fail('Client is archived');
-  const to = draft.to_email ?? client?.email;
+  // The recipient is the client's current email (a draft can't redirect it).
+  const to = client?.email;
   if (!to) return fail('Client has no email address');
   if (!draft.owner_id) return fail('Engagement has no Relationship Owner');
 
@@ -227,7 +241,19 @@ async function sendOne(
     threadId = thread!.id;
   }
 
+  // Mark it sent first: once Outlook has accepted it, nothing may send it again, even if
+  // writing the history below fails.
   const sentAt = new Date().toISOString();
+  await admin
+    .from('email_drafts')
+    .update({
+      status: 'sent',
+      sent_at: sentAt,
+      approved_by: callerId,
+      thread_id: threadId,
+      failure_reason: null,
+    })
+    .eq('id', draftId);
   await admin.from('email_messages').insert({
     thread_id: threadId,
     engagement_id: draft.engagement_id,
@@ -246,16 +272,6 @@ async function sendOne(
     sent_at: sentAt,
     tracking_token: trackingToken,
   });
-  await admin
-    .from('email_drafts')
-    .update({
-      status: 'sent',
-      sent_at: sentAt,
-      approved_by: callerId,
-      thread_id: threadId,
-      failure_reason: null,
-    })
-    .eq('id', draftId);
 
   return { draftId, status: 'sent', from: owner.email };
 }

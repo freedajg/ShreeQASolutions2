@@ -299,10 +299,10 @@ auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 # Control how many MFA factors can be enrolled at once per user.
 max_enrolled_factors = 10
 
-# Control MFA via App Authenticator (TOTP)
+# Control MFA via App Authenticator (TOTP). On: Owners must use it (Phase 1 step 18).
 [auth.mfa.totp]
-enroll_enabled = false
-verify_enabled = false
+enroll_enabled = true
+verify_enabled = true
 
 # Configure MFA via Phone Messaging
 [auth.mfa.phone]
@@ -413,3 +413,19 @@ enabled = true
 # formatted with uppercase keywords, indent 2, max width 180, trailing commas,
 # and column/key alignment. Set to "null" to emit raw, unformatted SQL.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":180,\"commaStyle\":\"trailing\"}"
+
+# Edge Functions that can't carry a Supabase login check their callers themselves:
+# graph-webhook (Graph clientState), track-open (random token), outlook-connect (signed state on
+# the Microsoft redirect; POST checks the login itself), daily-digest (job secret from pg_cron;
+# preview checks the login itself). Every other function keeps the gateway's login check.
+[functions.graph-webhook]
+verify_jwt = false
+
+[functions.track-open]
+verify_jwt = false
+
+[functions.outlook-connect]
+verify_jwt = false
+
+[functions.daily-digest]
+verify_jwt = false

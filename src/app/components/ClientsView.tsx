@@ -33,7 +33,6 @@ import {
   formatDateDDMMMYYYY,
   formatINR,
   formatTimestampIST,
-  generate30ColumnCSV,
   getStatusGroup,
   isLeadQuiet,
 } from '../utils/formatters';
@@ -315,16 +314,14 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     return activeClientEngagements[0];
   }, [activeClientEngagements, selectedEngagementId]);
 
-  const handleExportCSV = () => {
-    const csv = generate30ColumnCSV(clientsById, visibleEngagements, membersById, showFinancials);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `SQAS_Client_Database_Export.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    onExportToast('Exported 30-column SQAS layout (Col A–AD).');
+  // Her 30-column layout as .xlsx: every live engagement this person may see (all groups,
+  // including Closed), so it doubles as the weekly backup (DECISIONS 22-Nov-2026).
+  const handleExportCSV = async () => {
+    const { exportRows, exportWorkbook, downloadWorkbook } = await import('../data/exportExcel');
+    const rows = exportRows(clientsById, engagements, membersById, showFinancials);
+    const stamp = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
+    downloadWorkbook(exportWorkbook(rows), `SQAS_Client_Database_${stamp}.xlsx`);
+    onExportToast(`Exported ${rows.length - 1} engagement(s) in the 30-column layout.`);
   };
 
   const handleSaveNote = (e: React.FormEvent) => {
@@ -394,11 +391,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           {!isMarketing && (
             <button
               type="button"
-              onClick={handleExportCSV}
+              onClick={() => void handleExportCSV()}
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-text-secondary hover:bg-bg transition-colors whitespace-nowrap"
             >
               <Download className="h-3.5 w-3.5" />
-              <span>Export 30-Col Excel</span>
+              <span>Export to Excel</span>
             </button>
           )}
           <button

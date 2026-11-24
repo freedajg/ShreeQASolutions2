@@ -27,7 +27,7 @@ interface AskResult {
 }
 
 interface ProposalCard extends ServerProposal {
-  state: 'ready' | 'applying' | 'applied';
+  state: 'ready' | 'applying' | 'applied' | 'dismissed';
 }
 
 interface ChatMessage {
@@ -258,20 +258,32 @@ export const DrishtiAssistantDrawer: React.FC<DrishtiAssistantDrawerProps> = ({
                     </div>
 
                     <div className="flex justify-end pt-0.5">
-                      {p.state === 'applied' ? (
+                      {p.state === 'dismissed' ? (
+                        <span className="text-[11px] text-muted">Dismissed: nothing changed</span>
+                      ) : p.state === 'applied' ? (
                         <span className="inline-flex items-center gap-1 text-[11px] text-success font-medium">
                           <Check className="h-3.5 w-3.5" />
                           <span>Applied & logged</span>
                         </span>
                       ) : (
-                        <button
-                          type="button"
-                          disabled={p.state === 'applying'}
-                          onClick={() => void handleApplyCard(m.id, index, p)}
-                          className="rounded-lg bg-primary-strong px-3 py-1.5 text-[11px] font-medium text-on-primary transition-colors disabled:opacity-60"
-                        >
-                          {p.state === 'applying' ? 'Applying…' : 'Apply Changes'}
-                        </button>
+                        <span className="inline-flex gap-1.5">
+                          <button
+                            type="button"
+                            disabled={p.state === 'applying'}
+                            onClick={() => setCardState(m.id, index, 'dismissed')}
+                            className="rounded-lg border border-border px-3 py-1.5 text-[11px] font-medium text-text-secondary"
+                          >
+                            Dismiss
+                          </button>
+                          <button
+                            type="button"
+                            disabled={p.state === 'applying'}
+                            onClick={() => void handleApplyCard(m.id, index, p)}
+                            className="rounded-lg bg-primary-strong px-3 py-1.5 text-[11px] font-medium text-on-primary transition-colors disabled:opacity-60"
+                          >
+                            {p.state === 'applying' ? 'Applying…' : 'Apply Changes'}
+                          </button>
+                        </span>
                       )}
                     </div>
                   </div>

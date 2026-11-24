@@ -25,6 +25,8 @@ interface SettingsViewProps {
     surveillanceMonths: number | null,
     recertMonths: number | null,
   ) => void;
+  /** Runs the retention cleanup now (Owners; it also runs monthly on its own). */
+  onRunRetention: () => void;
 }
 
 const monthsOrNull = (v: string) => (v.trim() === '' ? null : Math.max(1, Math.round(Number(v))));
@@ -42,6 +44,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onInviteMember,
   onUpdateSettings,
   onUpdateCycle,
+  onRunRetention,
 }) => {
   const m365Provider = settings.m365Provider;
   const m365AdminConsentGranted = settings.m365AdminConsent;
@@ -636,6 +639,40 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
               <p className="mt-1 text-muted">Applied automatically by monthly cleanup job.</p>
             </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 text-xs">
+            <div>
+              <div className="font-medium text-text">Run the cleanup now</div>
+              <div className="text-muted">
+                Removes contact details of closed leads, old email text and old open tracking, using
+                the settings above. Every run is logged.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onRunRetention}
+              className="rounded-lg border border-border px-3 py-1.5 font-medium text-text-secondary hover:bg-bg"
+            >
+              Run cleanup
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 text-xs">
+            <div>
+              <div className="font-medium text-text">Drishti questions per person per day</div>
+              <div className="text-muted">Keeps the AI cost predictable (PRD §8).</div>
+            </div>
+            <input
+              type="number"
+              min={0}
+              max={500}
+              aria-label="Drishti questions per person per day"
+              defaultValue={settings.assistantDailyLimit}
+              onBlur={(e) => {
+                const n = Math.round(Number(e.target.value));
+                if (n >= 0 && n <= 500) onUpdateSettings({ assistant_daily_limit: n });
+              }}
+              className="w-24 rounded-lg border border-border bg-bg px-3 py-1.5 font-mono text-text"
+            />
           </div>
         </div>
       )}

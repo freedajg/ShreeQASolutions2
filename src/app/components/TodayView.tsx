@@ -34,6 +34,8 @@ interface TodayViewProps {
   onSkipDraft: (draftId: string) => void;
   onRescheduleDraft: (draftId: string, newDate: string) => void;
   onConnectOutlook: (memberId: string) => void;
+  /** Rewrites the draft in the owner's voice (Drishti); returns the new text or null. */
+  onPolishDraft: (draftId: string) => Promise<{ subject: string; body: string } | null>;
   onOpenClient: (clientId: string, engagementId?: string) => void;
 }
 
@@ -51,7 +53,9 @@ export const TodayView: React.FC<TodayViewProps> = ({
   onRescheduleDraft,
   onConnectOutlook,
   onOpenClient,
+  onPolishDraft,
 }) => {
+  const [polishing, setPolishing] = useState(false);
   const [ownerFilter, setOwnerFilter] = useState<string>('all');
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -433,8 +437,9 @@ export const TodayView: React.FC<TodayViewProps> = ({
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border">
                 <div className="flex flex-wrap items-center gap-2">
                   {(() => {
+                    // In test mode nothing is delivered, so a mailbox isn't needed to try it.
                     const canSend =
-                      selectedOwner.outlookConnected &&
+                      (settings.emailTestMode || selectedOwner.outlookConnected) &&
                       Boolean(selectedClient.email) &&
                       !selectedClient.doNotContact &&
                       canSendEmailForOwner(currentUser, selectedOwner.id);
@@ -452,6 +457,22 @@ export const TodayView: React.FC<TodayViewProps> = ({
                         >
                           <Send className="h-3.5 w-3.5" />
                           <span>Save & Send via {selectedOwner.name.split(' ')[0]}</span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={polishing}
+                          onClick={async () => {
+                            setPolishing(true);
+                            const text = await onPolishDraft(selectedDraft.id);
+                            setPolishing(false);
+                            if (text) {
+                              setEditSubject(text.subject);
+                              setEditBody(text.body);
+                            }
+                          }}
+                          className="rounded-lg border border-primary-line px-3 py-2 text-xs font-medium text-primary disabled:opacity-50"
+                        >
+                          {polishing ? 'Rewriting…' : 'Improve with Drishti'}
                         </button>
                         <button
                           type="button"

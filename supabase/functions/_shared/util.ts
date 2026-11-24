@@ -64,6 +64,27 @@ export async function getCaller(req: Request): Promise<Caller | null> {
   return { id: data.user.id, email: data.user.email ?? '', role, aal, fullName: profile.full_name };
 }
 
+/** A scheduled call from pg_cron: its x-job-secret must equal the server-only server_jobs row. */
+export async function isJobCall(req: Request, job: string): Promise<boolean> {
+  const given = req.headers.get('x-job-secret') ?? '';
+  if (given.length < 32) return false;
+  const { data } = await adminClient()
+    .from('server_jobs')
+    .select('secret')
+    .eq('name', job)
+    .maybeSingle();
+  return Boolean(data?.secret) && safeEqual(data!.secret, given);
+}
+
+/** Compares two secrets in constant time (no early exit that leaks how much matched). */
+export function safeEqual(a: string, b: string): boolean {
+  const x = new TextEncoder().encode(a);
+  const y = new TextEncoder().encode(b);
+  let diff = x.length ^ y.length;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) diff |= (x[i] ?? 0) ^ (y[i] ?? 0);
+  return diff === 0;
+}
+
 export function escapeHtml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
@@ -108,10 +129,13 @@ export async function decrypt(blob: string): Promise<string> {
 
 /** HMAC-signed state for the Outlook connect redirect, so a callback can't be forged. */
 export async function sign(value: string): Promise<string> {
-  const secret = Deno.env.get('TOKEN_ENC_KEY') ?? '';
+  const secret = Deno.env.get('TOKEN_ENC_KEY');
+  if (!secret) throw new Error('TOKEN_ENC_KEY is not set');
+  // A key of its own for signing, derived from the secret with a fixed label, so the
+  // encryption key itself is never used as the HMAC key.
   const key = await crypto.subtle.importKey(
     'raw',
-    new TextEncoder().encode(secret),
+    new TextEncoder().encode(`drishti-oauth-state:${secret}`),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign'],

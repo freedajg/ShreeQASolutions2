@@ -1,22 +1,36 @@
-// daily-digest: the 06:00 IST morning summary for each Owner (PRD FR-10) and the daily
-// re-check for client replies (PRD §8 "a missed reply is caught by a daily re-check").
-//   POST {mode: 'preview'}  (signed-in Owner) -> the summary per Owner, nothing sent
-//   POST {mode: 'run'}      (server: service-role key, from pg_cron) -> re-check replies, then
-//                            send each Owner their summary from their own mailbox to themselves.
-// In email test mode, 'run' only records the summary in the activity log.
-import { adminClient, corsHeaders, escapeHtml, getCaller, json } from '../_shared/util.ts';
-import { accessTokenFor, msConfigured, repliesSince, sendFromMailbox } from '../_shared/graph.ts';
+// daily-digest: the morning summary for each Owner (PRD FR-10), the daily re-check for client
+// replies (PRD §8 "a missed reply is caught by a daily re-check") and the renewal of Outlook
+// reply subscriptions (PLAN Phase 5).
+//   POST {mode: 'preview'}  signed-in Owner -> the summary, nothing sent
+//   POST {mode: 'run'}      pg_cron at 06:15 IST (header x-job-secret = server_jobs row) ->
+//                           renew subscriptions, re-check replies, then send each Owner their
+//                           summary from their own mailbox to themselves.
+// In email test mode, 'run' only records that it ran.
+import {
+  adminClient,
+  corsHeaders,
+  escapeHtml,
+  getCaller,
+  isJobCall,
+  json,
+} from '../_shared/util.ts';
+import {
+  accessTokenFor,
+  msConfigured,
+  recordInbound,
+  renewSubscriptions,
+  repliesSince,
+  sendFromMailbox,
+} from '../_shared/graph.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   const { mode } = await req.json().catch(() => ({ mode: 'preview' }));
   const admin = adminClient();
 
-  const isServer =
-    (req.headers.get('Authorization') ?? '') ===
-    `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`;
-  if (mode === 'run' && !isServer) return json({ error: 'Server only' }, 403);
-  if (mode !== 'run') {
+  if (mode === 'run') {
+    if (!(await isJobCall(req, 'daily-digest'))) return json({ error: 'Server only' }, 403);
+  } else {
     const caller = await getCaller(req);
     if (caller?.role !== 'owner') return json({ error: 'Owners only' }, 403);
   }
@@ -25,7 +39,11 @@ Deno.serve(async (req) => {
   const testMode = settings?.email_test_mode !== false || !msConfigured();
 
   let repliesFound = 0;
-  if (mode === 'run' && !testMode) repliesFound = await recheckReplies(admin);
+  let subscriptionsRenewed = 0;
+  if (mode === 'run' && msConfigured()) {
+    subscriptionsRenewed = await renewSubscriptions(admin);
+    repliesFound = await recheckReplies(admin);
+  }
 
   const { data: owners } = await admin
     .from('profiles')
@@ -47,6 +65,7 @@ Deno.serve(async (req) => {
     .is('archived_at', null)
     .or(`last_contacted_on.is.null,last_contacted_on.lte.${cutoff}`);
 
+  // Team-wide numbers (Owners see everything) plus what waits in the Owner's own mailbox.
   const summaries = (owners ?? []).map((o) => ({
     ownerId: o.id,
     name: o.full_name,
@@ -58,44 +77,45 @@ Deno.serve(async (req) => {
     leadsGoneQuiet: (quiet ?? []).length,
   }));
 
-  if (mode === 'run' && settings?.daily_digest_enabled) {
+  if (mode === 'run' && settings?.daily_digest_enabled && !testMode) {
     for (const s of summaries) {
       const owner = (owners ?? []).find((o) => o.id === s.ownerId)!;
-      if (!testMode && owner.mailbox_connected) {
-        const token = await accessTokenFor(admin, owner.id);
-        if (token) {
-          const html = escapeHtml(
-            `Good morning ${s.name}.\n\nDrafts waiting for review: ${s.draftsWaiting} (${s.myDrafts} from your mailbox)\nRenewals overdue: ${s.renewalsOverdue}\nRenewals due in 30 days: ${s.renewalsDue30}\nLeads gone quiet: ${s.leadsGoneQuiet}\n\nOpen Drishti to review.`,
-          ).replace(/\n/g, '<br>');
-          await sendFromMailbox(token, {
-            to: owner.email,
-            subject: 'Drishti — your morning summary',
-            html,
-          }).catch(() => null);
-        }
-      }
+      if (!owner.mailbox_connected) continue;
+      const token = await accessTokenFor(admin, owner.id);
+      if (!token) continue;
+      const html = escapeHtml(
+        `Good morning ${s.name}.\n\nDrafts waiting for review: ${s.draftsWaiting} (${s.myDrafts} from your mailbox)\nRenewals overdue: ${s.renewalsOverdue}\nRenewals due in 30 days: ${s.renewalsDue30}\nLeads gone quiet: ${s.leadsGoneQuiet}\n\nOpen Drishti to review.`,
+      ).replace(/\n/g, '<br>');
+      await sendFromMailbox(token, {
+        to: owner.email,
+        subject: 'Drishti — your morning summary',
+        html,
+      }).catch(() => null);
     }
+  }
+  if (mode === 'run') {
     await admin.from('activity_log').insert({
       actor_id: null,
       source: 'system',
       kind: 'reminder_run',
-      meta: { digest: true, testMode, repliesFound },
+      meta: { digest: true, testMode, repliesFound, subscriptionsRenewed },
     });
   }
 
-  return json({ testMode, repliesFound, summaries });
+  return json({ testMode, repliesFound, subscriptionsRenewed, summaries });
 });
 
-/** For every thread with an outbound email in the last 30 days, look for client replies. */
+/** For every thread started in the last 30 days, look for client replies the webhook missed. */
 async function recheckReplies(admin: ReturnType<typeof adminClient>): Promise<number> {
   const since = new Date(Date.now() - 30 * 86400_000).toISOString();
   const { data: threads } = await admin
     .from('email_threads')
-    .select('id, engagement_id, client_id, owner_id, conversation_id, profiles:owner_id(email)')
+    .select('id, owner_id, conversation_id, profiles:owner_id(email)')
     .not('conversation_id', 'is', null)
     .gte('created_at', since);
   let found = 0;
   for (const t of threads ?? []) {
+    const ownerEmail: string = (t as { profiles?: { email?: string } }).profiles?.email ?? '';
     const token = await accessTokenFor(admin, t.owner_id);
     if (!token) continue;
     const { data: last } = await admin
@@ -109,30 +129,17 @@ async function recheckReplies(admin: ReturnType<typeof adminClient>): Promise<nu
       token,
       t.conversation_id!,
       last?.sent_at ?? since,
-      (t as any).profiles?.email ?? '',
+      ownerEmail,
     );
     for (const r of replies) {
-      const { data: seen } = await admin
-        .from('email_messages')
-        .select('id')
-        .eq('provider_message_id', r.id)
-        .maybeSingle();
-      if (seen) continue;
-      await admin.from('email_messages').insert({
-        thread_id: t.id,
-        engagement_id: t.engagement_id,
-        client_id: t.client_id,
-        direction: 'inbound',
-        from_email: r.from?.emailAddress?.address ?? '',
-        to_email: (t as any).profiles?.email ?? '',
-        subject: r.subject ?? '',
-        body: r.bodyPreview ?? '',
-        provider: 'outlook',
-        provider_message_id: r.id,
-        internet_message_id: r.internetMessageId ?? null,
-        sent_at: r.receivedDateTime,
-      });
-      found++;
+      if (
+        await recordInbound(admin, t.owner_id, ownerEmail, {
+          ...r,
+          conversationId: t.conversation_id,
+        })
+      ) {
+        found++;
+      }
     }
   }
   return found;

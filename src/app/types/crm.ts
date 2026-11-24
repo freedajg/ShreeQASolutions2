@@ -233,6 +233,7 @@ export interface AppSettings {
     Record<ServiceType, { surveillanceMonths: number | null; recertMonths: number | null }>
   >;
   emailTestMode: boolean;
+  assistantDailyLimit: number;
   m365Provider: 'microsoft' | 'godaddy' | 'unknown';
   m365AdminConsent: boolean;
   retention: {
