@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ArrowRight, Building2, Search, X } from 'lucide-react';
 import { AppView, Client, Engagement, TeamMember } from '../types/crm';
 import { canSeeEngagement } from '../utils/formatters';
+import { OUTREACH_LABEL } from '../features';
 
 interface CommandPaletteModalProps {
   open: boolean;
@@ -32,7 +33,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     { id: 'dashboard', label: 'Executive Dashboard', group: 'Screens' },
     { id: 'radar', label: 'Renewal Radar', group: 'Screens', hidden: isMarketing },
     { id: 'pipeline', label: 'Sales Pipeline Board', group: 'Screens' },
-    { id: 'outreach', label: 'WhatsApp & Calls', group: 'Phase 2', hidden: isMarketing },
+    { id: 'outreach', label: OUTREACH_LABEL, group: 'Screens', hidden: isMarketing },
     { id: 'webcapture', label: 'Website Lead-Capture Form', group: 'Phase 2' },
     {
       id: 'delivery',

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CheckCircle2, MessageCircle, PhoneCall, Send } from 'lucide-react';
 import { Client, Engagement, TeamMember, VoiceCallRecord, WhatsAppThread } from '../types/crm';
 import { formatTimestampIST } from '../utils/formatters';
+import { OUTREACH_LABEL, WHATSAPP_ENABLED } from '../features';
 
 interface OmnichannelViewProps {
   clients: Client[];
@@ -32,16 +33,18 @@ const CALL_OUTCOMES = [
   'No Answer',
 ] as const;
 
+// Each template names the engagement's own standard ({{service}}), so an ISO 27001 client never
+// gets CMMI wording.
 const APPROVED_WA_TEMPLATES = [
   {
-    id: 'sqas_cmmi_renewal_reminder_v1',
-    label: 'CMMI 3-Year Renewal Reminder',
-    body: 'Namaste {{contact}}, reminder from {{owner}} (SQAS): {{company}} CMMI appraisal is due for renewal. Reply 1 to book a 15-min calendar slot.',
+    id: 'sqas_renewal_reminder_v2',
+    label: 'Renewal reminder',
+    body: 'Namaste {{contact}}, reminder from {{owner}} (Shree QA Solutions): the {{service}} certification for {{company}} is due for renewal. Reply 1 to book a 15-min call.',
   },
   {
-    id: 'sqas_iso_surveillance_check',
-    label: 'ISO Annual Surveillance Check-in',
-    body: 'Hi {{contact}}, your ISO surveillance audit window is approaching. Let us confirm readiness on a quick call with {{owner}}.',
+    id: 'sqas_surveillance_check_v2',
+    label: 'Surveillance audit check-in',
+    body: 'Hi {{contact}}, your {{service}} surveillance audit window is approaching. Let us confirm readiness on a quick call with {{owner}}.',
   },
   {
     id: 'sqas_lead_proposal_followup',
@@ -61,7 +64,9 @@ export const OmnichannelView: React.FC<OmnichannelViewProps> = ({
   onLogCall,
 }) => {
   const open = engagements.filter((e) => !e.archived && e.status !== 'Closed');
-  const [channelTab, setChannelTab] = useState<'whatsapp' | 'voice'>('whatsapp');
+  const [channelTab, setChannelTab] = useState<'whatsapp' | 'voice'>(
+    WHATSAPP_ENABLED ? 'whatsapp' : 'voice',
+  );
   const [selectedEngId, setSelectedEngId] = useState(open[0]?.id || '');
   const [selectedTemplateId, setSelectedTemplateId] = useState(APPROVED_WA_TEMPLATES[0].id);
   const [outcome, setOutcome] = useState<string>(CALL_OUTCOMES[0]);
@@ -78,21 +83,24 @@ export const OmnichannelView: React.FC<OmnichannelViewProps> = ({
   const renderedPreview = tpl.body
     .replace('{{contact}}', activeClient?.contactPerson.split(' ')[0] || 'there')
     .replace('{{company}}', activeClient?.name || 'your team')
-    .replace('{{owner}}', activeOwner?.name.split(' ')[0] || 'Shree QA Solutions')
-    .replace('{{service}}', activeEng?.service || 'ISO');
+    .replace('{{owner}}', activeOwner?.name || 'Shree QA Solutions')
+    .replace('{{service}}', activeEng?.standardFramework || activeEng?.service || 'certification');
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
-          <h2 className="font-display text-xl font-semibold text-text">WhatsApp & Calls</h2>
+          <h2 className="font-display text-xl font-semibold text-text">{OUTREACH_LABEL}</h2>
           <p className="mt-0.5 text-sm text-muted">
-            Queue WhatsApp reminders and log client calls. Sending starts once a WhatsApp Business
-            account is connected (phase 2).
+            {WHATSAPP_ENABLED
+              ? 'Queue WhatsApp reminders and log client calls. Sending starts once a WhatsApp Business account is connected (phase 2).'
+              : 'Log client calls: outcome, duration, booked slot and a short summary.'}
           </p>
         </div>
 
-        <div className="inline-flex items-center gap-1 rounded-lg bg-raised p-1 border border-border">
+        <div
+          className={`${WHATSAPP_ENABLED ? 'inline-flex' : 'hidden'} items-center gap-1 rounded-lg bg-raised p-1 border border-border`}
+        >
           <button
             type="button"
             onClick={() => setChannelTab('whatsapp')}
@@ -120,7 +128,7 @@ export const OmnichannelView: React.FC<OmnichannelViewProps> = ({
         </div>
       </div>
 
-      {channelTab === 'whatsapp' && (
+      {WHATSAPP_ENABLED && channelTab === 'whatsapp' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left: Meta Account & Template Composer */}
           <div className="lg:col-span-5 rounded-xl border border-border bg-surface p-5 space-y-4">

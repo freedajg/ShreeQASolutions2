@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { AppView, TeamMember } from '../types/crm';
+import { OUTREACH_LABEL } from '../features';
 
 interface SidebarProps {
   activeView: AppView;
@@ -94,7 +95,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         },
         {
           id: 'outreach',
-          label: 'WhatsApp & Voice',
+          label: OUTREACH_LABEL,
           icon: MessageSquareMore,
           hidden: isMarketing,
         },

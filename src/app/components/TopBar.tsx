@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Command, LogOut, Mail, Menu, Monitor, Moon, Sun } from 'lucide-react';
 import { AppView, TeamMember, ThemePreference } from '../types/crm';
 import { formatDateDDMMMYYYY } from '../utils/formatters';
+import { OUTREACH_LABEL } from '../features';
 
 interface TopBarProps {
   activeView: AppView;
@@ -21,7 +22,7 @@ const VIEW_TITLES: Record<AppView, string> = {
   dashboard: 'Executive Dashboard',
   radar: 'Renewal Radar',
   pipeline: 'Sales Pipeline',
-  outreach: 'WhatsApp & Calls',
+  outreach: OUTREACH_LABEL,
   webcapture: 'Website Lead Intake',
   delivery: 'Delivery & Audit Workroom',
   clients: 'Clients & 30-Col Database',
