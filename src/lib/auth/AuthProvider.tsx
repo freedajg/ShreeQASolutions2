@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase, supabaseConfig } from '../supabase/client';
 import { MESSAGES, PROFILE_COLUMNS, decideAccess, loginErrorMessage, type Access } from './access';
-import { AuthContext, type AuthContextValue, type AuthState } from './context';
+import { AuthContext, type AuthContextValue, type AuthState, type MfaEnrollment } from './context';
 
 // If the first sign-in check hasn't finished by then, show the login page instead of "Loading…".
 const STARTUP_GUARD_MS = 15_000;
@@ -156,19 +156,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return neutral;
   }, []);
 
-  const startMfaEnrollment = useCallback(async () => {
-    if (!supabase) return MESSAGES.generic;
-    // Remove any half-finished factor from an earlier attempt, then start a fresh one.
-    const { data: factors } = await supabase.auth.mfa.listFactors();
-    for (const f of factors?.all ?? []) {
-      if (f.status === 'unverified') await supabase.auth.mfa.unenroll({ factorId: f.id });
-    }
-    const { data, error } = await supabase.auth.mfa.enroll({
-      factorType: 'totp',
-      friendlyName: 'Authenticator app',
-    });
-    if (error || !data) return "Couldn't start authenticator set-up. Please try again.";
-    return { factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret };
+  // One set-up at a time: if the screen asks twice (a re-mount), both get the same QR code.
+  // Two parallel runs used to delete each other's factor, so the shown QR never verified.
+  const enrolling = useRef<Promise<MfaEnrollment | string> | null>(null);
+  const startMfaEnrollment = useCallback(() => {
+    if (!supabase) return Promise.resolve<MfaEnrollment | string>(MESSAGES.generic);
+    const client = supabase;
+    enrolling.current ??= (async (): Promise<MfaEnrollment | string> => {
+      // Remove any half-finished factor from an earlier attempt, then start a fresh one.
+      const { data: factors } = await client.auth.mfa.listFactors();
+      for (const f of factors?.all ?? []) {
+        if (f.status === 'unverified') await client.auth.mfa.unenroll({ factorId: f.id });
+      }
+      const { data, error } = await client.auth.mfa.enroll({
+        factorType: 'totp',
+        friendlyName: 'Authenticator app',
+      });
+      if (error || !data) {
+        enrolling.current = null; // let "try again" start over
+        return "Couldn't start authenticator set-up. Please try again.";
+      }
+      return { factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret };
+    })();
+    return enrolling.current;
   }, []);
 
   const verifyMfa = useCallback(
@@ -184,6 +194,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!id) return "Couldn't find your authenticator. Set it up again.";
       const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: id, code: clean });
       if (error) return 'That code is not right, or it expired. Try the current code.';
+      enrolling.current = null;
       const { data: session } = await supabase.auth.getSession();
       if (!session.session) return MESSAGES.generic;
       return resolveSession(supabase, session.session.user.id);
@@ -194,6 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     if (!supabase) return;
     signedInUserId.current = null;
+    enrolling.current = null;
     await endSession(supabase);
     setState({ status: 'signed-out' });
   }, []);
